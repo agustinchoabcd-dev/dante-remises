@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>Dante Remises · Santa Rosa de Calamuchita</title>
+<style>
+:root{--bg:#f3f5f8;--ink:#182230;--muted:#667085;--line:#e3e8ef;--card:#fff;--nav:#101827;--green:#15803d;--greenbg:#dcfce7;--amber:#a16207;--amberbg:#fef3c7;--red:#b91c1c;--redbg:#fee2e2;--blue:#1d4ed8;--bluebg:#dbeafe}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:var(--nav);color:white;padding:22px max(18px,calc((100% - 1020px)/2))}header .brand{font-size:23px;font-weight:850;letter-spacing:-.4px}header small{color:#b9c5d6;display:block;margin-top:4px}
+main{max-width:1020px;margin:auto;padding:20px 16px 40px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.tab{border:1px solid var(--line);background:white;border-radius:12px;padding:10px 14px;font-weight:650;cursor:pointer}.tab.active{background:#243247;color:white;border-color:#243247}
+.note{background:#fff7ed;border:1px solid #fed7aa;padding:12px 14px;border-radius:12px;color:#7c2d12;font-size:14px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:12px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 2px 8px #18223008}
+.carhead{display:flex;align-items:center;gap:12px}.photos{position:relative;width:76px;height:58px;flex:0 0 76px}.avatar{position:absolute;top:2px;width:48px;height:48px;border:3px solid white;border-radius:50%;overflow:hidden;background:#e7edf5;display:grid;place-items:center;color:#526174;font-size:20px;font-weight:750;box-shadow:0 1px 4px #0002}.avatar.driver{left:0;z-index:2}.avatar.vehicle{left:29px;z-index:1}.avatar img{width:100%;height:100%;object-fit:cover}.carname{font-size:17px;font-weight:800;line-height:1.2}.model{font-size:12px;color:var(--muted);margin-top:4px}.muted{color:var(--muted);font-size:13px}.status{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:750;margin-top:10px}.libre{background:var(--greenbg);color:var(--green)}.ocupado{background:var(--amberbg);color:var(--amber)}.fuera{background:var(--redbg);color:var(--red)}
+button,select,input,textarea{font:inherit}button{cursor:pointer;border:0;border-radius:10px;padding:10px 13px;font-weight:700}.primary{background:#1d4ed8;color:white}.secondary{background:#e9eef5;color:#243247}.danger{background:#fee2e2;color:#991b1b}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.field{display:grid;gap:6px;margin:12px 0}.field label{font-size:13px;color:#475467;font-weight:650}.field select,.field input,.field textarea{width:100%;border:1px solid #cfd7e3;border-radius:10px;padding:10px;background:white}.field textarea{min-height:80px;resize:vertical}.panel{max-width:680px}.hidden{display:none!important}.divider{height:1px;background:var(--line);margin:16px 0}.request{border:1px dashed #b8c3d3;border-radius:12px;padding:12px;margin-top:12px}.footer{font-size:12px;color:var(--muted);margin-top:22px}.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#101827;color:white;padding:11px 16px;border-radius:12px;display:none;max-width:calc(100% - 32px);box-shadow:0 8px 30px #0002;z-index:20}
+.choice-card{border:1px solid var(--line);border-radius:12px;padding:13px;margin:10px 0;background:#fff}.choice-card strong{display:block}.chatbox{background:white;border:1px solid var(--line);border-radius:16px;overflow:hidden}.chathead{background:#243247;color:white;padding:14px 16px}.messages{height:240px;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:9px}.msg{max-width:85%;padding:9px 12px;border-radius:12px;background:#eef2f7;align-self:flex-start;overflow-wrap:anywhere}.msg.mine{background:#dbeafe;align-self:flex-end}.chatcompose{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}.chatcompose input{min-width:0;flex:1;border:1px solid #cfd7e3;border-radius:10px;padding:10px}.upload-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.upload-box{border:1px dashed #b8c3d3;border-radius:12px;padding:12px;background:#fafcff}.upload-box input{font-size:12px;max-width:100%}.preview{width:54px;height:54px;border-radius:50%;object-fit:cover;background:#e7edf5;display:block;margin-bottom:8px}.hint{font-size:12px;color:var(--muted);margin-top:6px}
+@media(max-width:520px){header{padding:18px 16px}.tab{flex:1;padding:10px 8px;font-size:13px}.actions button{flex:1}.upload-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="brand">🚕 Dante Remises</div><small>Santa Rosa de Calamuchita</small></header>
+<main>
+<div class="note"><strong>Prototipo de trabajo:</strong> las pantallas y los cambios de estado funcionan en este navegador. Todavía no se sincronizan entre teléfonos, las fotos no se guardan en un servidor y el chat no conecta con una persona real. Eso requiere la siguiente etapa.</div>
+<nav class="tabs" aria-label="Vistas">
+<button class="tab active" data-view="pasajero">Pasajero</button>
+<button class="tab" data-view="chofer">Chofer</button>
+<button class="tab" data-view="central">Central</button>
+<button class="tab" data-view="chat">Chat humano</button>
+</nav>
+<section id="pasajero">
+<h2>Elegí tu remís</h2><p class="muted">Consultá qué coches están disponibles o dejá que el sistema elija uno al azar entre los libres.</p>
+<div class="grid" id="passengerCars"></div>
+<div class="card panel" style="margin-top:16px">
+<h3>Solicitar un viaje</h3>
+<div class="field"><label for="carChoice">¿Qué coche preferís?</label><select id="carChoice"></select></div>
+<div class="actions"><button class="secondary" id="randomCar">🎲 Elegir cualquiera disponible</button><button class="secondary" id="openChat">💬 Hablar con una persona</button></div>
+<div class="field"><label for="origin">¿Dónde te buscamos?</label><input id="origin" placeholder="Dirección de origen"></div>
+<div class="field"><label for="destination">¿A dónde querés ir?</label><input id="destination" placeholder="Dirección de destino"></div>
+<button class="primary" id="sendRequest">Preparar solicitud</button>
+<div id="requestResult" class="request hidden"></div>
+<p class="muted">El mapa, el presupuesto y el envío real del pedido se incorporarán después.</p>
+</div>
+</section>
+<section id="chofer" class="hidden">
+<h2>Panel del chofer</h2><p class="muted">Iniciá sesión con la cuenta autorizada y actualizá el estado manualmente.</p>
+<div class="card panel" id="authPanel">
+<h3>Acceso del personal</h3><p class="muted">Las cuentas las habilita la central. No hay registro público.</p>
+<div class="field"><label for="authEmail">Correo electrónico</label><input id="authEmail" type="email" autocomplete="username" placeholder="chofer@ejemplo.com"></div>
+<div class="field"><label for="authPassword">Contraseña</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Contraseña"></div>
+<div class="actions"><button class="primary" id="loginButton">Iniciar sesión</button><button class="secondary hidden" id="logoutButton">Cerrar sesión</button></div>
+<p class="hint" id="authStatus">Sesión cerrada. Los cambios de estado requieren una cuenta autorizada.</p>
+</div>
+<div class="card panel" id="driverControls" style="margin-top:12px">
+<div class="field"><label for="driverChoice">Mi vehículo</label><select id="driverChoice"></select></div><div id="driverStatus"></div>
+<div class="divider"></div>
+<div class="field"><label for="busyDuration">Duración de “Ocupado”</label><select id="busyDuration"><option value="5">5 minutos</option><option value="10">10 minutos</option><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="120">2 horas</option><option value="240">4 horas</option><option value="480">8 horas</option></select></div>
+<button class="primary" id="setBusy">Ocupado durante el plazo elegido</button>
+<div class="field"><label for="outDuration">Duración de “Fuera de servicio”</label><select id="outDuration"><option value="5">5 minutos</option><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="120">2 horas</option><option value="240">4 horas</option><option value="480">8 horas</option><option value="indefinite">Hasta que lo reactive manualmente</option></select></div>
+<button class="danger" id="setOut">Fuera de servicio</button><div class="actions"><button class="secondary" id="setFree">Marcar como libre</button></div>
+</div>
+</section>
+<section id="central" class="hidden">
+<h2>Central de Dante Remises</h2><p class="muted">Resumen de los cuatro coches registrados.</p>
+<div class="card panel"><strong>Acceso de central</strong><p class="muted">Usá el mismo inicio de sesión autorizado de la sección Chofer.</p><div id="centralAuthStatus" class="hint">Sesión cerrada.</div></div>
+<div class="grid" id="centralCars"></div>
+<div class="card panel" style="margin-top:16px"><h3>Fotos de chofer y vehículo</h3><p class="muted">Cargá una foto del chofer y otra del auto para cada coche. En este prototipo solo se ven en este navegador.</p><div class="field"><label for="photoCar">Vehículo</label><select id="photoCar"></select></div><div class="upload-row">
+<div class="upload-box"><img class="preview" id="driverPreview" alt="Vista previa chofer"><label for="driverPhoto">Foto del chofer</label><input id="driverPhoto" type="file" accept="image/*"></div>
+<div class="upload-box"><img class="preview" id="vehiclePreview" alt="Vista previa del vehículo"><label for="vehiclePhoto">Foto del auto</label><input id="vehiclePhoto" type="file" accept="image/*"></div>
+</div><p class="hint">Las fotos elegidas se usan como vista previa temporal. No se suben ni se guardan de forma permanente.</p></div>
+</section>
+<section id="chat" class="hidden">
+<h2>Hablar con una persona</h2><p class="muted">La idea es que el pasajero pueda contactar al operador o consultar con un remisero. Esta versión solo simula la interfaz: todavía no hay conexión con personal real.</p>
+<div class="card panel">
+<div class="field"><label for="contactChoice">¿Con quién querés hablar?</label><select id="contactChoice"><option value="operador">Operador de la remisería</option><option value="144">Agustín Lasala · Coche 144</option><option value="137">Marcelo Avellaneda · Coche 137</option><option value="104">Dante Arias · Coche 104</option><option value="109">Matías Cuello · Coche 109</option><option value="disponible">Cualquier remisero libre</option></select></div>
+<div class="chatbox"><div class="chathead"><strong id="chatTitle">Chat con el operador</strong><div class="muted" style="color:#d5deea">Dante Remises · Santa Rosa de Calamuchita</div></div><div class="messages" id="messages"><div class="msg">Hola. Esta es una vista de demostración del chat.</div></div><form class="chatcompose" id="chatForm"><input id="chatInput" placeholder="Escribí un mensaje…" autocomplete="off" required><button class="primary" type="submit">Enviar</button></form></div>
+<p class="hint">En la versión real, los mensajes se enviarán a un operador o chofer conectado y se necesitarán notificaciones para avisar que llegó un mensaje.</p>
+</div>
+</section>
+<p class="footer">Dante Remises · Prototipo 0.3 · Cuatro vehículos · Los temporizadores usan el reloj del navegador. La versión real necesitará servidor para sincronizar estados y conversaciones.</p>
+</main><div class="toast" id="toast" role="status"></div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
+import { getDatabase, ref, onValue, get, update } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyAkODSNiFyWVaPTG7t0qx-Dru4IBqOb9nE",
+  authDomain: "dante-remiseria-src.firebaseapp.com",
+  databaseURL: "https://dante-remiseria-src-default-rtdb.firebaseio.com",
+  projectId: "dante-remiseria-src",
+  storageBucket: "dante-remiseria-src.firebasestorage.app",
+  messagingSenderId: "453868406002",
+  appId: "1:453868406002:web:e517e0e5dd67ca0f0a7c6b",
+  measurementId: "G-XJLEQ1S719"
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getDatabase(firebaseApp);
+const auth = getAuth(firebaseApp);
+let currentUser = null;
+let remoteReady = false;
+const initial=[
+{id:'144',driver:'Agustín Lasala',model:'Fiat Cronos'},
+{id:'137',driver:'Marcelo Avellaneda',model:'Chery Tiggo'},
+{id:'104',driver:'Dante Arias',model:'Fiat Cronos'},
+{id:'109',driver:'Matías Cuello',model:'Chevrolet Prisma'}
+];
+const cars=Object.fromEntries(initial.map(x=>[x.id,{...x,status:'libre',until:null,indefinite:false,driverPhoto:null,vehiclePhoto:null}]));
+let activeDriver='144',photoCar='144';
+const carsRef=ref(db,'cars');
+const byId=id=>document.getElementById(id);
+const fmtRemaining=ms=>{if(ms<=0)return 'vencido';let total=Math.ceil(ms/60000),h=Math.floor(total/60),m=total%60;return h?`${h} h ${m?m+' min':''}`.trim():`${m} min`};
+function refreshExpired(){const now=Date.now();Object.values(cars).forEach(c=>{if(c.until&&c.until<=now){c.status='libre';c.until=null;c.indefinite=false}})}
+function statusText(c){if(c.status==='libre')return 'Libre';if(c.status==='ocupado')return 'Ocupado'+(c.until?' · '+fmtRemaining(c.until-Date.now()):'');return 'Fuera de servicio'+(c.indefinite?' · sin vencimiento':c.until?' · '+fmtRemaining(c.until-Date.now()):'')}
+function cls(s){return s==='libre'?'libre':s==='ocupado'?'ocupado':'fuera'}
+function avatar(url,kind){return `<div class="avatar ${kind}">${url?`<img src="${url}" alt="">`:(kind==='driver'?'👤':'🚘')}</div>`}
+function carCard(c,admin=false){return `<article class="card"><div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver')}${avatar(c.vehiclePhoto,'vehicle')}</div><div><div class="carname">${c.driver}</div><div class="model">${c.id} · ${c.model}</div></div></div><span class="status ${cls(c.status)}">${statusText(c)}</span>${admin?`<div class="actions"><button class="secondary" onclick="quickSet('${c.id}','libre')">Libre</button><button class="secondary" onclick="quickSet('${c.id}','ocupado')">Ocupado 30 min</button><button class="secondary" onclick="quickSet('${c.id}','fuera')">Fuera de servicio</button></div>`:''}</article>`}
+function fillSelects(){const options=initial.map(c=>`<option value="${c.id}">${c.id} · ${c.driver} (${c.model})</option>`).join('');['driverChoice','photoCar'].forEach(id=>byId(id).innerHTML=options)}
+function render(){refreshExpired();byId('passengerCars').innerHTML=initial.map(x=>carCard(cars[x.id])).join('');byId('centralCars').innerHTML=initial.map(x=>carCard(cars[x.id],true)).join('');
+const select=byId('carChoice'),previous=select.value;select.innerHTML='<option value="">Elegí un coche…</option>'+initial.map(x=>`<option value="${x.id}" ${cars[x.id].status!=='libre'?'disabled':''}>${x.id} · ${x.driver} — ${statusText(cars[x.id])}${cars[x.id].status!=='libre'?' (no disponible)':''}</option>`).join('');if(previous&&cars[previous]?.status==='libre')select.value=previous;
+const c=cars[activeDriver];byId('driverStatus').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver')}${avatar(c.vehiclePhoto,'vehicle')}</div><div><div class="carname">${c.driver}</div><div class="model">${c.id} · ${c.model}</div><span class="status ${cls(c.status)}">${statusText(c)}</span></div></div>`;
+updatePhotoPreview()}
+function notify(msg){const t=byId('toast');t.textContent=msg;t.style.display='block';clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.style.display='none',2800)}
+async function setStatus(id,status,minutes=null,indefinite=false){if(!currentUser){notify('Iniciá sesión con una cuenta autorizada para cambiar estados.');return}const c=cars[id];c.status=status;c.until=minutes?Date.now()+minutes*60000:null;c.indefinite=indefinite;render();try{await update(ref(db,'cars/'+id),{driver:c.driver,model:c.model,status:c.status,until:c.until,indefinite:c.indefinite,updatedAt:Date.now()});notify('Estado sincronizado: '+c.driver)}catch(err){notify('No se pudo guardar. Revisá el acceso y las reglas de Firebase.');console.error(err)}}
+window.quickSet=(id,status)=>{if(!currentUser){notify('Iniciá sesión para cambiar estados.');return}if(status==='libre')setStatus(id,'libre');else if(status==='ocupado')setStatus(id,'ocupado',30);else setStatus(id,'fuera',null,true)}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+function showView(v){document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===v));['pasajero','chofer','central','chat'].forEach(id=>byId(id).classList.toggle('hidden',id!==v))}
+byId('driverChoice').addEventListener('change',e=>{activeDriver=e.target.value;render()});
+byId('setBusy').addEventListener('click',()=>{setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value));notify(`Estado actualizado: ${cars[activeDriver].driver}`)});
+byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite');notify(`Estado actualizado: ${cars[activeDriver].driver}`)});
+byId('setFree').addEventListener('click',()=>{setStatus(activeDriver,'libre');notify(`${cars[activeDriver].driver}: Libre`)});
+byId('randomCar').addEventListener('click',()=>{refreshExpired();const available=initial.map(x=>cars[x.id]).filter(c=>c.status==='libre');if(!available.length){notify('En este momento no hay coches libres.');return}const chosen=available[Math.floor(Math.random()*available.length)];byId('carChoice').value=chosen.id;notify(`Coche elegido al azar: ${chosen.id} · ${chosen.driver}`)});
+byId('sendRequest').addEventListener('click',()=>{const id=byId('carChoice').value,origin=byId('origin').value.trim(),dest=byId('destination').value.trim(),el=byId('requestResult');if(!origin||!dest){notify('Completá origen y destino para continuar.');return}if(!id||cars[id].status!=='libre'){notify('Elegí un coche que esté libre.');render();return}el.classList.remove('hidden');el.innerHTML=`<strong>Solicitud de demostración preparada</strong><br>Chofer: ${cars[id].driver} · Coche ${id}<br>Vehículo: ${cars[id].model}<br>Origen: ${esc(origin)}<br>Destino: ${esc(dest)}<div class="muted" style="margin-top:8px">Todavía no se envió a la remisería.</div>`});
+byId('openChat').addEventListener('click',()=>showView('chat'));
+byId('contactChoice').addEventListener('change',()=>{const v=byId('contactChoice').value;const c=cars[v];byId('chatTitle').textContent=v==='operador'?'Chat con el operador':v==='disponible'?'Chat con un remisero libre':`Chat con ${c.driver} · Coche ${c.id}`});
+byId('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=byId('chatInput'),txt=input.value.trim();if(!txt)return;const m=document.createElement('div');m.className='msg mine';m.textContent=txt;byId('messages').appendChild(m);const reply=document.createElement('div');reply.className='msg';reply.textContent='Mensaje de prueba visible solo en esta demostración. El chat real se conectará en una etapa posterior.';byId('messages').appendChild(reply);input.value='';byId('messages').scrollTop=byId('messages').scrollHeight});
+byId('photoCar').addEventListener('change',e=>{photoCar=e.target.value;byId('driverPhoto').value='';byId('vehiclePhoto').value='';updatePhotoPreview()});
+function updatePhotoPreview(){const c=cars[photoCar];byId('driverPreview').src=c.driverPhoto||'';byId('vehiclePreview').src=c.vehiclePhoto||'';byId('driverPreview').style.visibility=c.driverPhoto?'visible':'hidden';byId('vehiclePreview').style.visibility=c.vehiclePhoto?'visible':'hidden'}
+function loadPhoto(input,key){const file=input.files&&input.files[0];if(!file)return;if(!file.type.startsWith('image/')){notify('Elegí un archivo de imagen.');return}const reader=new FileReader();reader.onload=()=>{cars[photoCar][key]=reader.result;render();notify('Vista previa actualizada')};reader.readAsDataURL(file)}
+byId('driverPhoto').addEventListener('change',e=>loadPhoto(e.target,'driverPhoto'));byId('vehiclePhoto').addEventListener('change',e=>loadPhoto(e.target,'vehiclePhoto'));
+function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+byId('loginButton').addEventListener('click',async()=>{const email=byId('authEmail').value.trim(),password=byId('authPassword').value;if(!email||!password){notify('Completá correo y contraseña.');return}try{await signInWithEmailAndPassword(auth,email,password);notify('Sesión iniciada')}catch(err){byId('authStatus').textContent='No se pudo iniciar sesión. Revisá los datos y que la cuenta esté creada en Firebase Authentication.';notify('No se pudo iniciar sesión')}});
+byId('logoutButton').addEventListener('click',()=>signOut(auth));
+onAuthStateChanged(auth,async user=>{currentUser=user;byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);byId('authStatus').textContent=user?'Sesión iniciada: '+user.email:'Sesión cerrada. Los cambios de estado requieren una cuenta autorizada.';byId('centralAuthStatus').textContent=user?'Sesión iniciada: '+user.email:'Sesión cerrada.';byId('driverControls').classList.toggle('hidden',!user);if(user&&!remoteReady){try{const snap=await get(carsRef);const data=snap.val()||{};for(const x of initial){if(!data[x.id]){await update(ref(db,'cars/'+x.id),{driver:x.driver,model:x.model,status:'libre',until:null,indefinite:false,updatedAt:Date.now()})}}}catch(err){console.error(err);notify('Sesión iniciada, pero Firebase todavía no permite guardar. Revisá las reglas seguras.')}}render()});
+onValue(carsRef,snapshot=>{const data=snapshot.val();if(data){initial.forEach(x=>{const r=data[x.id];if(r){cars[x.id].status=r.status||'libre';cars[x.id].until=r.until||null;cars[x.id].indefinite=!!r.indefinite;cars[x.id].driverPhoto=null;cars[x.id].vehiclePhoto=null}});remoteReady=true;render()}},err=>{console.error(err);notify('No se pudieron leer los estados. Revisá las reglas de lectura de Firebase.')});
+fillSelects();render();setInterval(()=>{const before=Object.values(cars).map(c=>c.until).join(',');refreshExpired();render()},10000);
+</script>
+</body></html>
