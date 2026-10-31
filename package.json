@@ -1,0 +1,19 @@
+{
+  "name": "dante-remises",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "copy:web": "node scripts/copy-web.mjs",
+    "cap:sync": "npm run copy:web && cap sync android",
+    "cap:open": "cap open android",
+    "cap:run": "cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0"
+  }
+}
