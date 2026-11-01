@@ -42,6 +42,9 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
+      - name: Declare Android location permissions
+        run: node scripts/patch-android-manifest.mjs
+
       - name: Generate Android app icons from Dante Remises logo
         run: npm run assets:android
 
