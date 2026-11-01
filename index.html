@@ -284,7 +284,7 @@ byId('savePassengerProfilePhoto').addEventListener('click',async()=>{
  if(currentRole?.role!=='passenger'||!currentUser){notify('Iniciá sesión como pasajero para guardar la foto.');return}
  if(!pendingPassengerPhotoBlob){notify('Primero elegí o sacá una foto.');return}
  const button=byId('savePassengerProfilePhoto'),oldKey=currentRole.profile?.profilePhotoKey||'';button.disabled=true;setPassengerPhotoStatus('Preparando una versión liviana y privada…');
- let newKey='';
+ let newKey='',profileRefSaved=false;
  try{
   const token=await currentUser.getIdToken();
   const ticketResponse=await fetch(PROFILE_PHOTO_WORKER+'/v1/profile-photo/upload-url',{method:'POST',headers:passengerPhotoHeaders(token),body:JSON.stringify({contentType:'image/jpeg'})});
@@ -292,15 +292,15 @@ byId('savePassengerProfilePhoto').addEventListener('click',async()=>{
   const ticket=await ticketResponse.json();newKey=ticket.key;
   const uploaded=await fetch(ticket.uploadUrl,{method:'PUT',headers:{'Content-Type':'image/jpeg'},body:pendingPassengerPhotoBlob});
   if(!uploaded.ok)throw new Error('No se pudo subir la foto. Intentá nuevamente.');
-  await set(ref(db,'profiles/'+currentUser.uid+'/profilePhotoKey'),newKey);
+  await set(ref(db,'profiles/'+currentUser.uid+'/profilePhotoKey'),newKey);profileRefSaved=true;
   currentRole.profile={...(currentRole.profile||{}),profilePhotoKey:newKey};
   pendingPassengerPhotoBlob=null;passengerPhotoInput.value='';
   await loadPassengerPhoto();
-  if(oldKey&&oldKey!==newKey){const deleted=await deletePassengerPhoto(oldKey,token);if(!deleted)setPassengerPhotoStatus('La foto nueva quedó guardada. No se pudo borrar la anterior; avisá a soporte.')}
+  if(oldKey&&oldKey!==newKey){try{const deleted=await deletePassengerPhoto(oldKey,token);if(!deleted)setPassengerPhotoStatus('La foto nueva quedó guardada. No se pudo borrar la anterior; avisá a soporte.')}catch(cleanupError){console.warn('No se pudo borrar la foto anterior.',cleanupError);setPassengerPhotoStatus('La foto nueva quedó guardada. No se pudo borrar la anterior; avisá a soporte.')}}
   notify('Foto de perfil guardada.');
  }catch(error){
   console.error(error);
-  if(newKey){try{const token=await currentUser.getIdToken();await deletePassengerPhoto(newKey,token)}catch(cleanupError){console.warn('No se pudo limpiar la carga incompleta.',cleanupError)}}
+  if(newKey&&!profileRefSaved){try{const token=await currentUser.getIdToken();await deletePassengerPhoto(newKey,token)}catch(cleanupError){console.warn('No se pudo limpiar la carga incompleta.',cleanupError)}}
   setPassengerPhotoStatus(error.message||'No se pudo guardar la foto.');
   notify(error.message||'No se pudo guardar la foto.');
  }finally{button.disabled=false}
