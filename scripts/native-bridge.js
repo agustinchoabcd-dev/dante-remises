@@ -17,7 +17,7 @@ export function getCurrentPosition(success, error, options = {}) {
   }
   Geolocation.getCurrentPosition({
     enableHighAccuracy: options.enableHighAccuracy ?? true,
-    timeout: options.timeout ?? 20000,
+    timeout: Math.max(options.timeout ?? 20000, 30000),
     maximumAge: options.maximumAge ?? 0
   }).then(success).catch(error);
 }
