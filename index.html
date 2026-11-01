@@ -119,6 +119,7 @@ button,select,input,textarea{font:inherit}button{cursor:pointer;border:0;border-
 </section>
 <section id="configuracion" class="hidden">
 <h2>⚙️ Configuración</h2><p class="muted">Administrá tus datos visuales y preferencias de perfil.</p>
+<div class="card panel hidden" id="passengerPhotoCard" style="margin-top:12px"><h3>Foto de perfil del pasajero</h3><p class="muted">Necesitás una foto para pedir viajes. Podés elegirla de tu galería o tomarla con la cámara. Se guarda de forma privada.</p><div class="photo-frame profile"><img id="passengerProfilePhotoPreview" class="profile-photo-preview" alt="Foto de perfil del pasajero"></div><div class="field"><label for="passengerProfilePhotoFile">Elegir o sacar una foto</label><input id="passengerProfilePhotoFile" type="file" accept="image/*"></div><div class="actions"><button class="primary" id="savePassengerProfilePhoto" type="button">Guardar foto de perfil</button><button class="secondary" id="refreshPassengerProfilePhoto" type="button">Volver a cargar</button></div><p class="hint" id="passengerProfilePhotoStatus" aria-live="polite">La foto es necesaria para solicitar viajes.</p></div>
 <div class="card panel" style="margin-top:12px"><h3>Perfil y personalización</h3><p class="muted" id="profileSettingsDescription">Tus opciones de personalización aparecerán acá.</p>
 <div id="personalizationEditor" class="hidden">
 <div class="field hidden" id="personalizationTargetWrap"><label for="personalizationTarget">Perfil a personalizar</label><select id="personalizationTarget"></select></div>
@@ -162,6 +163,7 @@ let registrationInProgress = false;
 let remoteReady = false;
 const ADMIN_UID='2kDmq0zik2SQiqz7WxU8PC9bOlk1';
 const LOCATIONIQ_KEY='pk.5345850e051f788db6c1274d8cb1eb72';
+const PROFILE_PHOTO_WORKER='https://dante-remises-b2-test.agustinchoabcd.workers.dev';
 const HOME_CENTER=[-32.0717,-64.5363];
 const DRIVER_UID_BY_CAR={'144':ADMIN_UID,'109':'7mrtHvQWCDRElEQcGQP6uLSJGTl2','137':'epd3DZKQ7LRLTO2EmJrTUKu2sf32','104':'jDrJ32nAn6hMAqghkMvpMSeVeCy1'};
 const USER_ROLES={
@@ -231,10 +233,79 @@ async function updateRoute(){if(!originPoint||!destinationPoint){byId('routeSumm
 function watchSelectedDriver(carId){stopPassengerLocationWatch();if(liveLocationUnsub){liveLocationUnsub();liveLocationUnsub=null}liveLocationUnsub=onValue(ref(db,'driverLocations/'+carId),snap=>{const loc=snap.val();if(loc&&cars[carId]?.status==='libre'&&Date.now()-Number(loc.updatedAt||0)<45000){showDriverMarker(loc);byId('driverLocationNote').textContent='Ubicación en vivo del coche '+carId+' mientras figura Libre.'}else{if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}byId('driverLocationNote').textContent='El coche no está compartiendo ubicación en este momento.'}},err=>console.warn('No se pudo leer la ubicación pública',err));}
 function showDriverMarker(loc){if(!realMap)return;const ll=[Number(loc.lat),Number(loc.lon)];if(!Number.isFinite(ll[0])||!Number.isFinite(ll[1]))return;if(loc.updatedAt&&Date.now()-Number(loc.updatedAt)>45000){if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}byId('driverLocationNote').textContent='La ubicación del coche está desactualizada; esperando una nueva señal GPS.';return}if(selectedCarMarker)selectedCarMarker.setLatLng(ll);else selectedCarMarker=L.circleMarker(ll,{radius:9,color:'#fff',weight:3,fillColor:'#176b3a',fillOpacity:1}).addTo(realMap).bindPopup('Ubicación del remis seleccionado');}
 function stopPassengerLocationWatch(){if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}}
-byId('requestSelectedDriver').addEventListener('click',async()=>{const c=cars[selectedPassengerDriver];if(!currentUser||currentRole?.role!=='passenger'){notify('Iniciá sesión como pasajero para solicitar un viaje.');return}if(!c||c.status!=='libre'){notify('El chofer seleccionado ya no está disponible.');return}if(!originPoint||!destinationPoint){notify('Seleccioná el origen y el destino, usando el GPS, el buscador o el mapa.');return}const tripRef=push(ref(db,'trips'));const tripId=tripRef.key;const driverUid=DRIVER_UID_BY_CAR[c.id];if(!driverUid){notify('No se encontró la cuenta del chofer seleccionado.');return}const trip={tripId,passengerUid:currentUser.uid,passengerName:currentRole.name||'Pasajero',driverUid,driverName:c.driver,carId:c.id,origin:originPoint,destination:destinationPoint,status:'requested',createdAt:Date.now(),updatedAt:Date.now()};try{await set(tripRef,trip);await set(ref(db,`tripInbox/${c.id}/${tripId}`),{tripId,createdAt:trip.createdAt,status:'requested'});activeTripId=tripId;byId('requestResult').classList.remove('hidden');byId('requestResult').innerHTML='<strong>Solicitud enviada al chofer.</strong><br>Esperando que acepte el viaje…';byId('requestSelectedDriver').disabled=true;listenPassengerTrip(tripId);notify('Solicitud enviada. Esperá la respuesta del chofer.')}catch(err){console.error(err);notify('No se pudo enviar la solicitud. Revisá las reglas de Firebase.')}});
+byId('requestSelectedDriver').addEventListener('click',async()=>{const c=cars[selectedPassengerDriver];if(!currentUser||currentRole?.role!=='passenger'){notify('Iniciá sesión como pasajero para solicitar un viaje.');return}if(!c||c.status!=='libre'){notify('El chofer seleccionado ya no está disponible.');return}if(!passengerPhotoReady){showView('configuracion');notify('Primero guardá o volvé a cargar tu foto de perfil para pedir un viaje.');return}if(!originPoint||!destinationPoint){notify('Seleccioná el origen y el destino, usando el GPS, el buscador o el mapa.');return}const tripRef=push(ref(db,'trips'));const tripId=tripRef.key;const driverUid=DRIVER_UID_BY_CAR[c.id];if(!driverUid){notify('No se encontró la cuenta del chofer seleccionado.');return}const trip={tripId,passengerUid:currentUser.uid,passengerName:currentRole.name||'Pasajero',driverUid,driverName:c.driver,carId:c.id,origin:originPoint,destination:destinationPoint,status:'requested',createdAt:Date.now(),updatedAt:Date.now()};try{await set(tripRef,trip);await set(ref(db,`tripInbox/${c.id}/${tripId}`),{tripId,createdAt:trip.createdAt,status:'requested'});activeTripId=tripId;byId('requestResult').classList.remove('hidden');byId('requestResult').innerHTML='<strong>Solicitud enviada al chofer.</strong><br>Esperando que acepte el viaje…';byId('requestSelectedDriver').disabled=true;listenPassengerTrip(tripId);notify('Solicitud enviada. Esperá la respuesta del chofer.')}catch(err){console.error(err);notify('No se pudo enviar la solicitud. Revisá las reglas de Firebase.')}});
 function listenPassengerTrip(id){if(passengerTripUnsub)passengerTripUnsub();passengerTripUnsub=onValue(ref(db,'trips/'+id),snap=>{const trip=snap.val();if(!trip)return;activeTripData=trip;const box=byId('requestResult');box.classList.remove('hidden');if(trip.status==='requested')box.innerHTML='<strong>Solicitud enviada.</strong><br>Esperando aceptación del chofer…';else if(trip.status==='accepted'||trip.status==='in_progress'){box.innerHTML=`<strong class="trip-status">Viaje ${trip.status==='accepted'?'aceptado':'en curso'}</strong><br>${esc(trip.driverName)} · Coche ${esc(trip.carId)}<br>El mapa mostrará la ubicación del coche durante el servicio.`;watchTripLocation(id)}else if(trip.status==='rejected'){box.innerHTML='<strong>El chofer rechazó la solicitud.</strong> Podés volver a elegir otro coche.';byId('requestSelectedDriver').disabled=false;}else if(trip.status==='completed'){box.innerHTML='<strong>Viaje finalizado.</strong> Gracias por viajar con Dante Remises.';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}else if(trip.status==='cancelled'){box.innerHTML='<strong>Solicitud cancelada.</strong>';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}},err=>console.error('No se pudo leer el viaje',err));}
 let tripLocationUnsub=null;function watchTripLocation(id){if(tripLocationUnsub)tripLocationUnsub();tripLocationUnsub=onValue(ref(db,'trips/'+id+'/driverLocation'),snap=>{const loc=snap.val();if(loc){showDriverMarker(loc);byId('driverLocationNote').textContent='Seguimiento GPS del coche durante tu viaje.'}},err=>console.warn(err))}function stopTripLocationWatch(){if(tripLocationUnsub){tripLocationUnsub();tripLocationUnsub=null}stopPassengerLocationWatch()}
 
+const passengerPhotoInput=byId('passengerProfilePhotoFile');
+let pendingPassengerPhotoBlob=null,passengerPhotoObjectUrl=null,passengerPhotoReady=false;
+function setPassengerPhotoStatus(message){byId('passengerProfilePhotoStatus').textContent=message}
+function passengerPhotoHeaders(token,json=true){return {Authorization:'Bearer '+token,...(json?{'Content-Type':'application/json'}:{})}}
+function canvasToJpeg(canvas,quality){return new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality))}
+async function compressPassengerPhoto(file){
+ if(!file||!file.type.startsWith('image/'))throw new Error('Elegí una foto en formato de imagen.');
+ const bitmap=await createImageBitmap(file);
+ try{
+  const ratio=Math.min(1,1200/Math.max(bitmap.width,bitmap.height));
+  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*ratio));canvas.height=Math.max(1,Math.round(bitmap.height*ratio));
+  const ctx=canvas.getContext('2d');if(!ctx)throw new Error('No se pudo preparar la foto.');
+  ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  for(const quality of [.88,.8,.72,.64,.56]){const blob=await canvasToJpeg(canvas,quality);if(blob&&blob.size<=900000)return blob}
+  throw new Error('La foto pesa demasiado. Elegí una imagen más chica.');
+ }finally{bitmap.close?.()}
+}
+async function loadPassengerPhoto(){
+ const card=byId('passengerPhotoCard'),isPassenger=currentRole?.role==='passenger';
+ passengerPhotoReady=false;card.classList.toggle('hidden',!isPassenger);if(!isPassenger)return false;
+ const key=currentRole.profile?.profilePhotoKey||'';
+ if(!key){byId('passengerProfilePhotoPreview').removeAttribute('src');setPassengerPhotoStatus('Todavía falta tu foto. Guardala para poder pedir viajes.');return false}
+ try{
+  const token=await currentUser.getIdToken();
+  const response=await fetch(PROFILE_PHOTO_WORKER+'/v1/profile-photo/read-url?key='+encodeURIComponent(key),{headers:passengerPhotoHeaders(token,false)});
+  if(!response.ok)throw new Error('No se pudo cargar la foto guardada.');
+  const data=await response.json();byId('passengerProfilePhotoPreview').src=data.readUrl;passengerPhotoReady=true;
+  setPassengerPhotoStatus('Foto de perfil guardada. Ya podés solicitar viajes.');return true;
+ }catch(error){console.error(error);setPassengerPhotoStatus('No se pudo cargar la foto. Revisá tu conexión e intentá nuevamente.');return false}
+}
+passengerPhotoInput.addEventListener('change',async()=>{
+ const file=passengerPhotoInput.files?.[0];pendingPassengerPhotoBlob=null;if(!file)return;
+ try{
+  const blob=await compressPassengerPhoto(file);pendingPassengerPhotoBlob=blob;
+  if(passengerPhotoObjectUrl)URL.revokeObjectURL(passengerPhotoObjectUrl);
+  passengerPhotoObjectUrl=URL.createObjectURL(blob);byId('passengerProfilePhotoPreview').src=passengerPhotoObjectUrl;
+  setPassengerPhotoStatus('Vista previa lista. Tocá “Guardar foto de perfil”.');
+ }catch(error){setPassengerPhotoStatus(error.message||'No se pudo preparar la foto.');notify(error.message||'No se pudo preparar la foto.')}
+});
+async function deletePassengerPhoto(key,token){
+ const response=await fetch(PROFILE_PHOTO_WORKER+'/v1/profile-photo/delete',{method:'POST',headers:passengerPhotoHeaders(token),body:JSON.stringify({key})});
+ return response.ok;
+}
+byId('refreshPassengerProfilePhoto').addEventListener('click',()=>loadPassengerPhoto());
+byId('savePassengerProfilePhoto').addEventListener('click',async()=>{
+ if(currentRole?.role!=='passenger'||!currentUser){notify('Iniciá sesión como pasajero para guardar la foto.');return}
+ if(!pendingPassengerPhotoBlob){notify('Primero elegí o sacá una foto.');return}
+ const button=byId('savePassengerProfilePhoto'),oldKey=currentRole.profile?.profilePhotoKey||'';button.disabled=true;setPassengerPhotoStatus('Preparando una versión liviana y privada…');
+ let newKey='',profileRefSaved=false;
+ try{
+  const token=await currentUser.getIdToken();
+  const ticketResponse=await fetch(PROFILE_PHOTO_WORKER+'/v1/profile-photo/upload-url',{method:'POST',headers:passengerPhotoHeaders(token),body:JSON.stringify({contentType:'image/jpeg'})});
+  if(!ticketResponse.ok)throw new Error('No se pudo preparar la subida. Intentá nuevamente.');
+  const ticket=await ticketResponse.json();newKey=ticket.key;
+  const uploaded=await fetch(ticket.uploadUrl,{method:'PUT',headers:{'Content-Type':'image/jpeg'},body:pendingPassengerPhotoBlob});
+  if(!uploaded.ok)throw new Error('No se pudo subir la foto. Intentá nuevamente.');
+  await set(ref(db,'profiles/'+currentUser.uid+'/profilePhotoKey'),newKey);profileRefSaved=true;
+  currentRole.profile={...(currentRole.profile||{}),profilePhotoKey:newKey};
+  pendingPassengerPhotoBlob=null;passengerPhotoInput.value='';
+  await loadPassengerPhoto();
+  if(oldKey&&oldKey!==newKey){try{const deleted=await deletePassengerPhoto(oldKey,token);if(!deleted)setPassengerPhotoStatus('La foto nueva quedó guardada. No se pudo borrar la anterior; avisá a soporte.')}catch(cleanupError){console.warn('No se pudo borrar la foto anterior.',cleanupError);setPassengerPhotoStatus('La foto nueva quedó guardada. No se pudo borrar la anterior; avisá a soporte.')}}
+  notify('Foto de perfil guardada.');
+ }catch(error){
+  console.error(error);
+  if(newKey&&!profileRefSaved){try{const token=await currentUser.getIdToken();await deletePassengerPhoto(newKey,token)}catch(cleanupError){console.warn('No se pudo limpiar la carga incompleta.',cleanupError)}}
+  setPassengerPhotoStatus(error.message||'No se pudo guardar la foto.');
+  notify(error.message||'No se pudo guardar la foto.');
+ }finally{button.disabled=false}
+});
 const imageLightbox=byId('imageLightbox');
 function openImageLightbox(img){if(!img||!img.src)return;byId('lightboxImage').src=img.src;byId('lightboxCaption').textContent=img.alt||'Foto';imageLightbox.classList.remove('hidden');document.body.style.overflow='hidden'}
 function closeImageLightbox(){imageLightbox.classList.add('hidden');byId('lightboxImage').removeAttribute('src');document.body.style.overflow=''}
@@ -305,13 +376,13 @@ onAuthStateChanged(auth,async user=>{
  byId('central').classList.toggle('hidden',!user||!['admin','operator'].includes(currentRole.role));
  byId('chat').classList.toggle('hidden',!user);
  byId('configuracion').classList.toggle('hidden',!user);
- if(user){configurePersonalization();}
+ if(user){configurePersonalization();if(currentRole?.role==='passenger')await loadPassengerPhoto();}
  document.querySelector('[data-view=\"chofer\"]').classList.toggle('hidden',!user||!['driver','admin'].includes(currentRole.role));
  document.querySelector('[data-view=\"central\"]').classList.toggle('hidden',!user||!['admin','operator'].includes(currentRole.role));
  byId('passengerAdmin').classList.toggle('hidden',!user||currentRole.role!=='admin');
  if(user&&currentRole.role==='admin'){try{const profSnap=await get(ref(db,'profiles'));const profiles=profSnap.val()||{};const entries=Object.values(profiles);byId('passengerList').innerHTML=entries.length?entries.map(p=>`<div class="choice-card"><strong>${esc((p.name||'')+' '+(p.lastName||''))}</strong><div class="muted">DNI: ${esc(p.dni||'—')} · Teléfono: ${esc(p.phone||'No informado')}</div></div>`).join(''):'Todavía no hay pasajeros registrados.'; }catch(e){byId('passengerList').textContent='No se pudieron consultar los perfiles. Revisá las reglas de Firebase.'}}
  if(user&&!remoteReady&&currentRole.role==='admin'){try{const snap=await get(carsRef);const data=snap.val()||{};for(const x of initial){if(!data[x.id]){await update(ref(db,'cars/'+x.id),{driver:x.driver,model:x.model,status:'libre',until:null,indefinite:false,updatedAt:Date.now()})}}}catch(err){console.error(err);notify('No se pudo inicializar la base. Revisá las reglas de Firebase.')}}
- if(currentRole?.role==='operator')showView('central');else if(currentRole?.role==='driver')showView('chofer');else if(currentRole?.role==='admin')showView('central');else if(currentRole?.role==='passenger')showView('pasajero');
+ if(currentRole?.role==='operator')showView('central');else if(currentRole?.role==='driver')showView('chofer');else if(currentRole?.role==='admin')showView('central');else if(currentRole?.role==='passenger')showView(currentRole.profile?.profilePhotoKey?'pasajero':'configuracion');
  if(user&&['driver','admin'].includes(currentRole.role)){listenDriverInbox();startDriverGps()}else{stopDriverGps();if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}}
  render();
 });
