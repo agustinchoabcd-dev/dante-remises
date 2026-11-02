@@ -8,6 +8,7 @@ on:
       - android-photo-test
       - fix/passenger-onboarding-trip-diagnostics
       - fix/passenger-onboarding-camera-flow
+      - feature/driver-presence
 
 permissions:
   contents: read
