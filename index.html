@@ -251,7 +251,7 @@ byId('requestSelectedDriver').addEventListener('click',async()=>{
   await set(tripRef,trip);
  }catch(error){
   console.error('[Dante Remises] Falló la escritura de solicitud en Firebase.',{stage,code:error?.code||'unknown',message:error?.message||'sin detalle'});
-  result.textContent='No pudimos registrar el viaje en Firebase. Tu solicitud no fue enviada. Revisá tu conexión e intentá nuevamente; si vuelve a ocurrir, contactá a la central.';
+  result.textContent='No pudimos registrar el viaje en Firebase. Tu solicitud no fue enviada. Código técnico: '+(error?.code||'no disponible')+'. Revisá tu conexión e intentá nuevamente; si vuelve a ocurrir, contactá a la central.';
   button.disabled=false;notify('Firebase rechazó el registro del viaje.');return;
  }
  stage='notify-driver-inbox';
@@ -260,7 +260,7 @@ byId('requestSelectedDriver').addEventListener('click',async()=>{
  }catch(error){
   console.error('[Dante Remises] El viaje se registró, pero falló el aviso al chofer.',{stage,tripId,code:error?.code||'unknown',message:error?.message||'sin detalle'});
   activeTripId=tripId;
-  result.textContent='El viaje quedó registrado, pero no pudimos avisarle al chofer. No vuelvas a enviar la solicitud para evitar duplicados. Contactá a la central e informá este código: '+tripId;
+  result.textContent='El viaje quedó registrado, pero no pudimos avisarle al chofer. No vuelvas a enviar la solicitud para evitar duplicados. Código técnico: '+(error?.code||'no disponible')+'. Contactá a la central e informá este código: '+tripId;
   notify('El viaje se registró, pero no se pudo notificar al chofer. Contactá a la central.');return;
  }
  activeTripId=tripId;result.innerHTML='<strong>Solicitud enviada al chofer.</strong><br>Esperando que acepte el viaje…';listenPassengerTrip(tripId);notify('Solicitud enviada. Esperá la respuesta del chofer.');
