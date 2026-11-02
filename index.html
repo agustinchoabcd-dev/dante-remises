@@ -249,8 +249,9 @@ byId('requestSelectedDriver').addEventListener('click',async()=>{
  if(!originPoint||!destinationPoint){notify('Seleccioná el origen y el destino, usando el GPS, el buscador o el mapa.');return}
  const driverUid=DRIVER_UID_BY_CAR[c.id];
  if(!driverUid){notify('No se encontró la cuenta del chofer seleccionado.');return}
- let serverCarStatus=null;
- try{const carSnapshot=await get(ref(db,'cars/'+c.id));serverCarStatus=carSnapshot.child('status').val()}catch(error){console.error('[Dante Remises] No se pudo comprobar el estado del coche en Firebase.',{code:error?.code||'unknown',carId:c.id});notify('No se pudo comprobar la disponibilidad del coche. Intentá nuevamente.');return}
+ let serverCarStatus=null,serverPresence=null;
+ try{const [carSnapshot,presenceSnapshot]=await Promise.all([get(ref(db,'cars/'+c.id)),get(ref(db,'driverPresence/'+c.id))]);serverCarStatus=carSnapshot.child('status').val();serverPresence=presenceSnapshot.val()}catch(error){console.error('[Dante Remises] No se pudo comprobar disponibilidad y presencia en Firebase.',{code:error?.code||'unknown',carId:c.id});notify('No se pudo comprobar la disponibilidad y conexión del chofer. Intentá nuevamente.');return}
+ if(!serverPresence?.connected||serverPresence.uid!==driverUid){notify('El chofer ya no figura conectado en Firebase. Elegí otro coche o esperá a que vuelva a conectarse.');return}
  if(serverCarStatus!=='libre'){console.warn('[Dante Remises] El estado local y el de Firebase no permiten solicitar el viaje.',{carId:c.id,clientCarStatus:c.status,serverCarStatus});notify('El coche no figura Libre en Firebase (estado: '+(serverCarStatus||'sin registro')+'). Actualizá la lista y elegí otro chofer.');return}
  const tripRef=push(ref(db,'trips')),tripId=tripRef.key;
  const trip={tripId,passengerUid:currentUser.uid,passengerName:currentRole.name||'Pasajero',driverUid,driverName:c.driver,carId:c.id,origin:originPoint,destination:destinationPoint,status:'requested',createdAt:Date.now(),updatedAt:Date.now()};
