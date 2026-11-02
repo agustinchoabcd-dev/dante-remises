@@ -9,6 +9,7 @@ on:
       - fix/passenger-onboarding-trip-diagnostics
       - fix/passenger-onboarding-camera-flow
       - feature/driver-presence
+      - dante-test
 
 permissions:
   contents: read
@@ -55,6 +56,14 @@ jobs:
 
       - name: Copy web application into Capacitor assets
         run: npm run copy:web
+
+      - name: Upload web test bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: dante-remises-test-web
+          path: www/
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Generate Android project
         run: npx cap add android
