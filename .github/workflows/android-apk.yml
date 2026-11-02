@@ -41,7 +41,7 @@ jobs:
           import re
           from pathlib import Path
           html = Path("index.html").read_text(encoding="utf-8")
-          scripts = re.findall(r'<script type="module">\\s*(.*?)\\s*</script>', html, re.DOTALL)
+          scripts = re.findall(r'<script type="module">\s*(.*?)\s*</script>', html, re.DOTALL)
           if len(scripts) != 1:
               raise SystemExit(f"Expected one module script, found {len(scripts)}")
           Path("/tmp/dante-remises-inline.mjs").write_text(scripts[0], encoding="utf-8")
