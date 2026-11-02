@@ -369,8 +369,8 @@ async function loadPassengerPhoto(){
   return false;
  }
 }
-async function handlePassengerPhotoSelection(){
- const file=passengerPhotoInput.files?.[0];pendingPassengerPhotoBlob=null;if(!file)return;
+async function handlePassengerPhotoSelection(event){
+ const input=event.currentTarget,file=input.files?.[0];input.value='';pendingPassengerPhotoBlob=null;if(!file)return;
  try{
   const blob=await compressPassengerPhoto(file);
   setPassengerPhotoStatus('Analizando la foto en este dispositivo para comprobar que aparezca un solo rostro…');
@@ -409,7 +409,7 @@ byId('savePassengerProfilePhoto').addEventListener('click',async()=>{
   await set(ref(db,'profiles/'+currentUser.uid+'/profilePhotoKey'),newKey);profileRefSaved=true;
   currentRole.profile={...(currentRole.profile||{}),profilePhotoKey:newKey};
   byId('passengerProfilePhotoPreview').src=newPhotoUrl;passengerPhotoReady=true;
-  pendingPassengerPhotoBlob=null;passengerPhotoInput.value='';
+  pendingPassengerPhotoBlob=null;passengerPhotoInput.value='';passengerPhotoCameraInput.value='';
   setPassengerPhotoStatus('Foto de perfil guardada y cargada correctamente. Ya podés solicitar viajes.');
   if(oldKey&&oldKey!==newKey){try{const deleted=await deletePassengerPhoto(oldKey,token);if(!deleted)setPassengerPhotoStatus('La foto nueva está lista. No se pudo borrar la anterior; avisá a soporte.')}catch(cleanupError){console.warn('No se pudo borrar la foto anterior.',cleanupError);setPassengerPhotoStatus('La foto nueva está lista. No se pudo borrar la anterior; avisá a soporte.')}}
   notify('Foto de perfil guardada y comprobada.');showView('pasajero');
