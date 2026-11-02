@@ -200,7 +200,7 @@ const initial=[
 {id:'104',driver:'Dante Arias',model:'Fiat Cronos'},
 {id:'109',driver:'Matías Cuello',model:'Chevrolet Prisma'}
 ];
-const cars=Object.fromEntries(initial.map(x=>[x.id,{...x,status:'libre',until:null,indefinite:false,driverPhoto:null,vehiclePhoto:null}]));
+const cars=Object.fromEntries(initial.map(x=>[x.id,{...x,status:'desconectado',until:null,indefinite:false,driverPhoto:null,vehiclePhoto:null}]));
 let activeDriver='144';
 const carsRef=ref(db,'cars');
 const dniEmail=dni=>`dni${String(dni).replace(/\D/g,'')}@login.dante-remises.invalid`;
@@ -208,7 +208,7 @@ const cleanDni=value=>String(value||'').replace(/\D/g,'');
 const byId=id=>document.getElementById(id);
 const fmtRemaining=ms=>{if(ms<=0)return 'vencido';let total=Math.ceil(ms/60000),h=Math.floor(total/60),m=total%60;return h?`${h} h ${m?m+' min':''}`.trim():`${m} min`};
 function refreshExpired(){const now=Date.now();Object.values(cars).forEach(c=>{if(c.until&&c.until<=now){c.status='libre';c.until=null;c.indefinite=false}})}
-function statusText(c){if(c.status==='libre')return 'Libre';if(c.status==='ocupado')return 'Ocupado'+(c.until?' · '+fmtRemaining(c.until-Date.now()):'');return 'Fuera de servicio'+(c.indefinite?' · sin vencimiento':c.until?' · '+fmtRemaining(c.until-Date.now()):'')}
+function statusText(c){if(!remoteReady)return 'Consultando disponibilidad…';if(c.status==='desconectado')return 'Desconectado';if(c.status==='libre')return 'Libre';if(c.status==='ocupado')return 'Ocupado'+(c.until?' · '+fmtRemaining(c.until-Date.now()):'');return 'Fuera de servicio'+(c.indefinite?' · sin vencimiento':c.until?' · '+fmtRemaining(c.until-Date.now()):'')}
 function cls(s){return s==='libre'?'libre':s==='ocupado'?'ocupado':'fuera'}
 function avatar(url,kind,transform={scale:100,x:0,y:0}){return `<div class="avatar ${kind}">${url?`<img src="${url}" alt="" style="transform:translate(${Number(transform.x||0)}%,${Number(transform.y||0)}%) scale(${Number(transform.scale||100)/100});transform-origin:center">`:(kind==='driver'?'👤':'🚘')}</div>`}
 function photoForCar(carId,key){const entry=Object.entries(STAFF_PHOTO_USERS).find(([uid,p])=>p.carId===carId);return entry?(staffPhotos[entry[0]]?.[key]||null):null}
@@ -251,7 +251,7 @@ byId('requestSelectedDriver').addEventListener('click',async()=>{
  if(!driverUid){notify('No se encontró la cuenta del chofer seleccionado.');return}
  let serverCarStatus=null;
  try{const carSnapshot=await get(ref(db,'cars/'+c.id));serverCarStatus=carSnapshot.child('status').val()}catch(error){console.error('[Dante Remises] No se pudo comprobar el estado del coche en Firebase.',{code:error?.code||'unknown',carId:c.id});notify('No se pudo comprobar la disponibilidad del coche. Intentá nuevamente.');return}
- if(serverCarStatus!=='libre'){notify('El coche ya no figura Libre en Firebase. Actualizá la lista y elegí otro chofer.');return}
+ if(serverCarStatus!=='libre'){console.warn('[Dante Remises] El estado local y el de Firebase no permiten solicitar el viaje.',{carId:c.id,clientCarStatus:c.status,serverCarStatus});notify('El coche no figura Libre en Firebase (estado: '+(serverCarStatus||'sin registro')+'). Actualizá la lista y elegí otro chofer.');return}
  const tripRef=push(ref(db,'trips')),tripId=tripRef.key;
  const trip={tripId,passengerUid:currentUser.uid,passengerName:currentRole.name||'Pasajero',driverUid,driverName:c.driver,carId:c.id,origin:originPoint,destination:destinationPoint,status:'requested',createdAt:Date.now(),updatedAt:Date.now()};
  const button=byId('requestSelectedDriver'),result=byId('requestResult');
@@ -531,12 +531,13 @@ onAuthStateChanged(auth,async user=>{
  if(user&&['driver','admin'].includes(currentRole.role)){listenDriverInbox();startDriverGps()}else{stopDriverGps();if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}}
  render();
 });
-onValue(carsRef,snapshot=>{const data=snapshot.val();if(data){initial.forEach(x=>{const r=data[x.id];if(r){cars[x.id].status=r.status||'libre';cars[x.id].until=r.until||null;cars[x.id].indefinite=!!r.indefinite;cars[x.id].activeTripId=r.activeTripId||null;cars[x.id].driverPhoto=photoForCar(x.id,'profilePhoto');cars[x.id].vehiclePhoto=photoForCar(x.id,'vehiclePhoto');cars[x.id].driverPhotoTransform=transformForCar(x.id,'profilePhoto');cars[x.id].vehiclePhotoTransform=transformForCar(x.id,'vehiclePhoto')}});remoteReady=true;render();if(selectedPassengerDriver&&cars[selectedPassengerDriver]?.status!=='libre'&&!cars[selectedPassengerDriver]?.activeTripId){stopPassengerLocationWatch();byId('driverLocationNote').textContent='El coche dejó de estar Libre; su ubicación ya no está disponible.'}if(currentUser&&['driver','admin'].includes(currentRole?.role)){const ownId=currentRole.role==='admin'?'144':currentRole.carId;const tripId=data[ownId]?.activeTripId;if(tripId&&tripId!==activeTripId){activeTripId=tripId;get(ref(db,'trips/'+tripId)).then(ts=>{const t=ts.val();if(t&&['accepted','in_progress'].includes(t.status)){activeTripData=t;byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML=`<strong>Viaje activo · ${esc(t.passengerName||'Pasajero')}</strong><div class="hint">Destino: ${esc(t.destination?.label||'')}</div><div class="actions"><button class="primary" id="startTripButton">Iniciar viaje</button><button class="secondary" id="finishTripButton">Finalizar viaje</button></div>`;startDriverGps()}}).catch(console.error)}}}},err=>{console.error(err);notify('No se pudieron leer los estados. Revisá las reglas de lectura de Firebase.')});
+onValue(carsRef,snapshot=>{const data=snapshot.val()||{};initial.forEach(x=>{const r=data[x.id];if(r){cars[x.id].status=r.status||'desconectado';cars[x.id].until=r.until||null;cars[x.id].indefinite=!!r.indefinite;cars[x.id].activeTripId=r.activeTripId||null;cars[x.id].driverPhoto=photoForCar(x.id,'profilePhoto');cars[x.id].vehiclePhoto=photoForCar(x.id,'vehiclePhoto');cars[x.id].driverPhotoTransform=transformForCar(x.id,'profilePhoto');cars[x.id].vehiclePhotoTransform=transformForCar(x.id,'vehiclePhoto')}else{cars[x.id].status='desconectado';cars[x.id].until=null;cars[x.id].indefinite=false;cars[x.id].activeTripId=null}});remoteReady=true;render();if(selectedPassengerDriver&&cars[selectedPassengerDriver]?.status!=='libre'&&!cars[selectedPassengerDriver]?.activeTripId){stopPassengerLocationWatch();byId('driverLocationNote').textContent='El coche dejó de estar Libre; su ubicación ya no está disponible.'}if(currentUser&&['driver','admin'].includes(currentRole?.role)){const ownId=currentRole.role==='admin'?'144':currentRole.carId;const tripId=data[ownId]?.activeTripId;if(tripId&&tripId!==activeTripId){activeTripId=tripId;get(ref(db,'trips/'+tripId)).then(ts=>{const t=ts.val();if(t&&['accepted','in_progress'].includes(t.status)){activeTripData=t;byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML=`<strong>Viaje activo · ${esc(t.passengerName||'Pasajero')}</strong><div class="hint">Destino: ${esc(t.destination?.label||'')}</div><div class="actions"><button class="primary" id="startTripButton">Iniciar viaje</button><button class="secondary" id="finishTripButton">Finalizar viaje</button></div>`;startDriverGps()}}).catch(console.error)}}}},err=>{console.error(err);initial.forEach(x=>{cars[x.id].status='desconectado'});remoteReady=true;render();notify('No se pudieron leer los estados. Los coches se muestran desconectados hasta recuperar la conexión.')});
 
 function configurePersonalization(){
  const role=currentRole?.role,uid=currentUser?.uid,isAdmin=uid===ADMIN_UID;
  const editor=byId('personalizationEditor');
  editor.classList.toggle('hidden',!(isAdmin||role==='driver'||role==='operator'));
+ byId('passengerPhotoSettingsContainer').classList.toggle('hidden',role!=='passenger');
  byId('logoSettingsCard').classList.toggle('hidden',!isAdmin);
  byId('profileSettingsDescription').textContent=isAdmin?'Como administrador podés gestionar la personalización de todo el personal.':role==='driver'?'Podés modificar únicamente tu foto de perfil y la foto de tu vehículo.':role==='operator'?'Podés modificar únicamente tu foto de perfil.':role==='passenger'?'Podés actualizar tu foto de perfil desde esta sección.':'Las opciones de personalización aparecerán acá.';
  const targetWrap=byId('personalizationTargetWrap');targetWrap.classList.toggle('hidden',!isAdmin);
