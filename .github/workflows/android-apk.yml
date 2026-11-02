@@ -6,6 +6,7 @@ on:
     branches:
       - android-capacitor
       - android-photo-test
+      - fix/passenger-onboarding-trip-diagnostics
 
 permissions:
   contents: read
