@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - android-capacitor
+      - android-photo-test
 
 permissions:
   contents: read
