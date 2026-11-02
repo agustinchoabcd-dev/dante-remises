@@ -460,6 +460,7 @@ onAuthStateChanged(auth,async user=>{
  byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress)return;
  if(user&&!currentRole){byId('authStatus').textContent='Cuenta sin rol asignado. Contactá a Agustín.';await signOut(auth);notify('Esta cuenta no está habilitada en Dante Remises.');return}
+ if(user&&currentRole?.role==='passenger'){passengerPhotoReady=false;byId('pasajero').classList.add('hidden');byId('configuracion').classList.remove('hidden')}
  const roleText=!user?'Sesión cerrada.':currentRole.role==='admin'?'Administrador total y chofer · '+currentRole.name:currentRole.role==='driver'?'Chofer · Coche '+currentRole.carId+' · '+currentRole.name:currentRole.role==='operator'?'Operador · '+currentRole.name:'Pasajero · '+currentRole.name;
  if(user){const pendingWelcome=sessionStorage.getItem('danteWelcomeName');if(pendingWelcome){sessionStorage.removeItem('danteWelcomeName')}}
  byId('staffAccess').classList.toggle('hidden',!!user);byId('staffEntryButton').classList.toggle('hidden',!!user);byId('settingsGearButton').classList.toggle('hidden',!user);
