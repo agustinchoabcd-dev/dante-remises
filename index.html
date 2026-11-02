@@ -262,7 +262,7 @@ byId('requestSelectedDriver').addEventListener('click',async()=>{
   await set(tripRef,trip);
  }catch(error){
   console.error('[Dante Remises] Falló la escritura de solicitud en Firebase.',{stage,code:error?.code||'unknown',message:error?.message||'sin detalle',passengerUid:currentUser.uid,carId:c.id,driverUid,clientCarStatus:c.status,serverCarStatus,hasOrigin:!!originPoint,hasDestination:!!destinationPoint});
-  result.textContent='Firebase rechazó el registro del viaje (etapa trips). La solicitud no fue enviada. Código: '+(error?.code||'no disponible')+'. No reintentes varias veces; contactá a la central e informá el código.';
+  result.textContent='Firebase rechazó el registro del viaje (etapa '+stage+'). Código: '+(error?.code||'no disponible')+'. Detalle: '+(error?.message||'sin detalle')+'. Estado del coche leído: '+(serverCarStatus||'sin registro')+'. No reintentes varias veces si no estás seguro de que la solicitud no se registró.';
   button.disabled=false;notify('Firebase rechazó el registro del viaje.');return;
  }
  stage='notify-driver-inbox';
