@@ -254,18 +254,42 @@ async function compressPassengerPhoto(file){
   throw new Error('La foto pesa demasiado. Elegí una imagen más chica.');
  }finally{bitmap.close?.()}
 }
+async function waitForPassengerImage(img,src,timeoutMs=15000){
+ return new Promise((resolve,reject)=>{
+  let settled=false;
+  const finish=(error)=>{
+   if(settled)return;settled=true;clearTimeout(timer);
+   img.onload=null;img.onerror=null;
+   if(error){img.removeAttribute('src');reject(error)}else resolve(true);
+  };
+  const timer=setTimeout(()=>finish(new Error('La imagen tardó demasiado en cargar.')),timeoutMs);
+  img.onload=async()=>{
+   if(!img.naturalWidth||!img.naturalHeight){finish(new Error('El archivo recibido no es una imagen válida.'));return}
+   try{if(typeof img.decode==='function')await img.decode();finish()}catch(error){finish(new Error('No se pudo decodificar la imagen recibida.'))}
+  };
+  img.onerror=()=>finish(new Error('El archivo de foto no existe o no se pudo descargar.'));
+  img.src=src;
+  if(img.complete){
+   if(img.naturalWidth&&img.naturalHeight)img.onload();
+   else if(img.currentSrc||img.src)img.onerror();
+  }
+ });
+}
 async function loadPassengerPhoto(){
- const card=byId('passengerPhotoCard'),isPassenger=currentRole?.role==='passenger';
+ const card=byId('passengerPhotoCard'),isPassenger=currentRole?.role==='passenger',preview=byId('passengerProfilePhotoPreview');
  passengerPhotoReady=false;card.classList.toggle('hidden',!isPassenger);if(!isPassenger)return false;
  const key=currentRole.profile?.profilePhotoKey||'';
- if(!key){byId('passengerProfilePhotoPreview').removeAttribute('src');setPassengerPhotoStatus('Todavía falta tu foto. Guardala para poder pedir viajes.');return false}
+ if(!key){preview.removeAttribute('src');setPassengerPhotoStatus('Todavía falta tu foto. Guardala para poder pedir viajes.');return false}
  try{
   const token=await currentUser.getIdToken();
   const response=await fetch(PROFILE_PHOTO_WORKER+'/v1/profile-photo/read-url?key='+encodeURIComponent(key),{headers:passengerPhotoHeaders(token,false)});
-  if(!response.ok)throw new Error('No se pudo cargar la foto guardada.');
-  const data=await response.json();byId('passengerProfilePhotoPreview').src=data.readUrl;passengerPhotoReady=true;
-  setPassengerPhotoStatus('Foto de perfil guardada. Ya podés solicitar viajes.');return true;
- }catch(error){console.error(error);setPassengerPhotoStatus('No se pudo cargar la foto. Revisá tu conexión e intentá nuevamente.');return false}
+  if(!response.ok)throw new Error('No se pudo obtener el enlace privado de la foto.');
+  const data=await response.json();
+  if(typeof data.readUrl!=='string'||!data.readUrl.startsWith('https://'))throw new Error('El servidor devolvió un enlace de foto inválido.');
+  await waitForPassengerImage(preview,data.readUrl);
+  passengerPhotoReady=true;
+  setPassengerPhotoStatus('Foto de perfil guardada y cargada correctamente. Ya podés solicitar viajes.');return true;
+ }catch(error){console.error(error);passengerPhotoReady=false;preview.removeAttribute('src');setPassengerPhotoStatus('No se pudo comprobar la foto. Revisá tu conexión o volvé a cargarla antes de pedir un viaje.');return false}
 }
 passengerPhotoInput.addEventListener('change',async()=>{
  const file=passengerPhotoInput.files?.[0];pendingPassengerPhotoBlob=null;if(!file)return;
@@ -296,9 +320,14 @@ byId('savePassengerProfilePhoto').addEventListener('click',async()=>{
   await set(ref(db,'profiles/'+currentUser.uid+'/profilePhotoKey'),newKey);profileRefSaved=true;
   currentRole.profile={...(currentRole.profile||{}),profilePhotoKey:newKey};
   pendingPassengerPhotoBlob=null;passengerPhotoInput.value='';
-  await loadPassengerPhoto();
-  if(oldKey&&oldKey!==newKey){try{const deleted=await deletePassengerPhoto(oldKey,token);if(!deleted)setPassengerPhotoStatus('La foto nueva quedó guardada. No se pudo borrar la anterior; avisá a soporte.')}catch(cleanupError){console.warn('No se pudo borrar la foto anterior.',cleanupError);setPassengerPhotoStatus('La foto nueva quedó guardada. No se pudo borrar la anterior; avisá a soporte.')}}
-  notify('Foto de perfil guardada.');
+  const photoReady=await loadPassengerPhoto();
+  if(photoReady){
+   if(oldKey&&oldKey!==newKey){try{const deleted=await deletePassengerPhoto(oldKey,token);if(!deleted)setPassengerPhotoStatus('La foto nueva está lista. No se pudo borrar la anterior; avisá a soporte.')}catch(cleanupError){console.warn('No se pudo borrar la foto anterior.',cleanupError);setPassengerPhotoStatus('La foto nueva está lista. No se pudo borrar la anterior; avisá a soporte.')}}
+   notify('Foto de perfil guardada y comprobada.');
+  }else{
+   setPassengerPhotoStatus('La referencia se guardó, pero no pudimos comprobar que la foto se pueda cargar. La foto anterior se conserva; tocá “Volver a cargar” o intentá nuevamente.');
+   notify('La foto se guardó, pero falta comprobar que pueda visualizarse.');
+  }
  }catch(error){
   console.error(error);
   if(newKey&&!profileRefSaved){try{const token=await currentUser.getIdToken();await deletePassengerPhoto(newKey,token)}catch(cleanupError){console.warn('No se pudo limpiar la carga incompleta.',cleanupError)}}
