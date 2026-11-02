@@ -275,7 +275,7 @@ async function detectSinglePassengerFace(blob){
   if(faces.length===0)throw new Error('No detectamos un rostro. Elegí una foto donde tu cara se vea claramente.');
   if(faces.length>1)throw new Error('Detectamos más de un rostro. Elegí una foto donde aparezcas solamente vos.');
   const confidence=Number(faces[0]?.categories?.[0]?.score||0);
-  if(confidence<0.6)throw new Error('No pudimos reconocer el rostro con suficiente claridad. Probá con otra foto, bien iluminada y de frente.');
+  if(confidence<0.6)throw new Error('No pudimos detectar un rostro con suficiente confianza. Probá con otra foto, bien iluminada y de frente.');
   return true;
  }finally{URL.revokeObjectURL(imageUrl)}
 }
