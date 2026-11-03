@@ -45,17 +45,20 @@ export async function handleChatRequest(request, env) {
     const actor = await requireChatActor(request, env);
 
     if (request.method === "POST" && url.pathname === "/v1/chat/conversations") {
+      await enforceRateLimit(actor, "conversation-create", 5, 60_000, env);
       const body = await readJson(request);
       const conversation = await openConversation(actor, body, env);
       return chatJson({ conversation }, 200, request, env);
     }
 
     if (request.method === "GET" && url.pathname === "/v1/chat/conversations") {
+      await enforceRateLimit(actor, "conversation-list", 60, 60_000, env);
       const conversations = await listConversations(actor, env);
       return chatJson({ conversations }, 200, request, env);
     }
 
     if (request.method === "GET" && url.pathname === "/v1/chat/messages") {
+      await enforceRateLimit(actor, "message-list", 60, 60_000, env);
       const conversationId = url.searchParams.get("conversationId") || "";
       if (!isSafeId(conversationId)) return chatJson({ error: "Invalid conversationId" }, 400, request, env);
       const messages = await listMessages(actor, conversationId, env);
