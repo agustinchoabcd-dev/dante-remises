@@ -110,7 +110,22 @@ export async function scheduledChatCleanup(env) {
 
     const failuresBeforeBatch = failed;
     for (const [indexKey, entry] of rows) {
-      if (!entry || !Number.isFinite(entry.deleteAt) || entry.deleteAt > now) continue;
+      const validEntry = entry &&
+        Number.isFinite(entry.deleteAt) &&
+        isSafeId(entry.conversationId) &&
+        isSafeId(entry.blockId);
+      const expectedIndexKey = validEntry
+        ? `${String(entry.deleteAt).padStart(13, "0")}_${entry.conversationId}_${entry.blockId}`
+        : "";
+      if (!validEntry || entry.deleteAt > now || indexKey !== expectedIndexKey) {
+        try {
+          await firebaseDbRequest(env, `/chat/expiryIndex/${indexKey}.json`, { method: "DELETE" });
+        } catch (error) {
+          failed++;
+          console.error("Invalid chat expiry index cleanup failed", error instanceof Error ? error.name : "UnknownError");
+        }
+        continue;
+      }
       try {
         const blockPath = `/chat/blocks/${entry.conversationId}/${entry.blockId}`;
         const block = await firebaseDbRequest(env, `${blockPath}.json`, { method: "GET" });
