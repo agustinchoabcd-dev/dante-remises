@@ -455,5 +455,27 @@ test('concurrent first messages share one pending block and preserve both messag
   const current = getPath(`/chat/conversations/${conversation.conversationId}/currentBlock`);
   assert.equal(current.status, 'open');
   assert.equal(current.startedAt, Math.min(first.createdAt, second.createdAt));
-  assert.ok(etagConflicts > 0, 'expected at least one If-Match conflict during concurrent writes');
+  assert.equal(Object.keys(stored).length, 2, 'both independent messages must survive concurrent writes');
+});
+
+
+test('the Firebase mock rejects a stale If-Match ETag with HTTP 412', async () => {
+  const path = '/chat/etag-probe';
+  setPath(path, { value: 1 });
+  const url = `https://dante-chat-test-default-rtdb.firebaseio.com${path}.json`;
+  const snapshot = await globalThis.fetch(url, { method: 'GET', headers: { 'X-Firebase-ETag': 'true' } });
+  const etag = snapshot.headers.get('ETag');
+  assert.ok(etag);
+  const first = await globalThis.fetch(url, {
+    method: 'PUT', headers: { 'if-match': etag, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value: 2 })
+  });
+  assert.equal(first.status, 200);
+  const stale = await globalThis.fetch(url, {
+    method: 'PUT', headers: { 'if-match': etag, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value: 3 })
+  });
+  assert.equal(stale.status, 412);
+  assert.equal(etagConflicts, 1);
+  assert.deepEqual(getPath(path), { value: 2 });
 });
