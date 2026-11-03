@@ -148,6 +148,7 @@ button,select,input,textarea{font:inherit}button{cursor:pointer;border:0;border-
 </main><div class="image-lightbox hidden" id="imageLightbox" role="dialog" aria-modal="true" aria-label="Foto ampliada"><button type="button" class="lightbox-close" id="closeImageLightbox" aria-label="Cerrar">×</button><img id="lightboxImage" alt="Imagen ampliada"><div class="lightbox-caption" id="lightboxCaption"></div></div><div class="toast" id="toast" role="status"></div>
 <script type="module">
 import { getCurrentPosition, watchPosition, clearWatch, requestStartupPermissions, isGeolocationAvailable } from "./native-bridge.js";
+import { resolveRoleFromProfile } from "./role-resolver.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getDatabase, ref, onValue, get, set, update, remove, push, runTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
@@ -498,24 +499,14 @@ function readLogoSettings(){logoSettings={scale:Number(byId('logoScale').value),
 byId('logoFile').addEventListener('change',async ev=>{const file=ev.target.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){notify('Elegí un archivo de imagen.');return}try{const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)});const img=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=data});const canvas=document.createElement('canvas');const ratio=Math.min(1,700/Math.max(img.width,img.height));canvas.width=Math.round(img.width*ratio);canvas.height=Math.round(img.height*ratio);const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);pendingLogoData=canvas.toDataURL('image/png');if(pendingLogoData.length>850000){pendingLogoData=null;throw new Error('La imagen sigue siendo demasiado pesada. Probá con un PNG o JPG más liviano.')}paintLogo(pendingLogoData,logoSettings);byId('logoStatus').textContent='Vista previa lista. Ajustá tamaño y posición, después guardá.'}catch(err){console.error(err);notify(err.message||'No se pudo abrir esa imagen.')}});
 byId('resetLogoButton').addEventListener('click',()=>{byId('logoScale').value=100;byId('logoX').value=0;byId('logoY').value=0;readLogoSettings()});
 byId('saveLogoButton').addEventListener('click',async()=>{if(!currentUser||currentUser.uid!==ADMIN_UID){notify('Solo Agustín (144) puede guardar el logo.');return}const data=pendingLogoData||logoData;if(!data){notify('Primero elegí una imagen.');return}const btn=byId('saveLogoButton');btn.disabled=true;byId('logoStatus').textContent='Guardando logo para todos…';try{await set(ref(db,'branding/logo'),{data,scale:logoSettings.scale,x:logoSettings.x,y:logoSettings.y,updatedAt:Date.now(),updatedBy:currentUser.uid});logoData=data;pendingLogoData=null;byId('logoStatus').textContent='Logo guardado. Ya está disponible para todos los usuarios.';notify('Logo de Dante Remises guardado.')}catch(err){console.error(err);byId('logoStatus').textContent='No se pudo guardar. Revisá las reglas de Firebase indicadas en las instrucciones.';notify('Firebase rechazó el guardado del logo.')}finally{btn.disabled=false}});
-onValue(ref(db,'branding/logo'),snapshot=>{const value=snapshot.val();if(value?.data){logoData=value.data;logoSettings={scale:Number(value.scale)||100,x:Number(value.x)||0,y:Number(value.y)||0};if(!pendingLogoData)paintLogo(logoData,logoSettings);byId('logoScale').value=logoSettings.scale;byId('logoX').value=logoSettings.x;byId('logoY').value=logoSettings.y}else{logoData=null;if(!pendingLogoData)paintLogo(null)}} ,err=>console.error('No se pudo leer el logo compartido:',err));
-async function resolveAuthenticatedRole(user){
+onValue(ref(db,'branding/logo'),snapshot=>{const value=snapshot.val();if(value?.data){logoData=value.data;logoSettings={scale:Number(value.scale)||100,x:Number(value.x)||0,y:Number(value.y)||0};if(!pendingLogoData)paintLogo(logoData,logoSettings);byId('logoScale').value=logoSettings.scale;byId('logoX').value=logoSettings.x;byId('logoY').value=logoSettings.y}else{logoData=null;if(!pendingLogoData)paintLogo(null)}} ,erasync function resolveAuthenticatedRole(user){
  if(!user)return null;
  const legacyStaff=USER_ROLES[user.uid]||null;
- if(user.uid===ADMIN_UID)return {...legacyStaff,role:'admin',carId:'144'};
  let profile=null;
- try{const snapshot=await get(ref(db,'profiles/'+user.uid));profile=snapshot.val()||null}
+ try{const snapshot=await get(ref(db,'profiles/'+user.uid));profile=snapshot.val()||{}}
  catch(error){console.error('No se pudo leer el perfil dinámico:',error);throw new Error('No se pudo verificar tu perfil. Intentá nuevamente.')}
- if(profile?.active===false)throw new Error('Tu cuenta está desactivada. Contactá a un administrador.');
- const allowedRoles=['passenger','driver','operator','admin'];
- let role=profile?.role;
- // Compatibilidad temporal: perfiles antiguos de personal pueden existir como passenger.
- if(legacyStaff&&(!role||role==='passenger'))role=legacyStaff.role;
- if(!allowedRoles.includes(role))return null;
- if(role==='admin')return null; // El único administrador válido es ADMIN_UID.
- const carId=role==='driver'?(profile?.carId||legacyStaff?.carId||null):null;
- if(role==='driver'&&!carId)throw new Error('Tu perfil de chofer no tiene un coche asignado. Contactá a un administrador.');
- const name=[profile?.name,profile?.lastName].filter(Boolean).join(' ')||legacyStaff?.name||user.email||'Usuario';
+ return resolveRoleFromProfile({uid:user.uid,profile,legacyStaff,adminUid:ADMIN_UID,userEmail:user.email});
+}l||'Usuario';
  return {role,name,carId,profile:profile||{}};
 }
 onAuthStateChanged(auth,async user=>{
