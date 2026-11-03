@@ -13,6 +13,7 @@ let etagVersions;
 let requestCounter;
 let failNextMessagePatch;
 let etagConflicts;
+let mutatePreviewBeforeNextPut;
 const env = {
   FIREBASE_PROJECT_ID: projectId,
   FIREBASE_SERVICE_ACCOUNT_EMAIL: 'chat-test@dante-chat-test.iam.gserviceaccount.com',
@@ -84,6 +85,11 @@ before(async () => {
       const method = options.method || 'GET';
       if (method === 'GET') return jsonResponse(getPath(path), 200, options.headers?.['X-Firebase-ETag'] ? { ETag: etagFor(path) } : {});
       if (method === 'PUT') {
+        if (mutatePreviewBeforeNextPut && path.startsWith('/chat/conversations/')) {
+          mutatePreviewBeforeNextPut = false;
+          const current = getPath(path) || {};
+          setPath(path, { ...current, lastMessageAt: 1_800_000_000_000 - 1000, lastMessagePreview: 'Mensaje concurrente más nuevo', lastSenderUid: 'passenger-race' });
+        }
         const match = options.headers?.['if-match'] || options.headers?.['If-Match'];
         if (match && match !== etagFor(path)) { etagConflicts++; return jsonResponse({ error: 'ETag mismatch' }, 412); }
         setPath(path, JSON.parse(options.body)); writes.push({ method, path }); return jsonResponse(JSON.parse(options.body));
@@ -118,6 +124,7 @@ beforeEach(() => {
   requestCounter = 0;
   failNextMessagePatch = false;
   etagConflicts = 0;
+  mutatePreviewBeforeNextPut = false;
 });
 
 async function request(uid, method, path, body, origin = env.APP_ORIGIN, requestEnv = env) {
@@ -753,5 +760,28 @@ test('scheduled cleanup preserves a newer conversation preview from a later bloc
     assert.equal(getPath('/chat/conversations/' + conversationId + '/lastMessagePreview'), 'Mensaje nuevo');
     assert.equal(getPath('/chat/conversations/' + conversationId + '/lastMessageAt'), now - 1000);
     assert.equal(getPath('/chat/conversations/' + conversationId + '/lastSenderUid'), 'passenger-newer');
+  } finally { Date.now = originalNow; }
+});
+
+test('expired preview cleanup retries ETag conflict and preserves a concurrently written newer preview', async () => {
+  const originalNow = Date.now;
+  const now = 1_800_000_000_000;
+  Date.now = () => now;
+  try {
+    const conversationId = 'c_preview_race';
+    const blockId = 'b_preview_race';
+    const startedAt = now - 15 * 24 * 60 * 60 * 1000;
+    const closesAt = startedAt + 24 * 60 * 60 * 1000;
+    const indexKey = String(now).padStart(13, '0') + '_' + conversationId + '_' + blockId;
+    setPath('/chat/conversations/' + conversationId, { conversationId, lastMessageAt: closesAt - 1000, lastMessagePreview: 'Vista previa vieja', lastSenderUid: 'passenger-old' });
+    setPath('/chat/blocks/' + conversationId + '/' + blockId, { blockId, status: 'closed', startedAt, closesAt, deleteAt: now });
+    setPath('/chat/expiryIndex/' + indexKey, { conversationId, blockId, deleteAt: now });
+    mutatePreviewBeforeNextPut = true;
+    const result = await scheduledChatCleanup(env);
+    assert.equal(result.deletedBlocks, 1);
+    assert.equal(result.failed, 0);
+    assert.equal(etagConflicts, 1);
+    assert.equal(getPath('/chat/conversations/' + conversationId + '/lastMessagePreview'), 'Mensaje concurrente más nuevo');
+    assert.equal(getPath('/chat/conversations/' + conversationId + '/lastSenderUid'), 'passenger-race');
   } finally { Date.now = originalNow; }
 });
