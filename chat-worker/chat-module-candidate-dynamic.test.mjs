@@ -205,9 +205,11 @@ test('driver cannot open another driver trip chat', async () => {
 
 test('role changes are read from the current profile on each request', async () => {
   setPath('/profiles/staff-uid', { role: 'passenger', active: true });
+  const timelineKey = '0000000000001_c_support';
   setPath('/chat/operatorInbox/all/c_support', true);
+  setPath('/chat/operatorTimeline/' + timelineKey, true);
   setPath('/chat/conversations/c_support', {
-    conversationId: 'c_support', kind: 'operator-support', participantUids: { 'passenger-1': true }, createdAt: 1
+    conversationId: 'c_support', kind: 'operator-support', participantUids: { 'passenger-1': true }, createdAt: 1, timelineKey
   });
   const beforePromotion = await request('staff-uid', 'GET', '/v1/chat/conversations');
   assert.equal((await beforePromotion.json()).conversations.length, 0);
@@ -282,7 +284,8 @@ test('conversation listing returns newest chats, not the last hash keys', async 
   const third = await request('operator-list', 'GET', `/v1/chat/conversations?cursor=${encodeURIComponent(secondPage.nextCursor)}`);
   const thirdPage = await third.json();
   assert.equal(thirdPage.conversations.length, 35);
-  assert.equal(thirdPage.conversations[0].conversationId, 'c_000');
+  assert.equal(thirdPage.conversations[0].conversationId, 'c_034');
+  assert.equal(thirdPage.conversations.at(-1).conversationId, 'c_000');
   assert.equal(thirdPage.hasMore, false);
 });
 
