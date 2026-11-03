@@ -63,6 +63,7 @@ export async function handleChatRequest(request, env) {
     }
 
     if (request.method === "POST" && url.pathname === "/v1/chat/messages") {
+      await enforceRateLimit(actor, "message-send-fast", 8, 10_000, env);
       const body = await readJson(request);
       const message = await sendTextMessage(actor, body, env);
       return chatJson({ message }, message.idempotent ? 200 : 201, request, env);
