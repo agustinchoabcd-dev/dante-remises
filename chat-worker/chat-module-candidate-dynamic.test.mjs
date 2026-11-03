@@ -165,9 +165,11 @@ test('active passenger can open operator support and creates global operator ind
 
 test('new active operator can list an existing support conversation through global index', async () => {
   setPath('/profiles/operator-new', { role: 'operator', active: true, name: 'Operador nuevo' });
+  const timelineKey = '0000000000001_c_existing';
   setPath('/chat/operatorInbox/all/c_existing', true);
+  setPath('/chat/operatorTimeline/' + timelineKey, true);
   setPath('/chat/conversations/c_existing', {
-    conversationId: 'c_existing', kind: 'operator-support', participantUids: { 'passenger-1': true }, createdAt: 1
+    conversationId: 'c_existing', kind: 'operator-support', participantUids: { 'passenger-1': true }, createdAt: 1, timelineKey
   });
   const response = await request('operator-new', 'GET', '/v1/chat/conversations');
   assert.equal(response.status, 200);
@@ -251,27 +253,37 @@ test('message and conversation preview are persisted in one atomic update', asyn
   const atomicPatch = writes.find(write => write.method === 'PATCH' && write.path === '/chat' && write.keys?.some(key => key.startsWith('messages/')));
   assert.ok(atomicPatch, 'expected one root PATCH containing message and conversation metadata');
   assert.ok(atomicPatch.keys.some(key => key.startsWith(`conversations/${conversation.conversationId}/lastMessageAt`)));
+  assert.ok(atomicPatch.keys.some(key => key.startsWith(`messageTimeline/${conversation.conversationId}/`)));
 });
 
 test('conversation listing returns newest chats, not the last hash keys', async () => {
   setPath('/profiles/operator-list', { role: 'operator', active: true });
-  const index = {};
-  for (let i = 0; i < 105; i++) {
+  for (let i = 0; i < 235; i++) {
     const id = `c_${String(i).padStart(3, '0')}`;
-    // Insert newest first so slicing the raw index keys would discard them.
-    index[id] = true;
+    const timelineKey = `${String(1000 + i).padStart(13, '0')}_${id}`;
     setPath(`/chat/conversations/${id}`, {
       conversationId: id, kind: 'operator-support', participantUids: { 'passenger-x': true },
-      createdAt: 1000 + (104 - i), lastMessageAt: 1000 + (104 - i)
+      createdAt: 1000 + i, lastMessageAt: 1000 + i, timelineKey
     });
+    setPath(`/chat/operatorTimeline/${timelineKey}`, true);
   }
-  setPath('/chat/operatorInbox/all', index);
   const response = await request('operator-list', 'GET', '/v1/chat/conversations');
   assert.equal(response.status, 200);
-  const conversations = (await response.json()).conversations;
-  assert.equal(conversations.length, 100);
-  assert.equal(conversations[0].conversationId, 'c_000');
-  assert.equal(conversations.at(-1).conversationId, 'c_099');
+  const firstPage = await response.json();
+  assert.equal(firstPage.conversations.length, 100);
+  assert.equal(firstPage.conversations[0].conversationId, 'c_234');
+  assert.equal(firstPage.conversations.at(-1).conversationId, 'c_135');
+  assert.equal(firstPage.hasMore, true);
+  const second = await request('operator-list', 'GET', `/v1/chat/conversations?cursor=${encodeURIComponent(firstPage.nextCursor)}`);
+  const secondPage = await second.json();
+  assert.equal(secondPage.conversations.length, 100);
+  assert.equal(secondPage.conversations[0].conversationId, 'c_134');
+  assert.equal(secondPage.conversations.at(-1).conversationId, 'c_035');
+  const third = await request('operator-list', 'GET', `/v1/chat/conversations?cursor=${encodeURIComponent(secondPage.nextCursor)}`);
+  const thirdPage = await third.json();
+  assert.equal(thirdPage.conversations.length, 35);
+  assert.equal(thirdPage.conversations[0].conversationId, 'c_000');
+  assert.equal(thirdPage.hasMore, false);
 });
 
 
@@ -337,6 +349,9 @@ test('scheduled cleanup deletes expired text blocks and their expiry index', asy
     senderUid: "passenger-old", contentHash: "hash", messageId: "m_old", blockId, createdAt: now - 200000
   });
   setPath(`/chat/messageRequestIndex/${conversationId}/${blockId}/c_request1`, true);
+  const timelineKey = `${String(now - 100000).padStart(13, '0')}_m1`;
+  setPath(`/chat/messageTimeline/${conversationId}/${timelineKey}`, { messageId: 'm1', blockId, message: { text: 'old message' } });
+  setPath(`/chat/messageTimelineByBlock/${conversationId}/${blockId}/${timelineKey}`, true);
   const result = await scheduledChatCleanup(env);
   assert.equal(result.deletedBlocks, 1);
   assert.equal(result.failed, 0);
@@ -345,6 +360,8 @@ test('scheduled cleanup deletes expired text blocks and their expiry index', asy
   assert.equal(getPath(`/chat/expiryIndex/${indexKey}`), null);
   assert.equal(getPath(`/chat/messageRequests/${conversationId}/c_request1`), null);
   assert.equal(getPath(`/chat/messageRequestIndex/${conversationId}/${blockId}`), null);
+  assert.equal(getPath(`/chat/messageTimeline/${conversationId}/${timelineKey}`), null);
+  assert.equal(getPath(`/chat/messageTimelineByBlock/${conversationId}/${blockId}`), null);
 });
 
 test('failed first message persistence leaves a pending block without starting retention', async () => {
@@ -534,4 +551,29 @@ test('message send rate limit returns 429 and Retry-After after eight sends in a
     assert.ok(Number(blocked.headers.get('Retry-After')) >= 1);
     assert.match((await blocked.json()).error, /Too many chat requests/);
   } finally { Date.now = originalNow; }
+});
+
+test('message history supports a second chronological page', async () => {
+  setPath('/profiles/passenger-history', { role: 'passenger', active: true });
+  const conversationId = 'c_history';
+  setPath('/chat/conversations/' + conversationId, { conversationId, kind: 'operator-support', participantUids: { 'passenger-history': true }, createdAt: 1 });
+  for (let i = 0; i < 105; i++) {
+    const blockId = 'b_' + Math.floor(i / 50);
+    const messageId = 'm_' + String(i).padStart(3, '0');
+    const key = String(2000 + i).padStart(13, '0') + '_' + messageId;
+    const message = { senderUid: 'passenger-history', text: 'Mensaje ' + i, createdAt: 2000 + i };
+    setPath('/chat/blocks/' + conversationId + '/' + blockId, { blockId, status: 'open', deleteAt: Date.now() + 100000, closesAt: Date.now() + 50000 });
+    setPath('/chat/messageTimeline/' + conversationId + '/' + key, { messageId, blockId, message });
+  }
+  const first = await request('passenger-history', 'GET', '/v1/chat/messages?conversationId=' + conversationId);
+  const firstPage = await first.json();
+  assert.equal(firstPage.messages.length, 100);
+  assert.equal(firstPage.messages[0].text, 'Mensaje 5');
+  assert.equal(firstPage.messages.at(-1).text, 'Mensaje 104');
+  assert.equal(firstPage.hasMore, true);
+  const second = await request('passenger-history', 'GET', '/v1/chat/messages?conversationId=' + conversationId + '&cursor=' + encodeURIComponent(firstPage.nextCursor));
+  const secondPage = await second.json();
+  assert.equal(secondPage.messages.length, 5);
+  assert.equal(secondPage.messages[0].text, 'Mensaje 0');
+  assert.equal(secondPage.hasMore, false);
 });
