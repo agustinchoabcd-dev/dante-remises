@@ -711,3 +711,47 @@ test('CORS allowlist-only configuration is sufficient when legacy APP_ORIGIN is 
   assert.equal(response.status, 204);
   assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'https://localhost');
 });
+
+test('scheduled cleanup clears the conversation preview when its last message belongs to the expired block', async () => {
+  const originalNow = Date.now;
+  const now = 1_800_000_000_000;
+  Date.now = () => now;
+  try {
+    const conversationId = 'c_preview_expired';
+    const blockId = 'b_preview_expired';
+    const startedAt = now - 15 * 24 * 60 * 60 * 1000;
+    const closesAt = startedAt + 24 * 60 * 60 * 1000;
+    const indexKey = String(now).padStart(13, '0') + '_' + conversationId + '_' + blockId;
+    setPath('/chat/conversations/' + conversationId, { conversationId, lastMessageAt: closesAt - 1000, lastMessagePreview: 'Texto privado vencido', lastSenderUid: 'passenger-preview' });
+    setPath('/chat/blocks/' + conversationId + '/' + blockId, { blockId, status: 'closed', startedAt, closesAt, deleteAt: now });
+    setPath('/chat/expiryIndex/' + indexKey, { conversationId, blockId, deleteAt: now });
+    const result = await scheduledChatCleanup(env);
+    assert.equal(result.deletedBlocks, 1);
+    assert.equal(result.failed, 0);
+    assert.equal(getPath('/chat/conversations/' + conversationId + '/lastMessagePreview'), '');
+    assert.equal(getPath('/chat/conversations/' + conversationId + '/lastMessageAt'), null);
+    assert.equal(getPath('/chat/conversations/' + conversationId + '/lastSenderUid'), null);
+  } finally { Date.now = originalNow; }
+});
+
+test('scheduled cleanup preserves a newer conversation preview from a later block', async () => {
+  const originalNow = Date.now;
+  const now = 1_800_000_000_000;
+  Date.now = () => now;
+  try {
+    const conversationId = 'c_preview_newer';
+    const blockId = 'b_preview_old';
+    const startedAt = now - 15 * 24 * 60 * 60 * 1000;
+    const closesAt = startedAt + 24 * 60 * 60 * 1000;
+    const indexKey = String(now).padStart(13, '0') + '_' + conversationId + '_' + blockId;
+    setPath('/chat/conversations/' + conversationId, { conversationId, lastMessageAt: now - 1000, lastMessagePreview: 'Mensaje nuevo', lastSenderUid: 'passenger-newer' });
+    setPath('/chat/blocks/' + conversationId + '/' + blockId, { blockId, status: 'closed', startedAt, closesAt, deleteAt: now });
+    setPath('/chat/expiryIndex/' + indexKey, { conversationId, blockId, deleteAt: now });
+    const result = await scheduledChatCleanup(env);
+    assert.equal(result.deletedBlocks, 1);
+    assert.equal(result.failed, 0);
+    assert.equal(getPath('/chat/conversations/' + conversationId + '/lastMessagePreview'), 'Mensaje nuevo');
+    assert.equal(getPath('/chat/conversations/' + conversationId + '/lastMessageAt'), now - 1000);
+    assert.equal(getPath('/chat/conversations/' + conversationId + '/lastSenderUid'), 'passenger-newer');
+  } finally { Date.now = originalNow; }
+});
