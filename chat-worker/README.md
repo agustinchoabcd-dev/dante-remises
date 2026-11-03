@@ -46,7 +46,7 @@ node --check chat-worker/chat-module-candidate-dynamic.js
 node --test chat-worker/chat-module-candidate-dynamic.test.mjs
 ```
 
-El workflow `.github/workflows/chat-candidate-tests.yml` ejecuta las pruebas en GitHub Actions. La última ejecución de la versión anterior contiene 33 pruebas aprobadas y 0 fallidas. La rama ahora añade cobertura para el origen Android de Capacitor; la ejecución de 35 pruebas está pendiente.
+El workflow `.github/workflows/chat-candidate-tests.yml` ejecuta las pruebas en GitHub Actions. La última ejecución verificada contiene **35 pruebas aprobadas y 0 fallidas**: [GitHub Actions](https://github.com/agustinchoabcd-dev/dante-remises/actions/runs/41589983357). La prueba cubre preflight y respuesta autenticada desde el origen Android de Capacitor.
 
 Las pruebas usan mocks de Firebase RTDB/JWT. No prueban Firebase real, Rules desplegadas, Cloudflare, B2, FCM ni dispositivos Android.
 
