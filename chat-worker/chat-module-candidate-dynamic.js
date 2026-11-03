@@ -356,7 +356,7 @@ async function sendTextMessage(actor, body, env) {
     throw new ChatAuthError("A stable clientMessageId (8-128 safe characters) is required", 400);
   }
 
-  await getConversation(actor, conversationId, env);
+  const conversation = await getConversation(actor, conversationId, env);
   const contentHash = await stableId(text);
   const requestKey = await stableId(`${actor.uid}:${clientMessageId}`);
   const messageId = `m_${requestKey.slice(2)}`;
@@ -433,22 +433,36 @@ async function sendTextMessage(actor, body, env) {
     text,
     createdAt: now
   };
+  const messageTimelineKey = timelineKeyFor(now, messageId);
+  const newConversationTimelineKey = timelineKeyFor(now, conversationId);
+  const previousConversationTimelineKey = conversation.timelineKey || timelineKeyFor(Number(conversation.lastMessageAt) || Number(conversation.createdAt) || now, conversationId);
   const storedRequest = { ...requestRecord, status: "stored" };
 
   // The message and its idempotency receipt are persisted in the same
   // multi-location PATCH. A retry can safely finish block activation if the
   // Worker loses its connection after this write succeeds.
-  await firebaseDbRequest(env, "/chat.json", {
-    method: "PATCH", token: actor.adminToken,
-    body: {
-      [`messages/${conversationId}/${block.blockId}/${messageId}`]: message,
-      [`messageRequests/${conversationId}/${requestKey}`]: storedRequest,
-      [`messageRequestIndex/${conversationId}/${block.blockId}/${requestKey}`]: true,
-      [`conversations/${conversationId}/lastMessageAt`]: now,
-      [`conversations/${conversationId}/lastMessagePreview`]: text.slice(0, 120),
-      [`conversations/${conversationId}/lastSenderUid`]: actor.uid
-    }
-  });
+  const updates = {
+    [`messages/${conversationId}/${block.blockId}/${messageId}`]: message,
+    [`messageRequests/${conversationId}/${requestKey}`]: storedRequest,
+    [`messageRequestIndex/${conversationId}/${block.blockId}/${requestKey}`]: true,
+    [`messageTimeline/${conversationId}/${messageTimelineKey}`]: { messageId, blockId: block.blockId },
+    [`messageTimelineByBlock/${conversationId}/${block.blockId}/${messageTimelineKey}`]: true,
+    [`conversations/${conversationId}/lastMessageAt`]: now,
+    [`conversations/${conversationId}/lastMessagePreview`]: text.slice(0, 120),
+    [`conversations/${conversationId}/lastSenderUid`]: actor.uid,
+    [`conversations/${conversationId}/timelineKey`]: newConversationTimelineKey,
+    [`adminTimeline/${newConversationTimelineKey}`]: true
+  };
+  if (previousConversationTimelineKey !== newConversationTimelineKey) updates[`adminTimeline/${previousConversationTimelineKey}`] = null;
+  for (const uid of Object.keys(conversation.participantUids || {})) {
+    updates[`userConversationTimeline/${uid}/${newConversationTimelineKey}`] = true;
+    if (previousConversationTimelineKey !== newConversationTimelineKey) updates[`userConversationTimeline/${uid}/${previousConversationTimelineKey}`] = null;
+  }
+  if (conversation.kind === "operator-support") {
+    updates[`operatorTimeline/${newConversationTimelineKey}`] = true;
+    if (previousConversationTimelineKey !== newConversationTimelineKey) updates[`operatorTimeline/${previousConversationTimelineKey}`] = null;
+  }
+  await firebaseDbRequest(env, "/chat.json", { method: "PATCH", token: actor.adminToken, body: updates });
 
   await activateBlock(actor, conversationId, block, message, env);
   return { ...message, messageId, blockId: block.blockId, idempotent: false };
