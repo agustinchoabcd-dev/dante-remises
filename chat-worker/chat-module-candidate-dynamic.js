@@ -101,6 +101,21 @@ export async function scheduledChatCleanup(env) {
         const blockPath = `/chat/blocks/${entry.conversationId}/${entry.blockId}`;
         const block = await firebaseDbRequest(env, `${blockPath}.json`, { method: "GET" });
         if (block && Number(block.deleteAt) <= now) {
+          const requestIndex = await firebaseDbRequest(env,
+            `/chat/messageRequestIndex/${entry.conversationId}/${entry.blockId}.json`,
+            { method: "GET" }
+          );
+          for (const requestKey of Object.keys(requestIndex || {})) {
+            if (!isSafeId(requestKey)) continue;
+            await firebaseDbRequest(env,
+              `/chat/messageRequests/${entry.conversationId}/${requestKey}.json`,
+              { method: "DELETE" }
+            );
+          }
+          await firebaseDbRequest(env,
+            `/chat/messageRequestIndex/${entry.conversationId}/${entry.blockId}.json`,
+            { method: "DELETE" }
+          );
           await firebaseDbRequest(env, `/chat/messages/${entry.conversationId}/${entry.blockId}.json`, { method: "DELETE" });
           await firebaseDbRequest(env, `${blockPath}.json`, { method: "DELETE" });
           await firebaseDbRequest(env, `/chat/expiryIndex/${indexKey}.json`, { method: "DELETE" });
@@ -182,7 +197,7 @@ async function openConversation(actor, body, env) {
       scope = `operator-support:${actor.uid}`;
     } else if (target === "driver" && isSafeUid(targetUid)) {
       const targetProfile = await firebaseDbRequest(env, `/profiles/${targetUid}.json`, { method: "GET", token: actor.adminToken });
-      if (!targetProfile || targetProfile.role !== "driver" || targetProfile.active === false || targetProfile.status === "disabled" || !targetProfile.carId) {
+      if (!isChatDriverProfile(targetUid, targetProfile, env)) {
         throw new ChatAuthError("Selected driver is not active", 403);
       }
       participantUids = [actor.uid, targetUid];
@@ -194,9 +209,9 @@ async function openConversation(actor, body, env) {
   } else if (actor.role === "operator") {
     if (target !== "driver" || !isSafeUid(targetUid)) throw new ChatAuthError("Operators can initiate conversations with active drivers only", 403);
     const targetProfile = await firebaseDbRequest(env, `/profiles/${targetUid}.json`, { method: "GET", token: actor.adminToken });
-    if (!targetProfile || targetProfile.role !== "driver" || targetProfile.active === false || targetProfile.status === "disabled" || !targetProfile.carId) {
-      throw new ChatAuthError("Selected driver is not active", 403);
-    }
+    if (!isChatDriverProfile(targetUid, targetProfile, env)) {
+        throw new ChatAuthError("Selected driver is not active", 403);
+      }
     participantUids = [actor.uid, targetUid];
     kind = "operator-driver";
     scope = `direct:${participantUids.slice().sort().join(":")}`;
@@ -409,6 +424,7 @@ async function sendTextMessage(actor, body, env) {
     body: {
       [`messages/${conversationId}/${block.blockId}/${messageId}`]: message,
       [`messageRequests/${conversationId}/${requestKey}`]: storedRequest,
+      [`messageRequestIndex/${conversationId}/${block.blockId}/${requestKey}`]: true,
       [`conversations/${conversationId}/lastMessageAt`]: now,
       [`conversations/${conversationId}/lastMessagePreview`]: text.slice(0, 120),
       [`conversations/${conversationId}/lastSenderUid`]: actor.uid
@@ -429,6 +445,14 @@ function canAccessConversation(actor, conversation) {
   if (actor.role === "admin") return true;
   if (actor.role === "operator" && conversation?.kind === "operator-support") return true;
   return conversation?.participantUids?.[actor.uid] === true;
+}
+
+function isChatDriverProfile(uid, profile, env) {
+  if (!profile || profile.active === false || profile.status === "disabled") return false;
+  if (profile.role === "driver") return Boolean(profile.carId);
+  return uid === env.ADMIN_UID &&
+    profile.role === "admin" &&
+    String(profile.carId || "144") === "144";
 }
 
 async function getOrCreateActiveBlock(actor, conversationId, env) {

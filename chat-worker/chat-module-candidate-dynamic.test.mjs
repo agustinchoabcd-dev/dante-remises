@@ -333,12 +333,18 @@ test('scheduled cleanup deletes expired text blocks and their expiry index', asy
   setPath(`/chat/blocks/${conversationId}/${blockId}`, { blockId, deleteAt: now - 1000 });
   setPath(`/chat/messages/${conversationId}/${blockId}/m1`, { text: 'old message', createdAt: now - 100000 });
   setPath(`/chat/expiryIndex/${indexKey}`, { conversationId, blockId, deleteAt: now - 1000 });
+  setPath(`/chat/messageRequests/${conversationId}/c_request1`, {
+    senderUid: "passenger-old", contentHash: "hash", messageId: "m_old", blockId, createdAt: now - 200000
+  });
+  setPath(`/chat/messageRequestIndex/${conversationId}/${blockId}/c_request1`, true);
   const result = await scheduledChatCleanup(env);
   assert.equal(result.deletedBlocks, 1);
   assert.equal(result.failed, 0);
   assert.equal(getPath(`/chat/blocks/${conversationId}/${blockId}`), null);
   assert.equal(getPath(`/chat/messages/${conversationId}/${blockId}`), null);
   assert.equal(getPath(`/chat/expiryIndex/${indexKey}`), null);
+  assert.equal(getPath(`/chat/messageRequests/${conversationId}/c_request1`), null);
+  assert.equal(getPath(`/chat/messageRequestIndex/${conversationId}/${blockId}`), null);
 });
 
 test('failed first message persistence leaves a pending block without starting retention', async () => {
@@ -478,4 +484,36 @@ test('the Firebase mock rejects a stale If-Match ETag with HTTP 412', async () =
   assert.equal(stale.status, 412);
   assert.equal(etagConflicts, 1);
   assert.deepEqual(getPath(path), { value: 2 });
+});
+
+
+test('passenger and operator can select the configured administrator as car 144 driver', async () => {
+  setPath('/profiles/admin-uid', { role: 'admin', active: true, carId: '144', name: 'Agustín' });
+  setPath('/profiles/passenger-select-admin', { role: 'passenger', active: true });
+  setPath('/profiles/operator-select-admin', { role: 'operator', active: true });
+
+  const passengerResponse = await request('passenger-select-admin', 'POST', '/v1/chat/conversations', {
+    target: 'driver', targetUid: 'admin-uid'
+  });
+  assert.equal(passengerResponse.status, 200);
+  const passengerConversation = (await passengerResponse.json()).conversation;
+  assert.equal(passengerConversation.kind, 'passenger-driver');
+  assert.equal(passengerConversation.participantUids['admin-uid'], true);
+
+  const operatorResponse = await request('operator-select-admin', 'POST', '/v1/chat/conversations', {
+    target: 'driver', targetUid: 'admin-uid'
+  });
+  assert.equal(operatorResponse.status, 200);
+  const operatorConversation = (await operatorResponse.json()).conversation;
+  assert.equal(operatorConversation.kind, 'operator-driver');
+  assert.equal(operatorConversation.participantUids['admin-uid'], true);
+});
+
+test('a non-root profile with role admin is not selectable as a driver', async () => {
+  setPath('/profiles/not-admin', { role: 'admin', active: true, carId: '144' });
+  setPath('/profiles/passenger-select-fake-admin', { role: 'passenger', active: true });
+  const response = await request('passenger-select-fake-admin', 'POST', '/v1/chat/conversations', {
+    target: 'driver', targetUid: 'not-admin'
+  });
+  assert.equal(response.status, 403);
 });
