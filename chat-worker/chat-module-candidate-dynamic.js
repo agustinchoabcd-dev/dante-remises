@@ -53,16 +53,20 @@ export async function handleChatRequest(request, env) {
 
     if (request.method === "GET" && url.pathname === "/v1/chat/conversations") {
       await enforceRateLimit(actor, "conversation-list", 60, 60_000, env);
-      const conversations = await listConversations(actor, env);
-      return chatJson({ conversations }, 200, request, env);
+      const cursor = url.searchParams.get("cursor") || "";
+      if (cursor && !isSafeTimelineCursor(cursor)) return chatJson({ error: "Invalid cursor" }, 400, request, env);
+      const page = await listConversations(actor, env, cursor);
+      return chatJson(page, 200, request, env);
     }
 
     if (request.method === "GET" && url.pathname === "/v1/chat/messages") {
       await enforceRateLimit(actor, "message-list", 60, 60_000, env);
       const conversationId = url.searchParams.get("conversationId") || "";
       if (!isSafeId(conversationId)) return chatJson({ error: "Invalid conversationId" }, 400, request, env);
-      const messages = await listMessages(actor, conversationId, env);
-      return chatJson({ messages }, 200, request, env);
+      const cursor = url.searchParams.get("cursor") || "";
+      if (cursor && !isSafeTimelineCursor(cursor)) return chatJson({ error: "Invalid cursor" }, 400, request, env);
+      const page = await listMessages(actor, conversationId, env, cursor);
+      return chatJson(page, 200, request, env);
     }
 
     if (request.method === "POST" && url.pathname === "/v1/chat/messages") {
@@ -303,47 +307,56 @@ async function openConversation(actor, body, env) {
   return conversation;
 }
 
-async function listConversations(actor, env) {
-  const [personal, operatorInbox, adminInbox] = await Promise.all([
-    firebaseDbRequest(env, `/chat/userConversations/${actor.uid}.json`, { method: "GET", token: actor.adminToken }),
-    actor.role === "operator" ? firebaseDbRequest(env, "/chat/operatorInbox/all.json", { method: "GET", token: actor.adminToken }) : null,
-    actor.role === "admin" ? firebaseDbRequest(env, "/chat/adminInbox.json", { method: "GET", token: actor.adminToken }) : null
-  ]);
-  const ids = new Set([
-    ...Object.keys(personal || {}),
-    ...Object.keys(operatorInbox || {}),
-    ...Object.keys(adminInbox || {})
-  ]);
-  // Index keys are stable hashes, not chronological. Never slice the raw key
-  // list before sorting or recent conversations can disappear arbitrarily.
-  // Bound concurrent RTDB reads to avoid a burst when an account has many chats.
-  const idList = [...ids];
-  const rows = [];
-  for (let offset = 0; offset < idList.length; offset += 20) {
-    const batch = await Promise.all(idList.slice(offset, offset + 20).map(async id => {
-      const item = await firebaseDbRequest(env, `/chat/conversations/${id}.json`, { method: "GET", token: actor.adminToken });
+async function listConversations(actor, env, cursor = "") {
+  const feeds = [`/chat/userConversationTimeline/${actor.uid}`];
+  if (actor.role === "operator") feeds.push("/chat/operatorTimeline");
+  if (actor.role === "admin") feeds.push("/chat/adminTimeline");
+  const feedRows = await Promise.all(feeds.map(path => queryTimeline(env, path, cursor, CHAT_PAGE_SIZE + 1)));
+  const keys = [...new Set(feedRows.flatMap(rows => rows.map(row => row.key)))].sort().reverse();
+  const selected = keys.slice(0, CHAT_PAGE_SIZE + 1);
+  const hasMore = selected.length > CHAT_PAGE_SIZE;
+  const pageKeys = selected.slice(0, CHAT_PAGE_SIZE);
+  const conversations = [];
+  for (let offset = 0; offset < pageKeys.length; offset += 20) {
+    const batch = await Promise.all(pageKeys.slice(offset, offset + 20).map(async key => {
+      const conversationId = key.slice(14);
+      const item = await firebaseDbRequest(env, `/chat/conversations/${conversationId}.json`, { method: "GET", token: actor.adminToken });
       return item && canAccessConversation(actor, item) ? item : null;
     }));
-    rows.push(...batch);
+    conversations.push(...batch.filter(Boolean));
   }
-  return rows.filter(Boolean)
-    .sort((a, b) => (b.lastMessageAt || b.createdAt) - (a.lastMessageAt || a.createdAt))
-    .slice(0, CHAT_PAGE_SIZE);
+  return { conversations, nextCursor: hasMore && pageKeys.length ? pageKeys.at(-1) : null, hasMore };
 }
 
-async function listMessages(actor, conversationId, env) {
-  const conversation = await getConversation(actor, conversationId, env);
-  const blocks = await firebaseDbRequest(env, `/chat/blocks/${conversationId}.json`, { method: "GET", token: actor.adminToken }) || {};
+async function listMessages(actor, conversationId, env, cursor = "") {
+  await getConversation(actor, conversationId, env);
+  const rows = await queryTimeline(env, `/chat/messageTimeline/${conversationId}`, cursor, CHAT_PAGE_SIZE + 1);
+  const selected = rows.slice(-CHAT_PAGE_SIZE);
+  const blockIds = [...new Set(selected.map(row => row.value?.blockId).filter(Boolean))];
+  const blockMap = new Map();
+  for (let offset = 0; offset < blockIds.length; offset += 20) {
+    const batch = await Promise.all(blockIds.slice(offset, offset + 20).map(async blockId => {
+      const block = await firebaseDbRequest(env, `/chat/blocks/${conversationId}/${blockId}.json`, { method: "GET", token: actor.adminToken });
+      return [blockId, block];
+    }));
+    for (const [blockId, block] of batch) blockMap.set(blockId, block);
+  }
   const now = Date.now();
-  const validBlocks = Object.entries(blocks).filter(([, block]) =>
-    block && block.status !== "pending" && Number(block.deleteAt) > now
-  );
-  const results = await Promise.all(validBlocks.map(async ([blockId, block]) => {
-    const query = new URLSearchParams({ orderBy: '"$key"', limitToLast: String(CHAT_PAGE_SIZE) });
-    const messages = await firebaseDbRequest(env, `/chat/messages/${conversationId}/${blockId}.json?${query}`, { method: "GET", token: actor.adminToken });
-    return Object.entries(messages || {}).map(([messageId, message]) => ({ ...message, messageId, blockId, blockClosesAt: block.closesAt }));
-  }));
-  return results.flat().sort((a, b) => a.createdAt - b.createdAt).slice(-CHAT_PAGE_SIZE);
+  const messages = selected.map(row => {
+    const entry = row.value;
+    const block = blockMap.get(entry?.blockId);
+    if (!entry?.message || !block || block.status === "pending" || Number(block.deleteAt) <= now) return null;
+    return { ...entry.message, messageId: entry.messageId, blockId: entry.blockId, blockClosesAt: block.closesAt };
+  }).filter(Boolean);
+  const hasMore = rows.length > CHAT_PAGE_SIZE;
+  return { messages, nextCursor: hasMore && selected.length ? selected[0].key : null, hasMore };
+}
+
+async function queryTimeline(env, path, cursor, limit) {
+  const upperBound = cursor || "9999999999999_\\uf8ff";
+  const query = new URLSearchParams({ orderBy: '"$key"', endAt: JSON.stringify(upperBound), limitToLast: String(limit + (cursor ? 1 : 0)) });
+  const entries = await firebaseDbRequest(env, `${path}.json?${query}`, { method: "GET" }) || {};
+  return Object.entries(entries).filter(([key]) => !cursor || key < cursor).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => ({ key, value }));
 }
 
 async function sendTextMessage(actor, body, env) {
@@ -742,6 +755,8 @@ function isChatConfigured(env) {
 function isSafeUid(value) { return typeof value === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(value); }
 function isSafeId(value) { return typeof value === "string" && /^[A-Za-z0-9_-]{1,180}$/.test(value); }
 function isSafeUidOrId(value) { return isSafeUid(value) || isSafeId(value); }
+function isSafeTimelineCursor(value) { return typeof value === "string" && /^\\d{13}_[A-Za-z0-9_-]{1,180}$/.test(value); }
+function timelineKeyFor(timestamp, id) { return `${String(Math.max(0, Math.floor(timestamp))).padStart(13, "0")}_${id}`; }
 function decodeJson(value) { return JSON.parse(new TextDecoder().decode(base64UrlToBytes(value))); }
 function base64UrlToBytes(value) {
   if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error("Invalid base64url value");
