@@ -685,3 +685,25 @@ test('scheduled cleanup removes malformed expiry indexes so they cannot starve v
     assert.equal(getPath('/chat/expiryIndex/' + validKey), null);
   } finally { Date.now = originalNow; }
 });
+
+test('CORS supports the default Capacitor Android origin through APP_ORIGINS without wildcard access', async () => {
+  const mobileEnv = { ...env, APP_ORIGINS: 'https://localhost' };
+  const android = await handleChatRequest(new Request('https://worker.example.test/v1/chat/conversations', {
+    method: 'OPTIONS', headers: { Origin: 'https://localhost' }
+  }), mobileEnv);
+  assert.equal(android.status, 204);
+  assert.equal(android.headers.get('Access-Control-Allow-Origin'), 'https://localhost');
+  const attacker = await handleChatRequest(new Request('https://worker.example.test/v1/chat/conversations', {
+    method: 'OPTIONS', headers: { Origin: 'https://attacker.example' }
+  }), mobileEnv);
+  assert.equal(attacker.status, 403);
+});
+
+test('CORS allowlist-only configuration is sufficient when legacy APP_ORIGIN is empty', async () => {
+  const mobileEnv = { ...env, APP_ORIGIN: '', APP_ORIGINS: 'https://localhost' };
+  const response = await handleChatRequest(new Request('https://worker.example.test/v1/chat/conversations', {
+    method: 'OPTIONS', headers: { Origin: 'https://localhost' }
+  }), mobileEnv);
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'https://localhost');
+});
