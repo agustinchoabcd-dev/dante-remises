@@ -2,48 +2,54 @@
 
 **Estado: candidato aislado; no desplegado ni integrado en el Worker activo.**
 
-Este directorio contiene el módulo de mensajería de texto y sus pruebas automatizadas. Se guarda en `dante-test` para versionar el trabajo y ejecutar CI, pero no forma parte de `index.html`, no cambia GitHub Pages y no despliega infraestructura.
+Este directorio contiene el módulo de mensajería de texto y sus pruebas. Está versionado en `dante-test`; no forma parte de `index.html`, no cambia GitHub Pages y no despliega infraestructura.
 
-## Cambios incluidos
+## Funciones implementadas
 
-- Los bloques nacen como `pending`, sin `startedAt`, `closesAt` ni `deleteAt`.
-- El primer mensaje que queda persistido activa el bloque. La retención se calcula desde el `createdAt` del primer mensaje aceptado.
-- Los reintentos usan `clientMessageId` estable. Reutilizarlo con contenido distinto devuelve conflicto.
-- La reserva de bloques y de identificadores de mensaje usa ETags/If-Match; los mensajes y su recibo de idempotencia se guardan mediante una actualización multipath.
-- El UID raíz de administración puede iniciar chat contextual de viaje como chofer únicamente para el coche 144, manteniendo `role: admin`.
+- Los bloques nacen `pending`, sin reloj de retención. El primer mensaje persistido activa el bloque.
+- Retención: 24 horas desde el primer mensaje aceptado y 14 días adicionales.
+- Reintentos idempotentes mediante `clientMessageId` y escrituras condicionales ETag/If-Match.
+- Administrador único puede usar el chat contextual de viaje como chofer del coche 144 conservando `role: admin`.
+- Paginación cronológica con cursor en conversaciones e historial de mensajes; cada página devuelve hasta 100 elementos.
+- Índices temporales separados por usuario, operador, administrador, conversación y bloque de mensajes.
+- Limpieza de bloques vencidos elimina también mensajes, recibos de idempotencia e índices cronológicos asociados.
+- Rate limiting por UID, con contadores ETag para controlar concurrencia.
 
-## Contrato nuevo de envío
+## Límites actuales
 
-`POST /v1/chat/messages` requiere:
+| Operación | Límite |
+|---|---:|
+| Envío de mensajes | 8 cada 10 segundos por UID |
+| Crear conversaciones | 5 por minuto por UID |
+| Listar conversaciones | 60 por minuto por UID |
+| Leer historial | 60 por minuto por UID |
 
-```json
-{
-  "conversationId": "c_...",
-  "clientMessageId": "id-estable-generado-por-el-cliente",
-  "text": "Mensaje"
-}
-```
+Al exceder un límite, el Worker devuelve HTTP `429` y `Retry-After`. Los contadores se guardan en RTDB y se sobrescriben al cambiar la ventana; no crean un registro nuevo por cada intervalo. Este mecanismo es global por UID gracias a ETag/If-Match, pero añade una lectura y una escritura por comprobación. No limita por IP y debe medirse en el entorno de pruebas antes de producción.
 
-El cliente debe generar `clientMessageId` una sola vez por mensaje lógico y reutilizarlo en cada reintento. No debe generar un ID nuevo al reintentar la misma operación.
+## Contrato de paginación
+
+- `GET /v1/chat/conversations?cursor=<nextCursor>`
+- `GET /v1/chat/messages?conversationId=<id>&cursor=<nextCursor>`
+
+Las respuestas conservan las propiedades `conversations` o `messages` y agregan `nextCursor` y `hasMore`. La primera página omite `cursor`. El cliente debe reenviar el cursor recibido sin modificarlo.
+
+Los índices temporales nuevos son `userConversationTimeline`, `operatorTimeline`, `adminTimeline`, `messageTimeline` y `messageTimelineByBlock`. Los registros anteriores a esta versión necesitarían backfill si hubiera conversaciones persistentes reales; no se debe asumir que ya están indexados.
 
 ## Pruebas
-
-Ejecutar:
 
 ```sh
 node --check chat-worker/chat-module-candidate-dynamic.js
 node --test chat-worker/chat-module-candidate-dynamic.test.mjs
 ```
 
-El workflow `.github/workflows/chat-candidate-tests.yml` ejecuta ambos comandos en GitHub Actions al cambiar este directorio en `dante-test`.
+El workflow `.github/workflows/chat-candidate-tests.yml` ejecuta las pruebas en GitHub Actions.
 
-Las pruebas usan Firebase/Google simulados; **no prueban Firebase real, reglas desplegadas, Cloudflare, B2 ni dispositivos Android**.
+Las pruebas usan mocks de Firebase RTDB/JWT. No prueban Firebase real, Rules desplegadas, Cloudflare, B2, FCM ni dispositivos Android.
 
 ## Pendientes antes de integración
 
-- Ejecutar y revisar todas las pruebas CI.
-- Probar recuperación ante caída entre persistencia del mensaje y activación del bloque.
-- Revisar el índice/paginación cronológica y límites antiabuso.
-- Añadir pruebas de cierre exacto al límite de 24 horas y limpieza a los 14 días.
-- Revisar migración de conversaciones/índices previos.
-- Integrar el router en el Worker vigente solo después de obtener su código actual y autorización explícita.
+- Probar los cursores e incrementos ETag contra Firebase Emulator Suite o un proyecto de pruebas.
+- Preparar backfill de índices si se confirma que hay conversaciones persistentes anteriores.
+- Evaluar límites por IP/abuso distribuido y costo de las comprobaciones en RTDB.
+- Probar fallos y reintentos del Cron de limpieza.
+- Integrar el router en el Worker vigente sólo después de inspeccionar su código actual y obtener autorización expresa.

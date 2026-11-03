@@ -11,6 +11,9 @@ on:
       - fix/passenger-onboarding-camera-flow
       - feature/driver-presence
       - dante-test
+    paths-ignore:
+      - 'chat-worker/**'
+      - '.github/workflows/chat-candidate-tests.yml'
 
 permissions:
   contents: read
