@@ -1,0 +1,31 @@
+name: Role resolver unit tests
+
+on:
+  push:
+    branches:
+      - roles-dynamic-integration
+    paths:
+      - 'role-resolver.mjs'
+      - 'role-resolver.test.mjs'
+      - 'index.html'
+      - '.github/workflows/role-resolver-tests.yml'
+  pull_request:
+    branches:
+      - main
+      - dante-test
+    paths:
+      - 'role-resolver.mjs'
+      - 'role-resolver.test.mjs'
+      - 'index.html'
+      - '.github/workflows/role-resolver-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run role resolver tests
+        run: node --test role-resolver.test.mjs
