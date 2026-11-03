@@ -115,24 +115,24 @@ export async function scheduledChatCleanup(env) {
         const blockPath = `/chat/blocks/${entry.conversationId}/${entry.blockId}`;
         const block = await firebaseDbRequest(env, `${blockPath}.json`, { method: "GET" });
         if (block && Number(block.deleteAt) <= now) {
-          const requestIndex = await firebaseDbRequest(env,
-            `/chat/messageRequestIndex/${entry.conversationId}/${entry.blockId}.json`,
-            { method: "GET" }
-          );
+          const [requestIndex, timelineIndex] = await Promise.all([
+            firebaseDbRequest(env, `/chat/messageRequestIndex/${entry.conversationId}/${entry.blockId}.json`, { method: "GET" }),
+            firebaseDbRequest(env, `/chat/messageTimelineByBlock/${entry.conversationId}/${entry.blockId}.json`, { method: "GET" })
+          ]);
+          const cleanup = {
+            [`messages/${entry.conversationId}/${entry.blockId}`]: null,
+            [`messageRequestIndex/${entry.conversationId}/${entry.blockId}`]: null,
+            [`messageTimelineByBlock/${entry.conversationId}/${entry.blockId}`]: null,
+            [`blocks/${entry.conversationId}/${entry.blockId}`]: null,
+            [`expiryIndex/${indexKey}`]: null
+          };
           for (const requestKey of Object.keys(requestIndex || {})) {
-            if (!isSafeId(requestKey)) continue;
-            await firebaseDbRequest(env,
-              `/chat/messageRequests/${entry.conversationId}/${requestKey}.json`,
-              { method: "DELETE" }
-            );
+            if (isSafeId(requestKey)) cleanup[`messageRequests/${entry.conversationId}/${requestKey}`] = null;
           }
-          await firebaseDbRequest(env,
-            `/chat/messageRequestIndex/${entry.conversationId}/${entry.blockId}.json`,
-            { method: "DELETE" }
-          );
-          await firebaseDbRequest(env, `/chat/messages/${entry.conversationId}/${entry.blockId}.json`, { method: "DELETE" });
-          await firebaseDbRequest(env, `${blockPath}.json`, { method: "DELETE" });
-          await firebaseDbRequest(env, `/chat/expiryIndex/${indexKey}.json`, { method: "DELETE" });
+          for (const timelineKey of Object.keys(timelineIndex || {})) {
+            if (isSafeTimelineCursor(timelineKey)) cleanup[`messageTimeline/${entry.conversationId}/${timelineKey}`] = null;
+          }
+          await firebaseDbRequest(env, "/chat.json", { method: "PATCH", token: await getFirebaseAdminToken(env), body: cleanup });
           deletedBlocks++;
         } else {
           await firebaseDbRequest(env, `/chat/expiryIndex/${indexKey}.json`, { method: "DELETE" });
@@ -353,7 +353,7 @@ async function listMessages(actor, conversationId, env, cursor = "") {
 }
 
 async function queryTimeline(env, path, cursor, limit) {
-  const upperBound = cursor || "9999999999999_\\uf8ff";
+  const upperBound = cursor || "9999999999999_\uf8ff";
   const query = new URLSearchParams({ orderBy: '"$key"', endAt: JSON.stringify(upperBound), limitToLast: String(limit + (cursor ? 1 : 0)) });
   const entries = await firebaseDbRequest(env, `${path}.json?${query}`, { method: "GET" }) || {};
   return Object.entries(entries).filter(([key]) => !cursor || key < cursor).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => ({ key, value }));
@@ -458,7 +458,7 @@ async function sendTextMessage(actor, body, env) {
     [`messages/${conversationId}/${block.blockId}/${messageId}`]: message,
     [`messageRequests/${conversationId}/${requestKey}`]: storedRequest,
     [`messageRequestIndex/${conversationId}/${block.blockId}/${requestKey}`]: true,
-    [`messageTimeline/${conversationId}/${messageTimelineKey}`]: { messageId, blockId: block.blockId },
+    [`messageTimeline/${conversationId}/${messageTimelineKey}`]: { messageId, blockId: block.blockId, message },
     [`messageTimelineByBlock/${conversationId}/${block.blockId}/${messageTimelineKey}`]: true,
     [`conversations/${conversationId}/lastMessageAt`]: now,
     [`conversations/${conversationId}/lastMessagePreview`]: text.slice(0, 120),
@@ -755,7 +755,7 @@ function isChatConfigured(env) {
 function isSafeUid(value) { return typeof value === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(value); }
 function isSafeId(value) { return typeof value === "string" && /^[A-Za-z0-9_-]{1,180}$/.test(value); }
 function isSafeUidOrId(value) { return isSafeUid(value) || isSafeId(value); }
-function isSafeTimelineCursor(value) { return typeof value === "string" && /^\\d{13}_[A-Za-z0-9_-]{1,180}$/.test(value); }
+function isSafeTimelineCursor(value) { return typeof value === "string" && /^\d{13}_[A-Za-z0-9_-]{1,180}$/.test(value); }
 function timelineKeyFor(timestamp, id) { return `${String(Math.max(0, Math.floor(timestamp))).padStart(13, "0")}_${id}`; }
 function decodeJson(value) { return JSON.parse(new TextDecoder().decode(base64UrlToBytes(value))); }
 function base64UrlToBytes(value) {
