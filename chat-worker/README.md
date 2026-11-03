@@ -47,7 +47,7 @@ node --check chat-worker/chat-module-candidate-dynamic.js
 node --test chat-worker/chat-module-candidate-dynamic.test.mjs
 ```
 
-El workflow `.github/workflows/chat-candidate-tests.yml` ejecuta las pruebas en GitHub Actions. La última ejecución verificada contiene **37 pruebas aprobadas y 0 fallidas**: [GitHub Actions](https://github.com/agustinchoabcd-dev/dante-remises/actions/runs/41590117928). La cobertura incluye CORS para Capacitor Android y expiración de vistas previas sin borrar una vista previa más reciente.
+El workflow `.github/workflows/chat-candidate-tests.yml` ejecuta las pruebas en GitHub Actions. La última ejecución verificada contiene 38 pruebas aprobadas y 0 fallidas: https://github.com/agustinchoabcd-dev/dante-remises/actions/runs/41590187951. Incluye CORS para Android y limpieza condicional de vistas previas con protección ETag.
 
 Las pruebas usan mocks de Firebase RTDB/JWT. No prueban Firebase real, Rules desplegadas, Cloudflare, B2, FCM ni dispositivos Android.
 
