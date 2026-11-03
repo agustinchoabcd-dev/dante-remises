@@ -321,7 +321,7 @@ async function listConversations(actor, env, cursor = "") {
     const batch = await Promise.all(pageKeys.slice(offset, offset + 20).map(async key => {
       const conversationId = key.slice(14);
       const item = await firebaseDbRequest(env, `/chat/conversations/${conversationId}.json`, { method: "GET", token: actor.adminToken });
-      return item && canAccessConversation(actor, item) ? item : null;
+      return item && (!item.timelineKey || item.timelineKey === key) && canAccessConversation(actor, item) ? item : null;
     }));
     conversations.push(...batch.filter(Boolean));
   }
