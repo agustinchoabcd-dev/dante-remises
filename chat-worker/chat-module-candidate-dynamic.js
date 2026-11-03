@@ -311,8 +311,18 @@ async function listConversations(actor, env, cursor = "") {
   const feeds = [`/chat/userConversationTimeline/${actor.uid}`];
   if (actor.role === "operator") feeds.push("/chat/operatorTimeline");
   if (actor.role === "admin") feeds.push("/chat/adminTimeline");
-  const feedRows = await Promise.all(feeds.map(path => queryTimeline(env, path, cursor, CHAT_PAGE_SIZE + 1)));
-  const keys = [...new Set(feedRows.flatMap(rows => rows.map(row => row.key)))].sort().reverse();
+  const feedResults = await Promise.all(feeds.map(async path => ({
+    path,
+    rows: await queryTimeline(env, path, cursor, CHAT_PAGE_SIZE + 1)
+  })));
+  const sourcePathsByKey = new Map();
+  for (const feed of feedResults) {
+    for (const row of feed.rows) {
+      if (!sourcePathsByKey.has(row.key)) sourcePathsByKey.set(row.key, []);
+      sourcePathsByKey.get(row.key).push(feed.path);
+    }
+  }
+  const keys = [...sourcePathsByKey.keys()].sort().reverse();
   const selected = keys.slice(0, CHAT_PAGE_SIZE + 1);
   const hasMore = selected.length > CHAT_PAGE_SIZE;
   const pageKeys = selected.slice(0, CHAT_PAGE_SIZE);
@@ -321,7 +331,13 @@ async function listConversations(actor, env, cursor = "") {
     const batch = await Promise.all(pageKeys.slice(offset, offset + 20).map(async key => {
       const conversationId = key.slice(14);
       const item = await firebaseDbRequest(env, `/chat/conversations/${conversationId}.json`, { method: "GET", token: actor.adminToken });
-      return item && (!item.timelineKey || item.timelineKey === key) && canAccessConversation(actor, item) ? item : null;
+      if (!item || (item.timelineKey && item.timelineKey !== key)) {
+        await Promise.all((sourcePathsByKey.get(key) || []).map(path =>
+          firebaseDbRequest(env, `${path}/${key}.json`, { method: "DELETE", token: actor.adminToken })
+        ));
+        return null;
+      }
+      return canAccessConversation(actor, item) ? item : null;
     }));
     conversations.push(...batch.filter(Boolean));
   }
@@ -778,6 +794,7 @@ function chatCorsHeaders(request, env) {
     "Vary": "Origin",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "Authorization,Content-Type",
+    "Access-Control-Expose-Headers": "Retry-After",
     "Access-Control-Max-Age": "600",
     "X-Content-Type-Options": "nosniff"
   };

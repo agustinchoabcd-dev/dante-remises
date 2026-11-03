@@ -496,6 +496,8 @@ test('concurrent first messages share one pending block and preserve both messag
   const listed = await request('passenger-concurrent', 'GET', '/v1/chat/conversations');
   const listedPage = await listed.json();
   assert.equal(listedPage.conversations.length, 1, 'concurrent timeline writes must not duplicate a conversation');
+  const userTimeline = getPath('/chat/userConversationTimeline/passenger-concurrent') || {};
+  assert.equal(Object.keys(userTimeline).length, 1, 'stale user conversation timeline keys are pruned');
 });
 
 
@@ -566,6 +568,7 @@ test('message send rate limit returns 429 and Retry-After after eight sends in a
     const blocked = await request('passenger-rate', 'POST', '/v1/chat/messages', { conversationId: conversation.conversationId, text: 'Mensaje excedido' });
     assert.equal(blocked.status, 429);
     assert.ok(Number(blocked.headers.get('Retry-After')) >= 1);
+    assert.equal(blocked.headers.get('Access-Control-Expose-Headers'), 'Retry-After');
     assert.match((await blocked.json()).error, /Too many chat requests/);
   } finally { Date.now = originalNow; }
 });
