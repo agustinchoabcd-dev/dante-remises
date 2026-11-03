@@ -31,12 +31,12 @@ export async function handleChatRequest(request, env) {
   // They only need the configured origin; backend credentials are checked for
   // actual data operations after the preflight has been answered.
   const origin = request.headers.get("Origin");
-  const allowedOrigin = String(env.APP_ORIGIN || "").trim();
-  if (origin && (!allowedOrigin || origin !== allowedOrigin)) {
+  const allowedOrigins = getAllowedChatOrigins(env);
+  if (origin && !allowedOrigins.has(origin)) {
     return new Response(null, { status: 403, headers: { "Vary": "Origin", "Cache-Control": "no-store" } });
   }
   if (request.method === "OPTIONS") {
-    if (!allowedOrigin) return new Response(null, { status: 503, headers: { "Cache-Control": "no-store" } });
+    if (!allowedOrigins.size) return new Response(null, { status: 503, headers: { "Cache-Control": "no-store" } });
     return new Response(null, { status: 204, headers: chatCorsHeaders(request, env) });
   }
   if (!isChatConfigured(env)) return chatJson({ error: "Chat backend configuration is incomplete" }, 503, request, env);
@@ -780,8 +780,16 @@ async function readJson(request) {
   try { return JSON.parse(raw); } catch { throw new ChatAuthError("Invalid JSON body", 400); }
 }
 
+function getAllowedChatOrigins(env) {
+  const configured = [
+    String(env.APP_ORIGIN || ""),
+    String(env.APP_ORIGINS || "")
+  ].join(",");
+  return new Set(configured.split(",").map(value => value.trim()).filter(Boolean));
+}
 function isChatConfigured(env) {
-  return Boolean(env.FIREBASE_PROJECT_ID && env.FIREBASE_SERVICE_ACCOUNT_EMAIL && env.FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY && env.APP_ORIGIN && env.ADMIN_UID);
+  return Boolean(env.FIREBASE_PROJECT_ID && env.FIREBASE_SERVICE_ACCOUNT_EMAIL &&
+    env.FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY && getAllowedChatOrigins(env).size && env.ADMIN_UID);
 }
 function isSafeUid(value) { return typeof value === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(value); }
 function isSafeId(value) { return typeof value === "string" && /^[A-Za-z0-9_-]{1,180}$/.test(value); }
@@ -803,7 +811,7 @@ function base64UrlEncode(bytes) {
 }
 function chatCorsHeaders(request, env) {
   const origin = request.headers.get("Origin");
-  const allowed = String(env.APP_ORIGIN || "").trim();
+  const allowedOrigins = getAllowedChatOrigins(env);
   const headers = {
     "Cache-Control": "no-store",
     "Vary": "Origin",
@@ -813,7 +821,7 @@ function chatCorsHeaders(request, env) {
     "Access-Control-Max-Age": "600",
     "X-Content-Type-Options": "nosniff"
   };
-  if (origin && origin === allowed) headers["Access-Control-Allow-Origin"] = origin;
+  if (origin && allowedOrigins.has(origin)) headers["Access-Control-Allow-Origin"] = origin;
   return headers;
 }
 
