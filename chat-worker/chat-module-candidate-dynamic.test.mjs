@@ -353,6 +353,7 @@ test('failed first message persistence leaves a pending block without starting r
   assert.equal(block.closesAt, undefined);
   assert.equal(block.deleteAt, undefined);
   assert.deepEqual(getPath(`/chat/messages/${conversation.conversationId}/${block.blockId}`), null);
+  assert.equal(getPath('/chat/expiryIndex'), null, 'pending blocks must not enter the expiry index');
 });
 
 test('the 24-hour clock starts at the first message successfully persisted', async () => {
@@ -369,7 +370,7 @@ test('the 24-hour clock starts at the first message successfully persisted', asy
   assert.equal(current.startedAt, message.createdAt);
   assert.equal(current.closesAt, message.createdAt + 24 * 60 * 60 * 1000);
   assert.equal(current.deleteAt, current.closesAt + 14 * 24 * 60 * 60 * 1000);
-  assert.equal(getPath(`/chat/blocks/${conversation.conversationId}/${current.blockId}/status`), undefined);
+  assert.equal(getPath(`/chat/blocks/${conversation.conversationId}/${current.blockId}/status`), 'open');
 });
 
 test('retrying the same clientMessageId returns the original message without duplicating it', async () => {
@@ -451,5 +452,5 @@ test('concurrent first messages share one pending block and preserve both messag
   const current = getPath(`/chat/conversations/${conversation.conversationId}/currentBlock`);
   assert.equal(current.status, 'open');
   assert.equal(current.startedAt, Math.min(first.createdAt, second.createdAt));
-  assert.ok(etagConflicts >= 0);
+  assert.ok(etagConflicts > 0, 'expected at least one If-Match conflict during concurrent writes');
 });
