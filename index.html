@@ -476,7 +476,7 @@ byId('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=by
 
 function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function showAuthPage(page){const staff=page==='staff';byId('acceso').classList.toggle('hidden',staff);byId('staffAccess').classList.toggle('hidden',!staff);byId('pasajero').classList.add('hidden');byId('chofer').classList.add('hidden');byId('central').classList.add('hidden');byId('chat').classList.add('hidden');byId('configuracion').classList.add('hidden');document.querySelectorAll('.tabs').forEach(el=>el.classList.add('hidden'));byId('logoutButton').classList.add('hidden')}
-async function welcomeUser(user){let name=USER_ROLES[user.uid]?.name||'';if(!name){try{const snap=await get(ref(db,'profiles/'+user.uid));const profile=snap.val()||{};name=[profile.name,profile.lastName].filter(Boolean).join(' ')}catch(e){console.error('No se pudo leer el nombre del perfil',e)}}if(!name)name=user.email||'usuario';const role=currentRole?.role||'passenger';byId('postLoginGreeting').innerHTML=role==='passenger'?`Hola ${esc(name)}, es un gusto verte por acá! <span>¿Cómo podemos ayudarte?</span>`:`Hola ${esc(name)}, que bueno verte acá de nuevo! <span>¡Hoy va a ser un excelente día!</span>`;byId('postLoginGreeting').classList.remove('hidden')}
+async function welcomeUser(user){let name=currentRole?.name||USER_ROLES[user.uid]?.name||'';if(!name){try{const snap=await get(ref(db,'profiles/'+user.uid));const profile=snap.val()||{};name=[profile.name,profile.lastName].filter(Boolean).join(' ')}catch(e){console.error('No se pudo leer el nombre del perfil',e)}}if(!name)name=user.email||'usuario';const role=currentRole?.role||'passenger';byId('postLoginGreeting').innerHTML=role==='passenger'?`Hola ${esc(name)}, es un gusto verte por acá! <span>¿Cómo podemos ayudarte?</span>`:`Hola ${esc(name)}, que bueno verte acá de nuevo! <span>¡Hoy va a ser un excelente día!</span>`;byId('postLoginGreeting').classList.remove('hidden')}
 byId('staffEntryButton').addEventListener('click',()=>showAuthPage('staff'));
 byId('backToPassengerLogin').addEventListener('click',()=>{byId('staffAccess').classList.add('hidden');byId('acceso').classList.remove('hidden');byId('pasajero').classList.add('hidden')});
 byId('showRegisterButton').addEventListener('click',()=>{byId('registerPanel').classList.toggle('hidden');byId('showRegisterButton').textContent=byId('registerPanel').classList.contains('hidden')?'Crear cuenta de pasajero':'Ocultar registro'});
@@ -499,10 +499,29 @@ byId('logoFile').addEventListener('change',async ev=>{const file=ev.target.files
 byId('resetLogoButton').addEventListener('click',()=>{byId('logoScale').value=100;byId('logoX').value=0;byId('logoY').value=0;readLogoSettings()});
 byId('saveLogoButton').addEventListener('click',async()=>{if(!currentUser||currentUser.uid!==ADMIN_UID){notify('Solo Agustín (144) puede guardar el logo.');return}const data=pendingLogoData||logoData;if(!data){notify('Primero elegí una imagen.');return}const btn=byId('saveLogoButton');btn.disabled=true;byId('logoStatus').textContent='Guardando logo para todos…';try{await set(ref(db,'branding/logo'),{data,scale:logoSettings.scale,x:logoSettings.x,y:logoSettings.y,updatedAt:Date.now(),updatedBy:currentUser.uid});logoData=data;pendingLogoData=null;byId('logoStatus').textContent='Logo guardado. Ya está disponible para todos los usuarios.';notify('Logo de Dante Remises guardado.')}catch(err){console.error(err);byId('logoStatus').textContent='No se pudo guardar. Revisá las reglas de Firebase indicadas en las instrucciones.';notify('Firebase rechazó el guardado del logo.')}finally{btn.disabled=false}});
 onValue(ref(db,'branding/logo'),snapshot=>{const value=snapshot.val();if(value?.data){logoData=value.data;logoSettings={scale:Number(value.scale)||100,x:Number(value.x)||0,y:Number(value.y)||0};if(!pendingLogoData)paintLogo(logoData,logoSettings);byId('logoScale').value=logoSettings.scale;byId('logoX').value=logoSettings.x;byId('logoY').value=logoSettings.y}else{logoData=null;if(!pendingLogoData)paintLogo(null)}} ,err=>console.error('No se pudo leer el logo compartido:',err));
+async function resolveAuthenticatedRole(user){
+ if(!user)return null;
+ const legacyStaff=USER_ROLES[user.uid]||null;
+ if(user.uid===ADMIN_UID)return {...legacyStaff,role:'admin',carId:'144'};
+ let profile=null;
+ try{const snapshot=await get(ref(db,'profiles/'+user.uid));profile=snapshot.val()||null}
+ catch(error){console.error('No se pudo leer el perfil dinámico:',error);throw new Error('No se pudo verificar tu perfil. Intentá nuevamente.')}
+ if(profile?.active===false)throw new Error('Tu cuenta está desactivada. Contactá a un administrador.');
+ const allowedRoles=['passenger','driver','operator','admin'];
+ let role=profile?.role;
+ // Compatibilidad temporal: perfiles antiguos de personal pueden existir como passenger.
+ if(legacyStaff&&(!role||role==='passenger'))role=legacyStaff.role;
+ if(!allowedRoles.includes(role))return null;
+ if(role==='admin')return null; // El único administrador válido es ADMIN_UID.
+ const carId=role==='driver'?(profile?.carId||legacyStaff?.carId||null):null;
+ if(role==='driver'&&!carId)throw new Error('Tu perfil de chofer no tiene un coche asignado. Contactá a un administrador.');
+ const name=[profile?.name,profile?.lastName].filter(Boolean).join(' ')||legacyStaff?.name||user.email||'Usuario';
+ return {role,name,carId,profile:profile||{}};
+}
 onAuthStateChanged(auth,async user=>{
  await clearDriverPresence();if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
- currentUser=user;currentRole=user?(USER_ROLES[user.uid]||null):null;
- if(user&&!currentRole){try{const ps=await get(ref(db,'profiles/'+user.uid));const profile=ps.val();if(profile)currentRole={role:profile.role||'passenger',name:[profile.name,profile.lastName].filter(Boolean).join(' '),profile};}catch(e){console.error('No se pudo leer el perfil',e)}}
+ currentUser=user;currentRole=null;
+ if(user){try{currentRole=await resolveAuthenticatedRole(user)}catch(error){console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';await signOut(auth);notify(error.message||'No se pudo verificar tu cuenta.');return}}
  byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress)return;
  if(user&&!currentRole){byId('authStatus').textContent='Cuenta sin rol asignado. Contactá a Agustín.';await signOut(auth);notify('Esta cuenta no está habilitada en Dante Remises.');return}
