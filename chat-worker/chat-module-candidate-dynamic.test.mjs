@@ -615,3 +615,49 @@ test('invalid message history cursor is rejected', async () => {
   const response = await request('passenger-invalid-cursor', 'GET', '/v1/chat/messages?conversationId=c_any&cursor=bad');
   assert.equal(response.status, 400);
 });
+
+test('a new block starts exactly when the previous 24-hour window closes', async () => {
+  const originalNow = Date.now;
+  const start = 1_800_000_000_000;
+  Date.now = () => start;
+  try {
+    setPath('/profiles/passenger-boundary', { role: 'passenger', active: true });
+    const opened = await request('passenger-boundary', 'POST', '/v1/chat/conversations', { target: 'operators' });
+    const { conversation } = await opened.json();
+    const firstResponse = await request('passenger-boundary', 'POST', '/v1/chat/messages', { conversationId: conversation.conversationId, text: 'Primer bloque' });
+    assert.equal(firstResponse.status, 201);
+    const firstMessage = (await firstResponse.json()).message;
+    const firstBlockId = firstMessage.blockId;
+    const firstDeleteAt = start + 24 * 60 * 60 * 1000 + 14 * 24 * 60 * 60 * 1000;
+    Date.now = () => start + 24 * 60 * 60 * 1000;
+    const secondResponse = await request('passenger-boundary', 'POST', '/v1/chat/messages', { conversationId: conversation.conversationId, text: 'Segundo bloque' });
+    assert.equal(secondResponse.status, 201);
+    const secondMessage = (await secondResponse.json()).message;
+    assert.notEqual(secondMessage.blockId, firstBlockId);
+    const closed = getPath('/chat/blocks/' + conversation.conversationId + '/' + firstBlockId);
+    assert.equal(closed.status, 'closed');
+    assert.equal(closed.deleteAt, firstDeleteAt);
+    const current = getPath('/chat/conversations/' + conversation.conversationId + '/currentBlock');
+    assert.equal(current.status, 'open');
+    assert.equal(current.startedAt, start + 24 * 60 * 60 * 1000);
+  } finally { Date.now = originalNow; }
+});
+
+test('scheduled cleanup deletes a block at the exact deleteAt timestamp', async () => {
+  const originalNow = Date.now;
+  const now = 1_800_000_000_000;
+  Date.now = () => now;
+  try {
+    const conversationId = 'c_exact_expiry';
+    const blockId = 'b_exact_expiry';
+    const indexKey = String(now).padStart(13, '0') + '_' + conversationId + '_' + blockId;
+    setPath('/chat/blocks/' + conversationId + '/' + blockId, { blockId, status: 'closed', deleteAt: now });
+    setPath('/chat/messages/' + conversationId + '/' + blockId + '/m_exact', { text: 'Vence ahora', createdAt: now - 1 });
+    setPath('/chat/expiryIndex/' + indexKey, { conversationId, blockId, deleteAt: now });
+    const result = await scheduledChatCleanup(env);
+    assert.equal(result.deletedBlocks, 1);
+    assert.equal(result.failed, 0);
+    assert.equal(getPath('/chat/blocks/' + conversationId + '/' + blockId), null);
+    assert.equal(getPath('/chat/expiryIndex/' + indexKey), null);
+  } finally { Date.now = originalNow; }
+});
