@@ -120,7 +120,7 @@ beforeEach(() => {
   etagConflicts = 0;
 });
 
-async function request(uid, method, path, body, origin = env.APP_ORIGIN) {
+async function request(uid, method, path, body, origin = env.APP_ORIGIN, requestEnv = env) {
   if (body?.text && !body.clientMessageId) {
     body = { ...body, clientMessageId: `test-message-${++requestCounter}` };
   }
@@ -128,7 +128,7 @@ async function request(uid, method, path, body, origin = env.APP_ORIGIN) {
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   return handleChatRequest(new Request(`https://worker.example.test${path}`, {
     method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {})
-  }), env);
+  }), requestEnv);
 }
 
 test('CORS preflight succeeds without bearer token only for configured origin', async () => {
@@ -694,7 +694,7 @@ test('CORS supports the default Capacitor Android origin through APP_ORIGINS wit
   assert.equal(android.status, 204);
   assert.equal(android.headers.get('Access-Control-Allow-Origin'), 'https://localhost');
   setPath('/profiles/passenger-capacitor-live', { role: 'passenger', active: true });
-  const actual = await request('passenger-capacitor-live', 'GET', '/v1/chat/conversations', undefined, 'https://localhost');
+  const actual = await request('passenger-capacitor-live', 'GET', '/v1/chat/conversations', undefined, 'https://localhost', mobileEnv);
   assert.equal(actual.status, 200);
   assert.equal(actual.headers.get('Access-Control-Allow-Origin'), 'https://localhost');
   const attacker = await handleChatRequest(new Request('https://worker.example.test/v1/chat/conversations', {
