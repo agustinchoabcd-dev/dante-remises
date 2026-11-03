@@ -239,6 +239,10 @@ test('conversation creation writes conversation and indexes atomically', async (
   assert.equal(getPath(`/chat/userConversations/passenger-atomic/${conversationId}`), true);
   assert.equal(getPath(`/chat/operatorInbox/all/${conversationId}`), true);
   assert.equal(getPath(`/chat/adminInbox/${conversationId}`), true);
+  const timelineKey = getPath(`/chat/conversations/${conversationId}/timelineKey`);
+  assert.equal(getPath(`/chat/userConversationTimeline/passenger-atomic/${timelineKey}`), true);
+  assert.equal(getPath(`/chat/operatorTimeline/${timelineKey}`), true);
+  assert.equal(getPath(`/chat/adminTimeline/${timelineKey}`), true);
 });
 
 test('message and conversation preview are persisted in one atomic update', async () => {
@@ -255,6 +259,11 @@ test('message and conversation preview are persisted in one atomic update', asyn
   const atomicPatch = writes.find(write => write.method === 'PATCH' && write.path === '/chat' && write.keys?.some(key => key.startsWith('messages/')));
   assert.ok(atomicPatch, 'expected one root PATCH containing message and conversation metadata');
   assert.ok(atomicPatch.keys.some(key => key.startsWith(`conversations/${conversation.conversationId}/lastMessageAt`)));
+  const history = await request('passenger-message', 'GET', `/v1/chat/messages?conversationId=${conversation.conversationId}`);
+  assert.equal(history.status, 200);
+  const historyPage = await history.json();
+  assert.equal(historyPage.messages.length, 1);
+  assert.equal(historyPage.messages[0].text, 'Hola, necesito un remis.');
   assert.ok(atomicPatch.keys.some(key => key.startsWith(`messageTimeline/${conversation.conversationId}/`)));
 });
 
@@ -579,4 +588,25 @@ test('message history supports a second chronological page', async () => {
   assert.equal(secondPage.messages.length, 5);
   assert.equal(secondPage.messages[0].text, 'Mensaje 0');
   assert.equal(secondPage.hasMore, false);
+});
+
+test('conversation creation limit returns 429 after five starts per minute', async () => {
+  const originalNow = Date.now;
+  Date.now = () => 1_800_000_000_000;
+  try {
+    setPath('/profiles/passenger-create-rate', { role: 'passenger', active: true });
+    for (let i = 0; i < 5; i++) {
+      const response = await request('passenger-create-rate', 'POST', '/v1/chat/conversations', { target: 'operators' });
+      assert.equal(response.status, 200);
+    }
+    const blocked = await request('passenger-create-rate', 'POST', '/v1/chat/conversations', { target: 'operators' });
+    assert.equal(blocked.status, 429);
+    assert.ok(Number(blocked.headers.get('Retry-After')) >= 1);
+  } finally { Date.now = originalNow; }
+});
+
+test('invalid message history cursor is rejected', async () => {
+  setPath('/profiles/passenger-invalid-cursor', { role: 'passenger', active: true });
+  const response = await request('passenger-invalid-cursor', 'GET', '/v1/chat/messages?conversationId=c_any&cursor=bad');
+  assert.equal(response.status, 400);
 });
