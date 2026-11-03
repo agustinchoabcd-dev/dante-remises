@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - roles-dynamic-integration
+      - dante-test
     paths:
       - 'role-resolver.mjs'
       - 'role-resolver.test.mjs'
