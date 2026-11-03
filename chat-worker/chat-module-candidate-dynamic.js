@@ -90,6 +90,39 @@ export async function handleChatRequest(request, env) {
   }
 }
 
+async function clearExpiredConversationPreview(env, token, conversationId, block) {
+  const startedAt = Number(block.startedAt);
+  const closesAt = Number(block.closesAt);
+  if (!Number.isFinite(startedAt) || !Number.isFinite(closesAt) || closesAt < startedAt) return false;
+
+  const path = `/chat/conversations/${conversationId}.json`;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const snapshot = await firebaseDbRequest(env, path, {
+      method: "GET", token, wantEtag: true
+    });
+    const conversation = snapshot.data;
+    if (!conversation) return false;
+
+    const lastMessageAt = Number(conversation.lastMessageAt);
+    if (!Number.isFinite(lastMessageAt) || lastMessageAt < startedAt || lastMessageAt > closesAt) return false;
+    if (!conversation.lastMessagePreview && !conversation.lastSenderUid) return false;
+
+    const updated = {
+      ...conversation,
+      lastMessageAt: null,
+      lastMessagePreview: "",
+      lastSenderUid: null
+    };
+    const write = await firebaseDbRequest(env, path, {
+      method: "PUT", token, body: updated,
+      ifMatch: snapshot.etag || "null_etag",
+      allowPreconditionFailure: true
+    });
+    if (!write.preconditionFailed) return true;
+  }
+  throw new Error("Conversation preview changed repeatedly during expired-block cleanup");
+}
+
 export async function scheduledChatCleanup(env) {
   if (!isChatConfigured(env)) {
     console.error("Chat cleanup skipped: backend configuration is incomplete");
@@ -134,6 +167,8 @@ export async function scheduledChatCleanup(env) {
             firebaseDbRequest(env, `/chat/messageRequestIndex/${entry.conversationId}/${entry.blockId}.json`, { method: "GET" }),
             firebaseDbRequest(env, `/chat/messageTimelineByBlock/${entry.conversationId}/${entry.blockId}.json`, { method: "GET" })
           ]);
+          const adminToken = await getFirebaseAdminToken(env);
+          await clearExpiredConversationPreview(env, adminToken, entry.conversationId, block);
           const cleanup = {
             [`messages/${entry.conversationId}/${entry.blockId}`]: null,
             [`messageRequestIndex/${entry.conversationId}/${entry.blockId}`]: null,
@@ -147,7 +182,7 @@ export async function scheduledChatCleanup(env) {
           for (const timelineKey of Object.keys(timelineIndex || {})) {
             if (isSafeTimelineCursor(timelineKey)) cleanup[`messageTimeline/${entry.conversationId}/${timelineKey}`] = null;
           }
-          await firebaseDbRequest(env, "/chat.json", { method: "PATCH", token: await getFirebaseAdminToken(env), body: cleanup });
+          await firebaseDbRequest(env, "/chat.json", { method: "PATCH", token: adminToken, body: cleanup });
           deletedBlocks++;
         } else {
           await firebaseDbRequest(env, `/chat/expiryIndex/${indexKey}.json`, { method: "DELETE" });
