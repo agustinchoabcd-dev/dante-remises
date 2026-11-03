@@ -263,6 +263,7 @@ async function openConversation(actor, body, env) {
   const conversationId = await stableId(scope);
   const existing = await firebaseDbRequest(env, `/chat/conversations/${conversationId}.json`, { method: "GET", token: actor.adminToken });
   const now = Date.now();
+  const timelineKey = timelineKeyFor(now, conversationId);
   const conversation = existing || {
     conversationId,
     kind,
@@ -271,6 +272,7 @@ async function openConversation(actor, body, env) {
     createdBy: actor.uid,
     lastMessageAt: now,
     lastMessagePreview: "",
+    timelineKey,
     ...(tripId ? { tripId } : {})
   };
 
@@ -281,10 +283,17 @@ async function openConversation(actor, body, env) {
     // indexes consistent: a failed write cannot leave a half-created chat.
     const updates = {
       [`conversations/${conversationId}`]: conversation,
-      [`adminInbox/${conversationId}`]: true
+      [`adminInbox/${conversationId}`]: true,
+      [`adminTimeline/${timelineKey}`]: true
     };
-    for (const uid of participantUids) updates[`userConversations/${uid}/${conversationId}`] = true;
-    if (kind === "operator-support") updates[`operatorInbox/all/${conversationId}`] = true;
+    for (const uid of participantUids) {
+      updates[`userConversations/${uid}/${conversationId}`] = true;
+      updates[`userConversationTimeline/${uid}/${timelineKey}`] = true;
+    }
+    if (kind === "operator-support") {
+      updates[`operatorInbox/all/${conversationId}`] = true;
+      updates[`operatorTimeline/${timelineKey}`] = true;
+    }
     await firebaseDbRequest(env, "/chat.json", { method: "PATCH", token: actor.adminToken, body: updates });
   } else if (tripId) {
     await firebaseDbRequest(env, `/chat/conversations/${conversationId}/tripIds.json`, {
