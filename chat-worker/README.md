@@ -4,6 +4,8 @@
 
 Este directorio contiene el módulo de mensajería de texto y sus pruebas. Está versionado en `dante-test`; no forma parte de `index.html`, no cambia GitHub Pages y no despliega infraestructura.
 
+La política CORS admite el origen heredado `APP_ORIGIN` y una lista opcional separada por comas en `APP_ORIGINS`. Para el Android actual con Capacitor 8, el origen local predeterminado es `https://localhost`; debe incluirse explícitamente en `APP_ORIGINS` al configurar el Worker de pruebas. No se usa comodín y las rutas siguen exigiendo Firebase ID token.
+
 ## Funciones implementadas
 
 - Los bloques nacen `pending`, sin reloj de retención. El primer mensaje persistido activa el bloque.
@@ -44,7 +46,7 @@ node --check chat-worker/chat-module-candidate-dynamic.js
 node --test chat-worker/chat-module-candidate-dynamic.test.mjs
 ```
 
-El workflow `.github/workflows/chat-candidate-tests.yml` ejecuta las pruebas en GitHub Actions. La última ejecución verificada contiene **33 pruebas aprobadas y 0 fallidas**: [GitHub Actions](https://github.com/agustinchoabcd-dev/dante-remises/actions/runs/41589574164).
+El workflow `.github/workflows/chat-candidate-tests.yml` ejecuta las pruebas en GitHub Actions. La última ejecución de la versión anterior contiene 33 pruebas aprobadas y 0 fallidas. La rama ahora añade cobertura para el origen Android de Capacitor; la ejecución de 35 pruebas está pendiente.
 
 Las pruebas usan mocks de Firebase RTDB/JWT. No prueban Firebase real, Rules desplegadas, Cloudflare, B2, FCM ni dispositivos Android.
 
