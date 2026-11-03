@@ -71,7 +71,13 @@ export async function handleChatRequest(request, env) {
 
     return chatJson({ error: "Not found" }, 404, request, env);
   } catch (error) {
-    if (error instanceof ChatAuthError) return chatJson({ error: error.message }, error.status, request, env);
+    if (error instanceof ChatAuthError) {
+      const response = chatJson({ error: error.message }, error.status, request, env);
+      if (!error.retryAfter) return response;
+      const headers = new Headers(response.headers);
+      headers.set('Retry-After', String(error.retryAfter));
+      return new Response(response.body, { status: response.status, headers });
+    }
     console.error("Chat request failed", error instanceof Error ? error.name : "UnknownError");
     return chatJson({ error: "Chat request failed" }, 502, request, env);
   }
@@ -591,6 +597,25 @@ async function firebaseDbRequest(env, path, options = {}) {
   return data;
 }
 
+async function enforceRateLimit(actor, action, limit, windowMs, env) {
+  const key = (await stableId(actor.uid + ':' + action)).slice(2);
+  const path = '/chat/rateLimits/' + key + '.json';
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const now = Date.now();
+    const windowStart = Math.floor(now / windowMs) * windowMs;
+    const snapshot = await firebaseDbRequest(env, path, { method: 'GET', token: actor.adminToken, wantEtag: true });
+    const previous = snapshot.data;
+    const count = previous && previous.windowStart === windowStart ? Number(previous.count) || 0 : 0;
+    if (count >= limit) {
+      const retryAfter = Math.max(1, Math.ceil((windowStart + windowMs - now) / 1000));
+      throw new ChatAuthError('Too many chat requests; retry later', 429, retryAfter);
+    }
+    const next = { windowStart, count: count + 1, updatedAt: now };
+    const result = await firebaseDbRequest(env, path, { method: 'PUT', token: actor.adminToken, body: next, ifMatch: snapshot.etag || 'null_etag', allowPreconditionFailure: true });
+    if (!result.preconditionFailed) return;
+  }
+  throw new ChatAuthError('Chat is temporarily busy; retry later', 503, 2);
+}
 async function getFirebaseAdminToken(env) {
   if (serviceTokenCache.token && Date.now() < serviceTokenCache.expiresAt - 60_000) return serviceTokenCache.token;
   const email = env.FIREBASE_SERVICE_ACCOUNT_EMAIL;
@@ -728,5 +753,5 @@ function chatJson(data, status, request, env) {
 }
 
 class ChatAuthError extends Error {
-  constructor(message, status = 401) { super(message); this.status = status; }
+  constructor(message, status = 401, retryAfter = null) { super(message); this.status = status; this.retryAfter = retryAfter; }
 }
