@@ -664,3 +664,24 @@ test('scheduled cleanup deletes a block at the exact deleteAt timestamp', async 
     assert.equal(getPath('/chat/expiryIndex/' + indexKey), null);
   } finally { Date.now = originalNow; }
 });
+
+test('scheduled cleanup removes malformed expiry indexes so they cannot starve valid expired blocks', async () => {
+  const originalNow = Date.now;
+  const now = 1_800_000_000_000;
+  Date.now = () => now;
+  try {
+    const badKey = '0000000000001_malformed';
+    const conversationId = 'c_after_malformed';
+    const blockId = 'b_after_malformed';
+    const validKey = String(now).padStart(13, '0') + '_' + conversationId + '_' + blockId;
+    setPath('/chat/expiryIndex/' + badKey, { conversationId, deleteAt: 1 });
+    setPath('/chat/blocks/' + conversationId + '/' + blockId, { blockId, status: 'closed', deleteAt: now });
+    setPath('/chat/expiryIndex/' + validKey, { conversationId, blockId, deleteAt: now });
+    const result = await scheduledChatCleanup(env);
+    assert.equal(result.deletedBlocks, 1);
+    assert.equal(result.failed, 0);
+    assert.equal(getPath('/chat/expiryIndex/' + badKey), null);
+    assert.equal(getPath('/chat/blocks/' + conversationId + '/' + blockId), null);
+    assert.equal(getPath('/chat/expiryIndex/' + validKey), null);
+  } finally { Date.now = originalNow; }
+});
