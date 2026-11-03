@@ -197,7 +197,7 @@ test('driver cannot open another driver trip chat', async () => {
   setPath('/tripInbox/137/trip-2', { tripId: 'trip-2', status: 'accepted' });
   const response = await request('driver-1', 'POST', '/v1/chat/conversations', { tripId: 'trip-2' });
   assert.equal(response.status, 403);
-  assert.equal(writes.length, 0);
+  assert.equal(writes.filter(write => !write.path.startsWith('/chat/rateLimits/')).length, 0);
 });
 
 
@@ -294,7 +294,7 @@ test('driver cannot start trip chat when the trip was not delivered to tripInbox
   });
   const response = await request('driver-1', 'POST', '/v1/chat/conversations', { tripId: 'trip-undelivered' });
   assert.equal(response.status, 403);
-  assert.equal(writes.length, 0);
+  assert.equal(writes.filter(write => !write.path.startsWith('/chat/rateLimits/')).length, 0);
 });
 
 test('passenger cannot attach chat context to a trip whose inbox notification failed', async () => {
@@ -307,7 +307,7 @@ test('passenger cannot attach chat context to a trip whose inbox notification fa
     target: 'driver', targetUid: 'driver-1', tripId: 'trip-undelivered'
   });
   assert.equal(response.status, 403);
-  assert.equal(writes.length, 0);
+  assert.equal(writes.filter(write => !write.path.startsWith('/chat/rateLimits/')).length, 0);
 });
 
 
@@ -516,4 +516,22 @@ test('a non-root profile with role admin is not selectable as a driver', async (
     target: 'driver', targetUid: 'not-admin'
   });
   assert.equal(response.status, 403);
+});
+
+test('message send rate limit returns 429 and Retry-After after eight sends in a fixed ten-second window', async () => {
+  const originalNow = Date.now;
+  Date.now = () => 1_800_000_000_000;
+  try {
+    setPath('/profiles/passenger-rate', { role: 'passenger', active: true });
+    const opened = await request('passenger-rate', 'POST', '/v1/chat/conversations', { target: 'operators' });
+    const { conversation } = await opened.json();
+    for (let i = 0; i < 8; i++) {
+      const response = await request('passenger-rate', 'POST', '/v1/chat/messages', { conversationId: conversation.conversationId, text: 'Mensaje limitado ' + i });
+      assert.equal(response.status, 201);
+    }
+    const blocked = await request('passenger-rate', 'POST', '/v1/chat/messages', { conversationId: conversation.conversationId, text: 'Mensaje excedido' });
+    assert.equal(blocked.status, 429);
+    assert.ok(Number(blocked.headers.get('Retry-After')) >= 1);
+    assert.match((await blocked.json()).error, /Too many chat requests/);
+  } finally { Date.now = originalNow; }
 });
