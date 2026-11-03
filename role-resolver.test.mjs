@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveRoleFromProfile } from "./role-resolver.js";
+import { resolveRoleFromProfile } from "./role-resolver.mjs";
 
 const adminUid = "root-admin";
 const driverUid = "driver-1";
+const legacyDriver = { role: "driver", name: "Chofer legado", carId: "109" };
 
 test("root admin remains admin and assigned to car 144", () => {
   const result = resolveRoleFromProfile({
@@ -37,13 +38,22 @@ test("inactive profile is rejected", () => {
   }), /desactivada/);
 });
 
-test("legacy driver without migrated profile remains compatible", () => {
+test("legacy driver without a profile role remains compatible", () => {
   const result = resolveRoleFromProfile({
-    uid: driverUid, adminUid, profile: { role: "passenger" },
-    legacyStaff: { role: "driver", name: "Chofer legado", carId: "109" }
+    uid: driverUid, adminUid, profile: { name: "Chofer legado" },
+    legacyStaff: legacyDriver
   });
   assert.equal(result.role, "driver");
   assert.equal(result.carId, "109");
+});
+
+test("explicit passenger role overrides legacy staff mapping", () => {
+  const result = resolveRoleFromProfile({
+    uid: driverUid, adminUid, profile: { role: "passenger", active: true },
+    legacyStaff: legacyDriver
+  });
+  assert.equal(result.role, "passenger");
+  assert.equal(result.carId, null);
 });
 
 test("non-root UID cannot become admin", () => {
