@@ -69,11 +69,15 @@ Hallazgos de integración:
 - El módulo de chat necesita exportar el handler programado `scheduled`; la copia B2 recuperada no contiene un handler Cron. La configuración de un Cron Trigger será un paso separado y no se hará durante la integración de código.
 - El chat requiere `FIREBASE_SERVICE_ACCOUNT_EMAIL`, `FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY` y `ADMIN_UID`, además de los datos de Firebase existentes. No se copiaron secretos ni se modificó configuración de Cloudflare.
 
-### Bloqueador de compatibilidad de perfiles
+### Bloqueador de compatibilidad de perfiles (revisión 2026-11-03)
 
-La versión actual de `index.html` en `main` y `dante-test` todavía declara el personal en `USER_ROLES` (UID → rol/nombre/coche). En `onAuthStateChanged`, primero consulta ese mapa y sólo lee `profiles/{uid}` cuando el UID no aparece allí. El registro normal crea perfiles de pasajeros con `role: passenger`; no se observó una migración de los perfiles de choferes, operadores y administrador al esquema dinámico que espera el Worker.
+La revisión más reciente de `dante-test/index.html` encontró que `resolveAuthenticatedRole(user)` ya consulta `profiles/{uid}` y pasa ese perfil al resolvedor dinámico. Cuando el perfil contiene un `role` explícito, ese valor tiene prioridad; `USER_ROLES` se conserva como fallback temporal para cuentas históricas sin rol en el perfil. El registro nuevo crea perfiles de pasajeros con `role: passenger`. También permanece `DRIVER_UID_BY_CAR` como fallback de compatibilidad para asociar coches y choferes.
 
-Las Rules actuales también limitan la validación de `profiles/{uid}/role` a pasajero o administrador y mantienen autorizaciones de coches/viajes mediante UID fijos. Por tanto, el Worker de chat basado en perfiles dinámicos no es todavía compatible con el conjunto actual de cuentas y reglas sin una migración coordinada.
+Esto no completa la migración de datos: el Worker candidato `requireChatActor()` lee directamente `profiles/{uid}` y exige un perfil existente, activo y con `role` igual a `passenger`, `driver`, `operator` o `admin`. Por eso, las cuentas actuales de choferes, operadores y administrador que todavía no tengan esos campos en sus perfiles no podrán autenticarse ante el Worker aunque el frontend resuelva su rol mediante el fallback estático.
+
+Antes de conectar el cliente al Worker se debe preparar y probar una migración controlada de perfiles del personal en un entorno aislado, incluyendo `role`, `active` y `carId` cuando corresponda. El resolvedor del frontend no escribe ni migra esos datos.
+
+Las Rules vigentes y candidatas deben contrastarse con esa estructura y probarse en Firebase Emulator Suite o proyecto aislado. No habilitar escrituras de roles desde el cliente ni asumir que ocultar controles en la interfaz protege la autorización.
 
 **Orden obligatorio antes de conectar el frontend al chat:**
 1. Diseñar y probar la migración de perfiles de personal a `profiles/{uid}` con `role`, `active` y `carId` cuando corresponda.
