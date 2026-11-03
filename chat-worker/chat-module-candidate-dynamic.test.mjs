@@ -491,6 +491,11 @@ test('concurrent first messages share one pending block and preserve both messag
   assert.equal(current.status, 'open');
   assert.equal(current.startedAt, Math.min(first.createdAt, second.createdAt));
   assert.equal(Object.keys(stored).length, 2, 'both independent messages must survive concurrent writes');
+  const timeline = getPath(`/chat/messageTimeline/${conversation.conversationId}`);
+  assert.equal(Object.keys(timeline).length, 2);
+  const listed = await request('passenger-concurrent', 'GET', '/v1/chat/conversations');
+  const listedPage = await listed.json();
+  assert.equal(listedPage.conversations.length, 1, 'concurrent timeline writes must not duplicate a conversation');
 });
 
 
