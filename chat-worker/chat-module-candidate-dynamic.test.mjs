@@ -77,6 +77,9 @@ before(async () => {
     }
     if (url.hostname === 'oauth2.googleapis.com') return jsonResponse({ access_token: 'mock-service-token', expires_in: 3600 });
     if (url.hostname === 'dante-chat-test-default-rtdb.firebaseio.com') {
+      // Yield to the event loop so concurrent requests can observe the same
+      // ETag before either conditional write commits.
+      await new Promise(resolve => setImmediate(resolve));
       const path = decodeURIComponent(url.pathname).replace(/\.json$/, '');
       const method = options.method || 'GET';
       if (method === 'GET') return jsonResponse(getPath(path), 200, options.headers?.['X-Firebase-ETag'] ? { ETag: etagFor(path) } : {});
