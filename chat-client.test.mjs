@@ -162,3 +162,42 @@ test("uses the same deterministic case-sensitive tie-break as Firebase RTDB", ()
     ["m_A", "m_a"]
   );
 });
+
+
+test("retries an uncertain 502 send once with the exact same idempotency key", async () => {
+  let calls = 0;
+  const requestBodies = [];
+  const client = makeClient(async (_url, options) => {
+    calls++;
+    requestBodies.push(JSON.parse(options.body));
+    return calls === 1
+      ? jsonResponse({ error: "Temporary persistence/index failure" }, 502)
+      : jsonResponse({ message: { messageId: "m_saved", idempotent: true } }, 200);
+  });
+  const result = await client.sendMessage({
+    conversationId: "conversation-1",
+    text: "Hola",
+    clientMessageId: "stable-message-id-123"
+  });
+  assert.equal(calls, 2);
+  assert.deepEqual(requestBodies[0], requestBodies[1]);
+  assert.equal(requestBodies[1].clientMessageId, "stable-message-id-123");
+  assert.equal(result.message.idempotent, true);
+});
+
+test("does not automatically retry rate-limited message sends", async () => {
+  let calls = 0;
+  const client = makeClient(async () => {
+    calls++;
+    return jsonResponse({ error: "Rate limited" }, 429, { "Retry-After": "5" });
+  });
+  await assert.rejects(
+    client.sendMessage({
+      conversationId: "conversation-1",
+      text: "Hola",
+      clientMessageId: "stable-message-id-456"
+    }),
+    error => error instanceof ChatApiError && error.status === 429 && error.retryAfter === "5"
+  );
+  assert.equal(calls, 1);
+});
