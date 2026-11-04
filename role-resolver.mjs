@@ -22,8 +22,10 @@ export function resolveRoleFromProfile({ uid, profile, legacyStaff, adminUid, us
   // No account other than the immutable root UID can become an administrator.
   if (role === "admin") return null;
 
+  // A missing carId is a legacy profile; an explicit null means unassigned.
+  const hasDynamicCarAssignment = Object.prototype.hasOwnProperty.call(currentProfile, "carId");
   const carId = role === "driver"
-    ? (currentProfile.carId || legacyStaff?.carId || null)
+    ? (hasDynamicCarAssignment ? currentProfile.carId : legacyStaff?.carId || null)
     : null;
 
   if (role === "driver" && !carId) {
@@ -35,4 +37,16 @@ export function resolveRoleFromProfile({ uid, profile, legacyStaff, adminUid, us
     .join(" ") || legacyStaff?.name || userEmail || "Usuario";
 
   return { role, name, carId, profile: currentProfile };
+}
+
+/**
+ * Resolve the UID assigned to a car.
+ * When Firebase has an explicit dynamic assignment field (including null),
+ * it takes precedence over the temporary static compatibility map.
+ */
+export function resolveDriverUidForCar({ driverUid, driverUidConfigured }, legacyDriverUid) {
+  if (driverUidConfigured === true) {
+    return typeof driverUid === "string" && driverUid.length > 0 ? driverUid : null;
+  }
+  return legacyDriverUid || null;
 }
