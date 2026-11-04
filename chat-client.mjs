@@ -127,7 +127,8 @@ export function mergeChatMessagePages(existing, incoming) {
     if (timeDifference) return timeDifference;
     const aId = String(a.messageId || a.clientMessageId || "");
     const bId = String(b.messageId || b.clientMessageId || "");
-    return aId.localeCompare(bId);
+    // Match the backend's deterministic code-point ordering (Firebase RTDB key order).
+    return aId < bId ? -1 : aId > bId ? 1 : 0;
   });
 }
 
