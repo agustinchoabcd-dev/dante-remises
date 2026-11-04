@@ -119,10 +119,10 @@ test("generates a safe idempotency key", () => {
 
 test("rejects invalid message payloads before making a request", async () => {
   const client = makeClient(async () => jsonResponse({}));
-  assert.throws(() => client.sendMessage({
+  await assert.rejects(client.sendMessage({
     conversationId: "conversation-1", text: "   ", clientMessageId: "message-id-123456"
   }), /1-2000/);
-  assert.throws(() => client.sendMessage({
+  await assert.rejects(client.sendMessage({
     conversationId: "conversation-1", text: "Hola", clientMessageId: "short"
   }), /clientMessageId/);
 });
