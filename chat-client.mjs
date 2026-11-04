@@ -100,10 +100,19 @@ export class ChatApiClient {
     if (typeof clientMessageId !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(clientMessageId)) {
       throw new TypeError("A stable clientMessageId is required");
     }
-    return this.request("/v1/chat/messages", {
-      method: "POST",
-      body: { conversationId, text: cleanText, clientMessageId }
-    });
+    const body = { conversationId, text: cleanText, clientMessageId };
+    const send = () => this.request("/v1/chat/messages", { method: "POST", body });
+    try {
+      return await send();
+    } catch (error) {
+      // A 502 or lost response can happen after RTDB has persisted the message.
+      // Retry once with the exact same idempotency key so the backend repairs
+      // conversation indexes without creating a duplicate message.
+      if (error instanceof ChatApiError && (error.status === 0 || error.status === 502)) {
+        return send();
+      }
+      throw error;
+    }
   }
 }
 
