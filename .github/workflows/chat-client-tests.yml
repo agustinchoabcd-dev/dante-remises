@@ -7,13 +7,13 @@ on:
       - 'chat-client.mjs'
       - 'chat-client.test.mjs'
       - 'index.html'
-      - 'index.html'
       - '.github/workflows/chat-client-tests.yml'
   pull_request:
     branches: [dante-test]
     paths:
       - 'chat-client.mjs'
       - 'chat-client.test.mjs'
+      - 'index.html'
       - '.github/workflows/chat-client-tests.yml'
   workflow_dispatch:
 
