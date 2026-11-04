@@ -107,6 +107,30 @@ export class ChatApiClient {
   }
 }
 
+export function mergeChatMessagePages(existing, incoming) {
+  const messages = new Map();
+  for (const page of [existing, incoming]) {
+    if (!Array.isArray(page)) continue;
+    for (const message of page) {
+      if (!message || typeof message !== "object") continue;
+      const id = typeof message.messageId === "string" && message.messageId
+        ? message.messageId
+        : typeof message.clientMessageId === "string" && message.clientMessageId
+          ? message.clientMessageId
+          : "";
+      if (!id || messages.has(id)) continue;
+      messages.set(id, message);
+    }
+  }
+  return [...messages.values()].sort((a, b) => {
+    const timeDifference = Number(a.createdAt || 0) - Number(b.createdAt || 0);
+    if (timeDifference) return timeDifference;
+    const aId = String(a.messageId || a.clientMessageId || "");
+    const bId = String(b.messageId || b.clientMessageId || "");
+    return aId.localeCompare(bId);
+  });
+}
+
 export function createClientMessageId(cryptoImpl = globalThis.crypto) {
   if (!cryptoImpl || typeof cryptoImpl.randomUUID !== "function") {
     throw new Error("A secure random UUID generator is required");
