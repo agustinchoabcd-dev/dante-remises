@@ -150,3 +150,15 @@ test("ignores malformed messages without a stable message identifier", () => {
     [null, {}, { createdAt: 200, text: "sin id" }]
   ), [{ messageId: "m1", createdAt: 100, text: "válido" }]);
 });
+
+
+test("uses the same deterministic case-sensitive tie-break as Firebase RTDB", () => {
+  const messages = [
+    { messageId: "m_a", createdAt: 500, text: "minúscula" },
+    { messageId: "m_A", createdAt: 500, text: "mayúscula" }
+  ];
+  assert.deepEqual(
+    mergeChatMessagePages([], messages).map(message => message.messageId),
+    ["m_A", "m_a"]
+  );
+});
