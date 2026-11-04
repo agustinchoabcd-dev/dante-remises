@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ChatApiClient, ChatApiError, createClientMessageId } from "./chat-client.mjs";
+import { ChatApiClient, ChatApiError, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";
 
 function makeClient(fetchImpl, token = "firebase-test-token") {
   return new ChatApiClient({
@@ -125,4 +125,28 @@ test("rejects invalid message payloads before making a request", async () => {
   assert.throws(() => client.sendMessage({
     conversationId: "conversation-1", text: "Hola", clientMessageId: "short"
   }), /clientMessageId/);
+});
+
+
+test("merges paginated message pages chronologically and deduplicates overlapping IDs", () => {
+  const current = [
+    { messageId: "m2", createdAt: 200, text: "dos" },
+    { messageId: "m3", createdAt: 300, text: "tres" }
+  ];
+  const older = [
+    { messageId: "m1", createdAt: 100, text: "uno" },
+    { messageId: "m2", createdAt: 200, text: "duplicado" }
+  ];
+  assert.deepEqual(mergeChatMessagePages(current, older), [
+    { messageId: "m1", createdAt: 100, text: "uno" },
+    current[0],
+    current[1]
+  ]);
+});
+
+test("ignores malformed messages without a stable message identifier", () => {
+  assert.deepEqual(mergeChatMessagePages(
+    [{ messageId: "m1", createdAt: 100, text: "válido" }],
+    [null, {}, { createdAt: 200, text: "sin id" }]
+  ), [{ messageId: "m1", createdAt: 100, text: "válido" }]);
 });
