@@ -201,3 +201,34 @@ test("does not automatically retry rate-limited message sends", async () => {
   );
   assert.equal(calls, 1);
 });
+
+
+test("retains the idempotency key when both immediate attempts have uncertain outcomes", async () => {
+  let calls = 0;
+  const requestBodies = [];
+  const client = makeClient(async (_url, options) => {
+    calls++;
+    requestBodies.push(JSON.parse(options.body));
+    return calls <= 2
+      ? jsonResponse({ error: "Uncertain persistence result" }, 502)
+      : jsonResponse({ message: { messageId: "m_recovered", idempotent: true } }, 200);
+  });
+
+  await assert.rejects(client.sendMessage({
+    conversationId: "conversation-1",
+    text: "Mensaje pendiente",
+    clientMessageId: "first-generated-id-123"
+  }), error => error instanceof ChatApiError && error.status === 502);
+
+  const recovered = await client.sendMessage({
+    conversationId: "conversation-1",
+    text: "Mensaje pendiente",
+    clientMessageId: "new-id-from-next-ui-click"
+  });
+
+  assert.equal(calls, 3);
+  assert.equal(recovered.message.idempotent, true);
+  assert.equal(requestBodies[0].clientMessageId, "first-generated-id-123");
+  assert.equal(requestBodies[1].clientMessageId, "first-generated-id-123");
+  assert.equal(requestBodies[2].clientMessageId, "first-generated-id-123");
+});
