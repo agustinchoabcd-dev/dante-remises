@@ -485,7 +485,7 @@ byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='op
 byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
 byId('setFree').addEventListener('click',()=>setStatus(activeDriver,'libre'));
-let chatApiClient=null,chatPollTimer=null,chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false;
+let chatApiClient=null,chatPollTimer=null,chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false;
 function getChatApiClient(){
  if(!CHAT_API_BASE_URL||!currentUser)return null;
  if(!chatApiClient)chatApiClient=new ChatApiClient({baseUrl:CHAT_API_BASE_URL,getIdToken:()=>currentUser.getIdToken()});
@@ -624,7 +624,7 @@ async function selectChatConversation(conversation){
  if(!alreadyLoaded)await loadChatMessages(conversation.conversationId,false,true);
 }
 async function refreshChatConversations(silent=false){
- const api=getChatApiClient();if(!api||chatRefreshing)return false;
+ const api=getChatApiClient();if(!api)return false;if(chatRefreshing){chatRefreshPending=true;return true;}
  chatRefreshing=true;
  try{
   const result=await api.listConversations();chatConversations=Array.isArray(result.conversations)?result.conversations:[];
@@ -648,7 +648,7 @@ async function refreshChatConversations(silent=false){
   }else setChatStatus('Mensajería conectada · actualización automática cada 7 segundos.');
   return true;
  }catch(error){if(!silent)setChatStatus(error.message||'No se pudieron actualizar las conversaciones.');return false}
- finally{chatRefreshing=false}
+ finally{chatRefreshing=false;if(chatRefreshPending){chatRefreshPending=false;void refreshChatConversations(true)}}
 }
 async function loadChatView(){
  if(!currentUser||!currentRole)return;
