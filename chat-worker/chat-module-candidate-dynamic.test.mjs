@@ -785,3 +785,88 @@ test('expired preview cleanup retries ETag conflict and preserves a concurrently
     assert.equal(getPath('/chat/conversations/' + conversationId + '/lastSenderUid'), 'passenger-race');
   } finally { Date.now = originalNow; }
 });
+
+
+test('missing profile role resolves an existing operator only through the private staff directory', async () => {
+  setPath('/profiles/staff-uid', { active: true, name: 'Nombre del perfil' });
+  const timelineKey = '0000000000001_c_support';
+  setPath('/chat/operatorInbox/all/c_support', true);
+  setPath('/chat/operatorTimeline/' + timelineKey, true);
+  setPath('/chat/conversations/c_support', {
+    conversationId: 'c_support', kind: 'operator-support', participantUids: { 'passenger-1': true }, createdAt: 1, timelineKey
+  });
+  const bridgeEnv = {
+    ...env,
+    CHAT_STAFF_DIRECTORY: JSON.stringify({ 'staff-uid': { role: 'operator', name: 'Operador puente' } })
+  };
+  const response = await request('staff-uid', 'GET', '/v1/chat/conversations', undefined, env.APP_ORIGIN, bridgeEnv);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.conversations.length, 1);
+});
+
+test('an explicit Firebase profile role takes precedence over a conflicting staff-directory entry', async () => {
+  setPath('/profiles/staff-uid', { role: 'passenger', active: true });
+  const timelineKey = '0000000000001_c_support';
+  setPath('/chat/operatorInbox/all/c_support', true);
+  setPath('/chat/operatorTimeline/' + timelineKey, true);
+  setPath('/chat/conversations/c_support', {
+    conversationId: 'c_support', kind: 'operator-support', participantUids: { 'passenger-1': true }, createdAt: 1, timelineKey
+  });
+  const bridgeEnv = {
+    ...env,
+    CHAT_STAFF_DIRECTORY: JSON.stringify({ 'staff-uid': { role: 'operator' } })
+  };
+  const response = await request('staff-uid', 'GET', '/v1/chat/conversations', undefined, env.APP_ORIGIN, bridgeEnv);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).conversations.length, 0);
+});
+
+test('inactive staff profile is denied even when the private directory lists the UID', async () => {
+  setPath('/profiles/staff-uid', { active: false });
+  const bridgeEnv = {
+    ...env,
+    CHAT_STAFF_DIRECTORY: JSON.stringify({ 'staff-uid': { role: 'operator' } })
+  };
+  const response = await request('staff-uid', 'GET', '/v1/chat/conversations', undefined, env.APP_ORIGIN, bridgeEnv);
+  assert.equal(response.status, 403);
+});
+
+test('driver directory entry supplies the missing role and assigned car for an authorized trip chat', async () => {
+  setPath('/profiles/driver-legacy', { active: true, name: 'Chofer histórico' });
+  setPath('/trips/trip-legacy', {
+    tripId: 'trip-legacy', passengerUid: 'passenger-legacy', driverUid: 'driver-legacy', carId: '144', status: 'accepted'
+  });
+  setPath('/tripInbox/144/trip-legacy', { tripId: 'trip-legacy', status: 'accepted' });
+  const bridgeEnv = {
+    ...env,
+    CHAT_STAFF_DIRECTORY: JSON.stringify({ 'driver-legacy': { role: 'driver', carId: '144' } })
+  };
+  const response = await request('driver-legacy', 'POST', '/v1/chat/conversations', { tripId: 'trip-legacy' }, env.APP_ORIGIN, bridgeEnv);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).conversation.kind, 'passenger-driver');
+});
+
+test('ADMIN_UID resolves an absent profile role but the staff directory cannot grant admin to another UID', async () => {
+  setPath('/profiles/admin-uid', { active: true });
+  const adminResponse = await request('admin-uid', 'GET', '/v1/chat/conversations');
+  assert.equal(adminResponse.status, 200);
+
+  setPath('/profiles/not-admin', { active: true });
+  const bridgeEnv = {
+    ...env,
+    CHAT_STAFF_DIRECTORY: JSON.stringify({ 'not-admin': { role: 'admin' } })
+  };
+  const nonAdminResponse = await request('not-admin', 'GET', '/v1/chat/conversations', undefined, env.APP_ORIGIN, bridgeEnv);
+  assert.equal(nonAdminResponse.status, 403);
+});
+
+test('an explicitly invalid profile role cannot fall back to the staff directory', async () => {
+  setPath('/profiles/staff-uid', { role: 'superuser', active: true });
+  const bridgeEnv = {
+    ...env,
+    CHAT_STAFF_DIRECTORY: JSON.stringify({ 'staff-uid': { role: 'operator' } })
+  };
+  const response = await request('staff-uid', 'GET', '/v1/chat/conversations', undefined, env.APP_ORIGIN, bridgeEnv);
+  assert.equal(response.status, 403);
+});

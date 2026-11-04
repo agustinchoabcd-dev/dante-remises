@@ -86,3 +86,29 @@ Las Rules vigentes y candidatas deben contrastarse con esa estructura y probarse
 4. Alinear las asignaciones de coche y la autorización de viajes entre perfiles, aplicación y Rules.
 5. Ejecutar pruebas de regresión para pasajero, chofer, operador y administrador en un entorno Firebase aislado.
 6. Recién entonces unir el router de chat con el Worker B2, preservando las rutas existentes y validando el Cron.
+
+
+## Puente temporal de roles para cuentas históricas
+
+El Worker candidato admite la variable privada de entorno `CHAT_STAFF_DIRECTORY` como puente temporal para perfiles de personal existentes cuyo nodo `profiles/{uid}` todavía no contiene el campo `role`.
+
+Formato JSON (ejemplo ficticio; no guardar UIDs reales en el repositorio):
+
+```json
+{
+  "UID_CHOFER_EJEMPLO": { "role": "driver", "carId": "144", "name": "Chofer" },
+  "UID_OPERADOR_EJEMPLO": { "role": "operator", "name": "Operador" }
+}
+```
+
+Reglas de precedencia y seguridad:
+
+- Un perfil inexistente, `active: false` o `status: "disabled"` se rechaza antes de consultar el directorio.
+- Si el perfil tiene `role` explícito, ese valor es la única fuente de rol. Una entrada contradictoria del directorio se ignora; un rol explícito inválido se rechaza.
+- El directorio sólo puede asignar `driver` u `operator`; para chofer exige `carId` válido.
+- Un rol ausente para el UID configurado en `ADMIN_UID` se resuelve como `admin`. Ninguna entrada del directorio ni perfil puede convertir otro UID en administrador.
+- El nombre del directorio es un respaldo opcional; el nombre del perfil conserva prioridad.
+- La variable debe configurarse únicamente en el entorno privado del Worker de pruebas, nunca en el cliente ni en GitHub. No contiene credenciales de Firebase, pero sí una lista de identidades autorizadas y debe tratarse como configuración sensible.
+- Este puente no migra perfiles ni modifica Firebase Rules. Debe retirarse cuando los perfiles dinámicos del personal estén completos y verificados.
+
+La integración sigue siendo candidata. No configurar esta variable ni desplegar el Worker como parte de este cambio.

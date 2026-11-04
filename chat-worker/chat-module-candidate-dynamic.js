@@ -202,6 +202,42 @@ export async function scheduled(event, env, ctx) {
   ctx.waitUntil(scheduledChatCleanup(env));
 }
 
+
+/**
+ * Temporary compatibility bridge for existing staff profiles that do not yet
+ * contain a role. CHAT_STAFF_DIRECTORY is a private Worker environment variable
+ * containing JSON: { "<uid>": { "role": "operator" } } or
+ * { "<uid>": { "role": "driver", "carId": "144", "name": "..." } }.
+ * Explicit profile roles always take precedence; this directory cannot grant
+ * passenger/admin roles. ADMIN_UID remains the only administrator identity.
+ */
+function getChatStaffDirectoryEntry(env, uid) {
+  const raw = env.CHAT_STAFF_DIRECTORY;
+  if (typeof raw !== "string" || !raw.trim()) return null;
+
+  let directory;
+  try {
+    directory = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!directory || typeof directory !== "object" || Array.isArray(directory)) return null;
+  if (!Object.prototype.hasOwnProperty.call(directory, uid)) return null;
+
+  const entry = directory[uid];
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+  if (entry.role !== "driver" && entry.role !== "operator") return null;
+
+  const name = typeof entry.name === "string" && entry.name.trim().length <= 100
+    ? entry.name.trim()
+    : "";
+  if (entry.role === "operator") return { role: "operator", name };
+
+  const carId = String(entry.carId || "");
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(carId)) return null;
+  return { role: "driver", carId, name };
+}
+
 async function requireChatActor(request, env) {
   const authorization = request.headers.get("Authorization") || "";
   if (!authorization.startsWith("Bearer ")) throw new ChatAuthError("Firebase sign-in required", 401);
@@ -213,30 +249,47 @@ async function requireChatActor(request, env) {
   if (!profile || profile.active === false || profile.status === "disabled") {
     throw new ChatAuthError("Account is not enabled for chat", 403);
   }
-  const allowedRoles = new Set(["passenger", "driver", "operator", "admin"]);
-  if (!allowedRoles.has(profile.role)) throw new ChatAuthError("Account role is invalid", 403);
-  // The configured administrator UID is the single root of trust. A profile
-  // cannot grant admin rights to another account by changing its role field.
+  // A disabled profile always wins over any temporary staff-directory entry.
+  // Only a genuinely absent role may use the private Worker-side bridge.
   const isConfiguredAdmin = Boolean(env.ADMIN_UID) && identity.uid === env.ADMIN_UID;
-  if (profile.role === "admin" && !isConfiguredAdmin) {
+  const hasExplicitRole = profile.role !== undefined && profile.role !== null;
+  const profileRole = typeof profile.role === "string" ? profile.role.trim() : "";
+  if (hasExplicitRole && !profileRole) throw new ChatAuthError("Account role is invalid", 403);
+
+  let role = profileRole;
+  let staffEntry = null;
+  if (!hasExplicitRole) {
+    if (isConfiguredAdmin) {
+      role = "admin";
+    } else {
+      staffEntry = getChatStaffDirectoryEntry(env, identity.uid);
+      role = staffEntry?.role || "";
+    }
+  }
+
+  const allowedRoles = new Set(["passenger", "driver", "operator", "admin"]);
+  if (!allowedRoles.has(role)) throw new ChatAuthError("Account role is invalid", 403);
+  // ADMIN_UID is the sole root of trust for administrator access. Neither a
+  // profile nor CHAT_STAFF_DIRECTORY can grant admin rights to another UID.
+  if (role === "admin" && !isConfiguredAdmin) {
     throw new ChatAuthError("Administrator role is reserved", 403);
   }
-  if (isConfiguredAdmin && profile.role !== "admin") {
+  if (isConfiguredAdmin && role !== "admin") {
     throw new ChatAuthError("Administrator profile is misconfigured", 403);
   }
-  const carId = profile.role === "driver"
-    ? String(profile.carId || "")
+  const carId = role === "driver"
+    ? String(profile.carId || staffEntry?.carId || "")
     : isConfiguredAdmin
       ? String(profile.carId || "144")
       : "";
-  if (profile.role === "driver" && !carId) throw new ChatAuthError("Driver account has no assigned car", 403);
+  if (role === "driver" && !carId) throw new ChatAuthError("Driver account has no assigned car", 403);
   if (isConfiguredAdmin && carId !== "144") {
     throw new ChatAuthError("Administrator driver assignment is fixed to car 144", 403);
   }
   return {
     uid: identity.uid,
-    role: profile.role,
-    name: [profile.name, profile.lastName].filter(Boolean).join(" ") || profile.name || profile.email || profile.role,
+    role,
+    name: [profile.name, profile.lastName].filter(Boolean).join(" ") || staffEntry?.name || profile.email || role,
     carId,
     profile,
     adminToken

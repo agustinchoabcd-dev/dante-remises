@@ -5,6 +5,7 @@ on:
     branches: [dante-test]
     paths:
       - 'chat-worker/**'
+      - 'cloudflare/workers/dante-remises-chat-candidate.js'
       - '.github/workflows/chat-candidate-tests.yml'
   workflow_dispatch:
 
@@ -20,6 +21,8 @@ jobs:
         with:
           node-version: 22
       - name: Check JavaScript syntax
-        run: node --check chat-worker/chat-module-candidate-dynamic.js
-      - name: Run chat candidate tests
-        run: node --test chat-worker/chat-module-candidate-dynamic.test.mjs
+        run: |
+          node --check chat-worker/chat-module-candidate-dynamic.js
+          node --check cloudflare/workers/dante-remises-chat-candidate.js
+      - name: Run chat candidate and Worker integration tests
+        run: node --test chat-worker/chat-module-candidate-dynamic.test.mjs chat-worker/chat-worker-integration.test.mjs
