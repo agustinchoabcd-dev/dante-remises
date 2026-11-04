@@ -28,6 +28,7 @@ export class ChatApiClient {
     this.baseUrl = parsed.href.replace(/\/$/, "");
     this.getIdToken = getIdToken;
     this.fetchImpl = fetchImpl;
+    this.pendingMessageIds = new Map();
   }
 
   async request(path, { method = "GET", body } = {}) {
@@ -100,16 +101,23 @@ export class ChatApiClient {
     if (typeof clientMessageId !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(clientMessageId)) {
       throw new TypeError("A stable clientMessageId is required");
     }
-    const body = { conversationId, text: cleanText, clientMessageId };
+    const pendingKey = JSON.stringify([conversationId, cleanText]);
+    const stableMessageId = this.pendingMessageIds.get(pendingKey) || clientMessageId;
+    const body = { conversationId, text: cleanText, clientMessageId: stableMessageId };
     const send = () => this.request("/v1/chat/messages", { method: "POST", body });
     try {
-      return await send();
+      const result = await send();
+      this.pendingMessageIds.delete(pendingKey);
+      return result;
     } catch (error) {
       // A 502 or lost response can happen after RTDB has persisted the message.
-      // Retry once with the exact same idempotency key so the backend repairs
-      // conversation indexes without creating a duplicate message.
+      // Keep its idempotency key across UI retries and retry once immediately,
+      // allowing the backend to repair indexes without creating duplicates.
       if (error instanceof ChatApiError && (error.status === 0 || error.status === 502)) {
-        return send();
+        this.pendingMessageIds.set(pendingKey, stableMessageId);
+        const result = await send();
+        this.pendingMessageIds.delete(pendingKey);
+        return result;
       }
       throw error;
     }
