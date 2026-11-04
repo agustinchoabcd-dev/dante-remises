@@ -516,13 +516,17 @@ async function configureChatRecipients(){
  }else if(role==='operator'){
   initial.forEach(c=>add('driver:'+c.id,`${c.driver} · Coche ${c.id}`));
  }else if(role==='admin'){
-  try{
-   const snapshot=await get(ref(db,'profiles')),profiles=snapshot.val()||{};
-   Object.entries(profiles).filter(([uid,p])=>uid!==currentUser.uid&&p&&p.active!==false&&p.status!=='disabled').forEach(([uid,p])=>{
-    const name=[p.name,p.lastName].filter(Boolean).join(' ').trim()||USER_ROLES[uid]?.name||'Usuario';
-    add('user:'+uid,`${name} · ${p.role||USER_ROLES[uid]?.role||'cuenta'}`);
-   });
-  }catch(error){console.error('No se pudieron cargar destinatarios del chat:',error);setChatStatus('No se pudieron cargar los destinatarios.');}
+  if(!CHAT_API_BASE_URL){
+   Object.entries(USER_ROLES).filter(([uid])=>uid!==currentUser.uid).forEach(([uid,p])=>add('user:'+uid,`${p.name} · ${p.role}`));
+  }else{
+   try{
+    const snapshot=await get(ref(db,'profiles')),profiles=snapshot.val()||{};
+    Object.entries(profiles).filter(([uid,p])=>uid!==currentUser.uid&&p&&p.active!==false&&p.status!=='disabled').forEach(([uid,p])=>{
+     const name=[p.name,p.lastName].filter(Boolean).join(' ').trim()||USER_ROLES[uid]?.name||'Usuario';
+     add('user:'+uid,`${name} · ${p.role||USER_ROLES[uid]?.role||'cuenta'}`);
+    });
+   }catch(error){console.error('No se pudieron cargar destinatarios del chat:',error);setChatStatus('No se pudieron cargar los destinatarios.');}
+  }
  }else if(role==='driver'){
   byId('chatIntro').textContent='Tus conversaciones con pasajeros aparecerán acá cuando te contacten desde una solicitud.';
  }
@@ -705,6 +709,7 @@ async function resolveAuthenticatedRole(user){
 }
 onAuthStateChanged(auth,async user=>{
  stopChatPolling();chatApiClient=null;activeChatConversation=null;chatConversations=[];chatMessagesCursor=null;
+ byId('messages').replaceChildren();byId('chatConversationList').replaceChildren();
  await clearDriverPresence();if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
  currentUser=user;currentRole=null;
  if(user){try{currentRole=await resolveAuthenticatedRole(user)}catch(error){console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';await signOut(auth);notify(error.message||'No se pudo verificar tu cuenta.');return}}
