@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveRoleFromProfile } from "./role-resolver.mjs";
+import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.mjs";
 
 const adminUid = "root-admin";
 const driverUid = "driver-1";
@@ -38,7 +38,7 @@ test("inactive profile is rejected", () => {
   }), /desactivada/);
 });
 
-test("legacy driver without a profile role remains compatible", () => {
+test("legacy driver without a profile role or carId remains compatible", () => {
   const result = resolveRoleFromProfile({
     uid: driverUid, adminUid, profile: { name: "Chofer legado" },
     legacyStaff: legacyDriver
@@ -63,7 +63,57 @@ test("non-root UID cannot become admin", () => {
   assert.equal(result, null);
 });
 
-test("driver without car assignment is rejected", () => {
+test("driver without a carId field falls back to legacy assignment", () => {
+  const result = resolveRoleFromProfile({
+    uid: "driver-legacy-car", adminUid,
+    profile: { role: "driver", active: true },
+    legacyStaff: legacyDriver
+  });
+  assert.equal(result.carId, "109");
+});
+
+test("driver with explicit null carId is rejected instead of using legacy assignment", () => {
+  assert.throws(() => resolveRoleFromProfile({
+    uid: "driver-unassigned", adminUid,
+    profile: { role: "driver", active: true, carId: null },
+    legacyStaff: legacyDriver
+  }), /coche asignado/);
+});
+
+test("driver with a valid dynamic carId uses the dynamic assignment", () => {
+  const result = resolveRoleFromProfile({
+    uid: "driver-reassigned", adminUid,
+    profile: { role: "driver", active: true, carId: "137" },
+    legacyStaff: legacyDriver
+  });
+  assert.equal(result.carId, "137");
+});
+
+test("car without a dynamic driverUid field falls back to legacy UID", () => {
+  assert.equal(resolveDriverUidForCar({
+    driverUid: null, driverUidConfigured: false
+  }, "legacy-driver-uid"), "legacy-driver-uid");
+});
+
+test("car with explicit null driverUid does not fall back to legacy UID", () => {
+  assert.equal(resolveDriverUidForCar({
+    driverUid: null, driverUidConfigured: true
+  }, "legacy-driver-uid"), null);
+});
+
+test("car with a valid dynamic driverUid uses the dynamic UID", () => {
+  assert.equal(resolveDriverUidForCar({
+    driverUid: "dynamic-driver-uid", driverUidConfigured: true
+  }, "legacy-driver-uid"), "dynamic-driver-uid");
+});
+
+test("car with an invalid explicit driverUid does not restore the legacy UID", () => {
+  assert.equal(resolveDriverUidForCar({
+    driverUid: "", driverUidConfigured: true
+  }, "legacy-driver-uid"), null);
+});
+
+test("driver without any car assignment is rejected", () => {
   assert.throws(() => resolveRoleFromProfile({
     uid: "driver-2", adminUid, profile: { role: "driver", active: true }
   }), /coche asignado/);
