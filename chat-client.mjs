@@ -89,7 +89,7 @@ export class ChatApiClient {
     return this.request(`/v1/chat/messages?${params.toString()}`);
   }
 
-  sendMessage({ conversationId, text, clientMessageId } = {}) {
+  async sendMessage({ conversationId, text, clientMessageId } = {}) {
     const cleanText = typeof text === "string" ? text.trim() : "";
     if (!cleanText || cleanText.length > MAX_MESSAGE_LENGTH) {
       throw new TypeError(`Message must contain 1-${MAX_MESSAGE_LENGTH} characters`);
