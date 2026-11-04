@@ -27,7 +27,13 @@ test("chat API requests retain chat CORS headers and require Firebase authentica
   const response = await worker.fetch(new Request("https://worker.example.test/v1/chat/conversations", {
     method: "GET",
     headers: { Origin: "https://app.example.test" }
-  }), { APP_ORIGIN: "https://app.example.test" });
+  }), {
+    APP_ORIGIN: "https://app.example.test",
+    FIREBASE_PROJECT_ID: "dante-chat-test",
+    FIREBASE_SERVICE_ACCOUNT_EMAIL: "test@dante-chat-test.iam.gserviceaccount.com",
+    FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY: "test-only-placeholder-not-used-without-a-bearer-token",
+    ADMIN_UID: "test-admin"
+  });
 
   assert.equal(response.status, 401);
   assert.equal(response.headers.get("Access-Control-Allow-Origin"), "https://app.example.test");
