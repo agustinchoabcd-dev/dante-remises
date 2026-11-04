@@ -624,7 +624,7 @@ async function selectChatConversation(conversation){
  if(!alreadyLoaded)await loadChatMessages(conversation.conversationId,false,true);
 }
 async function refreshChatConversations(silent=false){
- const api=getChatApiClient();if(!api||chatRefreshing)return;
+ const api=getChatApiClient();if(!api||chatRefreshing)return false;
  chatRefreshing=true;
  try{
   const result=await api.listConversations();chatConversations=Array.isArray(result.conversations)?result.conversations:[];
@@ -646,7 +646,8 @@ async function refreshChatConversations(silent=false){
    byId('chatTitle').textContent='Elegí una conversación';renderChatMessages([],'bottom');updateChatHistoryControls();
    setChatStatus('No hay conversaciones todavía.');
   }else setChatStatus('Mensajería conectada · actualización automática cada 7 segundos.');
- }catch(error){if(!silent)setChatStatus(error.message||'No se pudieron actualizar las conversaciones.')}
+  return true;
+ }catch(error){if(!silent)setChatStatus(error.message||'No se pudieron actualizar las conversaciones.');return false}
  finally{chatRefreshing=false}
 }
 async function loadChatView(){
@@ -720,7 +721,18 @@ byId('chatForm').addEventListener('submit',async event=>{
  }
  if(!activeChatConversation?.conversationId){notify('Primero abrí o iniciá una conversación.');return}
  const button=byId('chatSendButton');button.disabled=true;
- try{await api.sendMessage({conversationId:activeChatConversation.conversationId,text:textValue,clientMessageId:createClientMessageId()});input.value='';await refreshChatConversations(true)}
+ try{
+  const conversationId=activeChatConversation.conversationId;
+  const result=await api.sendMessage({conversationId,text:textValue,clientMessageId:createClientMessageId()});
+  input.value='';
+  if(result?.message?.messageId&&chatMessagesConversationId===conversationId){
+   chatMessages=mergeChatMessagePages(chatMessages,[result.message]);
+   renderChatMessages(chatMessages,'bottom');
+  }
+  const refreshed=await refreshChatConversations(true);
+  if(!refreshed)setChatStatus('Mensaje enviado. No se pudo actualizar la lista; tocá Actualizar para sincronizarla.');
+  else setChatStatus('Mensaje enviado.');
+ }
  catch(error){setChatStatus(error.message||'No se pudo enviar el mensaje.');notify(error.status===429&&error.retryAfter?'Esperá '+error.retryAfter+' segundos antes de enviar otro mensaje.':error.message||'No se pudo enviar el mensaje.')}
  finally{button.disabled=false}
 });
