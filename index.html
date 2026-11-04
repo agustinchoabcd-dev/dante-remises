@@ -552,7 +552,7 @@ function renderChatConversationList(){
 }
 function updateChatHistoryControls(){
  const button=byId('chatLoadOlderButton');
- button.classList.toggle('hidden',!chatMessagesHasMore||!activeChatConversation?.conversationId);
+ button.classList.toggle('hidden',!chatMessagesHasMore||!chatMessagesCursor||!activeChatConversation?.conversationId);
  button.disabled=chatMessagesLoadingOlder;
  button.textContent=chatMessagesLoadingOlder?'Cargando…':'Cargar mensajes anteriores';
 }
@@ -600,7 +600,7 @@ async function refreshLatestChatMessages(conversationId){
  const previousLength=chatMessages.length;
  chatMessages=mergeChatMessagePages(chatMessages,result.messages||[]);
  if(chatMessages.length!==previousLength)renderChatMessages(chatMessages,'preserve');
- chatMessagesHasMore=chatMessagesHasMore||Boolean(result.hasMore);
+ chatMessagesHasMore=Boolean(chatMessagesCursor)&&(chatMessagesHasMore||Boolean(result.hasMore));
  updateChatHistoryControls();
 }
 async function loadOlderChatMessages(){
