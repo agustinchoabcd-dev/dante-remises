@@ -652,9 +652,17 @@ byId('chatForm').addEventListener('submit',async event=>{
 async function openPassengerTripChat(tripId){
  const trip=activeTripData?.tripId===tripId?activeTripData:(await get(ref(db,'trips/'+tripId))).val();
  if(!trip||!trip.driverUid){notify('No se pudo recuperar el chofer de esta solicitud.');return}
- showView('chat');await openChatConversation({target:'driver',targetUid:trip.driverUid,tripId});
+ showView('chat');
+ const recipient='driver:'+String(trip.carId||'');
+ if([...byId('contactChoice').options].some(option=>option.value===recipient))byId('contactChoice').value=recipient;
+ updateChatRecipientTitle();
+ await openChatConversation({target:'driver',targetUid:trip.driverUid,tripId});
 }
-async function openDriverTripChat(tripId){showView('chat');await openChatConversation({tripId})}
+async function openDriverTripChat(tripId){
+ showView('chat');
+ byId('chatTitle').textContent='Chat con Pasajero';
+ await openChatConversation({tripId});
+}
 byId('requestResult').addEventListener('click',event=>{
  const button=event.target.closest('[data-open-passenger-trip-chat]');if(button)openPassengerTripChat(button.dataset.openPassengerTripChat);
 });
@@ -696,6 +704,7 @@ async function resolveAuthenticatedRole(user){
  return resolveRoleFromProfile({uid:user.uid,profile,legacyStaff,adminUid:ADMIN_UID,userEmail:user.email});
 }
 onAuthStateChanged(auth,async user=>{
+ stopChatPolling();chatApiClient=null;activeChatConversation=null;chatConversations=[];chatMessagesCursor=null;
  await clearDriverPresence();if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
  currentUser=user;currentRole=null;
  if(user){try{currentRole=await resolveAuthenticatedRole(user)}catch(error){console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';await signOut(auth);notify(error.message||'No se pudo verificar tu cuenta.');return}}
