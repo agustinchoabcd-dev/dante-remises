@@ -619,9 +619,9 @@ async function loadOlderChatMessages(){
  finally{chatMessagesLoadingOlder=false;updateChatHistoryControls()}
 }
 async function selectChatConversation(conversation){
- const sameConversation=activeChatConversation?.conversationId===conversation.conversationId;
+ const alreadyLoaded=chatMessagesConversationId===conversation.conversationId;
  activeChatConversation=conversation;byId('chatTitle').textContent=conversationTitle(conversation);renderChatConversationList();
- if(!sameConversation)await loadChatMessages(conversation.conversationId,false,true);
+ if(!alreadyLoaded)await loadChatMessages(conversation.conversationId,false,true);
 }
 async function refreshChatConversations(silent=false){
  const api=getChatApiClient();if(!api||chatRefreshing)return;
