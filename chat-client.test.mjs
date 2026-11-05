@@ -106,7 +106,7 @@ test("opens an authenticated Server-Sent Events stream for one conversation", as
   assert.equal(new URL(request.url).searchParams.get("conversationId"), "conversation/one");
   assert.equal(request.options.headers.Authorization, "Bearer firebase-test-token");
   assert.equal(request.options.headers.Accept, "text/event-stream");
-  assert.match(response.headers.get("Content-Type"), /text\\/event-stream/);
+  assert.equal(response.headers.get("Content-Type"), "text/event-stream");
 });
 
 test("loads messages using encoded conversation ID and cursor", async () => {
