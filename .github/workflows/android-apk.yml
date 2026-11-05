@@ -97,7 +97,7 @@ jobs:
           fingerprint="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | awk '/SHA256:/{print $2; exit}')"
           echo "Persistent debug signing key loaded. Certificate SHA-256: $fingerprint"
           echo "### Android debug signing certificate" >> "$GITHUB_STEP_SUMMARY"
-          echo "`$fingerprint`" >> "$GITHUB_STEP_SUMMARY"
+          echo "$fingerprint" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build debug APK
         working-directory: android
