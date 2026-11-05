@@ -126,6 +126,46 @@ test("requests a participant photo through a conversation-scoped authenticated e
   assert.equal(result.expiresIn, 300);
 });
 
+test("uploads image and audio attachments as authenticated multipart requests", async () => {
+  let request;
+  const client = makeClient(async (url, options) => {
+    request = { url, options };
+    return jsonResponse({ message: { type: "image" } }, 201);
+  });
+  const file = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], { type: "image/jpeg" });
+  const result = await client.sendAttachment({
+    conversationId: "conversation-1",
+    file,
+    type: "image",
+    clientMessageId: "image-message-1234",
+    caption: "Foto",
+    fileName: "photo.jpg"
+  });
+  assert.equal(request.url, "https://chat.example.test/v1/chat/attachments");
+  assert.equal(request.options.method, "POST");
+  assert.equal(request.options.headers.Authorization, "Bearer firebase-test-token");
+  assert.equal(request.options.headers["Content-Type"], undefined, "the browser must set the multipart boundary");
+  assert.ok(request.options.body instanceof FormData);
+  assert.equal(request.options.body.get("conversationId"), "conversation-1");
+  assert.equal(request.options.body.get("type"), "image");
+  assert.equal(request.options.body.get("clientMessageId"), "image-message-1234");
+  assert.equal(result.message.type, "image");
+});
+
+test("gets short-lived attachment URLs through an authenticated endpoint", async () => {
+  let urlSeen;
+  const client = makeClient(async url => {
+    urlSeen = url;
+    return jsonResponse({ readUrl: "https://storage.example.test/chat/photo.jpg", expiresIn: 300 });
+  });
+  const result = await client.getAttachmentReadUrl("conversation-1", "chat/conversation-1/user-1/m_abc.jpg");
+  const url = new URL(urlSeen);
+  assert.equal(url.pathname, "/v1/chat/attachments/read-url");
+  assert.equal(url.searchParams.get("conversationId"), "conversation-1");
+  assert.equal(url.searchParams.get("key"), "chat/conversation-1/user-1/m_abc.jpg");
+  assert.equal(result.expiresIn, 300);
+});
+
 test("opens a driver conversation with target UID and optional trip context", async () => {
   let request;
   const client = makeClient(async (_url, options) => {
