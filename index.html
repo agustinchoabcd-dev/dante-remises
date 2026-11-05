@@ -788,11 +788,12 @@ function clearChatRecording(){
  releaseChatRecordingStream();chatMediaRecorder=null;chatAudioChunks=[];chatRecordedAudio=null;chatDiscardRecording=false;chatRecordingFinalized=false;
  if(chatRecordingObjectUrl){URL.revokeObjectURL(chatRecordingObjectUrl);chatRecordingObjectUrl=null}
  byId('chatRecordingPreview').pause();byId('chatRecordingPreview').removeAttribute('src');byId('chatRecordingPreview').classList.add('hidden');
- byId('chatRecordButton').classList.remove('hidden');byId('chatRecordButton').disabled=false;byId('chatRecordButton').textContent='🎙️ Grabar audio';
+ byId('chatRecordButton').disabled=false;byId('chatRecordButton').classList.remove('recording');
  byId('chatSendRecordingButton').classList.add('hidden');byId('chatCancelRecordingButton').classList.add('hidden');
  byId('chatRecordingStatus').textContent='';
 }
 function cancelChatRecording(){
+ chatRecordingHoldActive=false;chatRecordingAutoSend=false;
  if(chatMediaRecorder&&!chatRecordingFinalized){
   chatDiscardRecording=true;
   if(chatMediaRecorder.state==='recording'){try{chatMediaRecorder.stop()}catch{clearChatRecording()}}
@@ -802,40 +803,52 @@ function cancelChatRecording(){
  clearChatRecording();
 }
 async function startChatAudioRecording(){
- if(!activeChatConversation?.conversationId){notify('Primero abrí una conversación.');return}
- if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){notify('Este dispositivo no admite grabación de audio desde el chat.');return}
+ if(!activeChatConversation?.conversationId){chatRecordingHoldActive=false;notify('Primero abrí una conversación.');return}
+ if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){chatRecordingHoldActive=false;notify('Este dispositivo no admite grabación de audio desde el chat.');return}
+ chatRecordingAutoSend=true;
  try{
-  chatMediaStream=await navigator.mediaDevices.getUserMedia({audio:true});
+  const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  if(!chatRecordingHoldActive){stream.getTracks().forEach(track=>track.stop());return}
+  chatMediaStream=stream;
   const formats=['audio/webm;codecs=opus','audio/ogg;codecs=opus','audio/mp4'];
   const selected=formats.find(type=>MediaRecorder.isTypeSupported?.(type))||'';
-  chatMediaRecorder=selected?new MediaRecorder(chatMediaStream,{mimeType:selected}):new MediaRecorder(chatMediaStream);
-  chatAudioChunks=[];chatDiscardRecording=false;chatRecordingFinalized=false;chatRecordingStartedAt=Date.now();
-  chatMediaRecorder.addEventListener('dataavailable',event=>{if(event.data?.size)chatAudioChunks.push(event.data)});
-  chatMediaRecorder.addEventListener('stop',()=>{
+  const recorder=selected?new MediaRecorder(stream,{mimeType:selected}):new MediaRecorder(stream);
+  chatMediaRecorder=recorder;chatAudioChunks=[];chatDiscardRecording=false;chatRecordingFinalized=false;chatRecordingStartedAt=Date.now();
+  recorder.addEventListener('dataavailable',event=>{if(event.data?.size)chatAudioChunks.push(event.data)});
+  recorder.addEventListener('stop',()=>{
    releaseChatRecordingStream();
    if(chatDiscardRecording){clearChatRecording();return}
    chatRecordingFinalized=true;
-   const mimeType=chatMediaRecorder?.mimeType||chatAudioChunks[0]?.type||selected||'audio/webm';
+   const mimeType=recorder.mimeType||chatAudioChunks[0]?.type||selected||'audio/webm';
    chatRecordedAudio=new Blob(chatAudioChunks,{type:mimeType});
+   if(!chatRecordedAudio.size){notify('La grabación quedó vacía. Mantené presionado el micrófono un poco más.');clearChatRecording();return}
    if(chatRecordedAudio.size>5_000_000){notify('El audio supera los 5 MB permitidos. Grabá un mensaje más corto.');clearChatRecording();return}
-   chatRecordingObjectUrl=URL.createObjectURL(chatRecordedAudio);
-   byId('chatRecordingPreview').src=chatRecordingObjectUrl;byId('chatRecordingPreview').classList.remove('hidden');
-   byId('chatRecordingStatus').textContent='Audio listo · '+formatChatRecordingTime(Date.now()-chatRecordingStartedAt);
-   byId('chatRecordButton').classList.add('hidden');byId('chatSendRecordingButton').classList.remove('hidden');byId('chatCancelRecordingButton').classList.remove('hidden');
+   const extension={'audio/webm':'webm','audio/ogg':'ogg','audio/mp4':'m4a','audio/mpeg':'mp3','audio/wav':'wav'}[mimeType.split(';')[0]]||'webm';
+   const file=new File([chatRecordedAudio],'voice-message.'+extension,{type:mimeType.split(';')[0]||'audio/webm'});
+   chatRecordingObjectUrl=URL.createObjectURL(chatRecordedAudio);byId('chatRecordingPreview').src=chatRecordingObjectUrl;
+   byId('chatRecordingStatus').textContent='Enviando audio · '+formatChatRecordingTime(Date.now()-chatRecordingStartedAt);
+   void sendChatAttachment(file,'audio',file.name).then(sent=>{
+    if(sent){clearChatRecording();return}
+    byId('chatRecordingPreview').classList.remove('hidden');byId('chatRecordingStatus').textContent='No se pudo enviar. Podés reintentar o cancelar.';
+    byId('chatSendRecordingButton').classList.remove('hidden');byId('chatCancelRecordingButton').classList.remove('hidden');
+   });
   });
-  chatMediaRecorder.start(250);
-  byId('chatRecordButton').textContent='⏹ Detener';
+  recorder.start(250);byId('chatRecordButton').classList.add('recording');
   byId('chatRecordingStatus').textContent='Grabando · 00:00';
   chatRecordingTimer=setInterval(()=>{
    const elapsed=Date.now()-chatRecordingStartedAt;
    byId('chatRecordingStatus').textContent='Grabando · '+formatChatRecordingTime(elapsed);
-   if(elapsed>=120_000&&chatMediaRecorder?.state==='recording')chatMediaRecorder.stop();
+   if(elapsed>=120_000&&recorder.state==='recording'){chatRecordingHoldActive=false;recorder.stop()}
   },1000);
  }catch(error){
-  releaseChatRecordingStream();chatMediaRecorder=null;
+  releaseChatRecordingStream();chatMediaRecorder=null;chatRecordingHoldActive=false;chatRecordingAutoSend=false;byId('chatRecordButton').classList.remove('recording');
   notify(error?.name==='NotAllowedError'?'No se concedió permiso para usar el micrófono.':'No se pudo iniciar la grabación de audio.');
   console.warn('Chat microphone request failed:',error);
  }
+}
+function stopChatAudioRecording(){
+ chatRecordingHoldActive=false;
+ if(chatMediaRecorder?.state==='recording'){try{chatMediaRecorder.stop()}catch(error){console.warn('No se pudo detener la grabación:',error);cancelChatRecording()}}
 }
 async function sendChatAttachment(file,type,fileName){
  const conversationId=activeChatConversation?.conversationId,api=getChatApiClient();
@@ -870,10 +883,16 @@ byId('chatImageInput').addEventListener('change',async event=>{
  try{const compressed=await compressChatImage(file);await sendChatAttachment(compressed,'image',compressed.name)}
  catch(error){notify(error.message||'No se pudo preparar la fotografía.')}
 });
-byId('chatRecordButton').addEventListener('click',()=>{
- if(chatMediaRecorder?.state==='recording'){chatMediaRecorder.stop();return}
+byId('chatRecordButton').addEventListener('pointerdown',event=>{
+ if(event.button!==undefined&&event.button!==0)return;
+ event.preventDefault();chatRecordingHoldActive=true;
+ try{byId('chatRecordButton').setPointerCapture(event.pointerId)}catch{}
  void startChatAudioRecording();
 });
+byId('chatRecordButton').addEventListener('pointerup',event=>{event.preventDefault();stopChatAudioRecording()});
+byId('chatRecordButton').addEventListener('pointercancel',cancelChatRecording);
+byId('chatRecordButton').addEventListener('lostpointercapture',()=>{if(chatRecordingHoldActive)stopChatAudioRecording()});
+byId('chatRecordButton').addEventListener('contextmenu',event=>event.preventDefault());
 byId('chatCancelRecordingButton').addEventListener('click',cancelChatRecording);
 byId('chatSendRecordingButton').addEventListener('click',async()=>{
  if(!chatRecordedAudio)return;
