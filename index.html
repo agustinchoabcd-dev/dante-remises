@@ -632,6 +632,10 @@ function updatePassengerOperatorSelector(conversation){
   byId('chatPeerSelectLabel').textContent=conversationTitle(conversation)+' · chofer';
  }else if(conversation?.kind==='operator-support'){
   byId('chatPeerSelectLabel').textContent='Operadores de Dante Remises';
+ }else if(conversation?.kind==='passenger-operator'&&otherUid){
+  const currentOperator=chatOperators.find(item=>item.uid===otherUid);
+  const fallback=USER_ROLES[otherUid]?.name||'Operador';
+  byId('chatPeerSelectLabel').textContent=(currentOperator?.firstName||fallback.split(/\s+/)[0])+' · operador';
  }else if(operator){
   chatSelectedOperatorUid=operator.uid;
   byId('chatPeerSelectLabel').textContent=operator.firstName+' · operador';
