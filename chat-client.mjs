@@ -46,8 +46,20 @@ export class ChatApiClient {
     let response;
     try {
       response = await this.fetchImpl(`${this.baseUrl}${path}`, options);
-    } catch {
-      throw new ChatApiError("No se pudo conectar con el servicio de chat. Revisá tu conexión.");
+    } catch (error) {
+      const causeName = error instanceof Error ? error.name : "UnknownError";
+      const causeMessage = error instanceof Error ? error.message : String(error);
+      const origin = globalThis.location?.origin || "origen desconocido";
+      console.error("Dante chat network request failed", {
+        causeName,
+        causeMessage,
+        origin,
+        endpoint: `${this.baseUrl}${path}`
+      });
+      throw new ChatApiError(
+        `No se pudo conectar con el servicio de chat. Revisá tu conexión. [${causeName}: ${causeMessage}; origen: ${origin}]`,
+        { status: 0, payload: { causeName, causeMessage, origin } }
+      );
     }
 
     let payload = null;
