@@ -647,7 +647,7 @@ function conversationTitle(conversation){
 }
 async function resolveConversationTitle(conversation){
  const cached=chatResolvedTitles.get(conversation.conversationId);if(cached)return cached;
- if(currentRole?.role==='admin'){
+ if(['admin','driver'].includes(currentRole?.role)&&conversation.kind==='passenger-driver'){
   const otherUid=Object.keys(conversation.participantUids||{}).find(uid=>uid!==currentUser?.uid);
   if(otherUid){
    let name='';
