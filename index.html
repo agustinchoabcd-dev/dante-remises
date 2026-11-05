@@ -485,7 +485,7 @@ byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='op
 byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
 byId('setFree').addEventListener('click',()=>setStatus(activeDriver,'libre'));
-let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false;
+let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,chatOperatorPollTimer=null;
 function getChatApiClient(){
  if(!CHAT_API_BASE_URL||!currentUser)return null;
  if(!chatApiClient)chatApiClient=new ChatApiClient({baseUrl:CHAT_API_BASE_URL,getIdToken:()=>currentUser.getIdToken()});
@@ -513,7 +513,7 @@ async function stopOperatorPresence(){
 }
 function setChatStatus(message){byId('chatStatus').textContent=message}
 function stopChatEvents(){if(chatEventReconnectTimer!==null){clearTimeout(chatEventReconnectTimer);chatEventReconnectTimer=null}if(chatEventController){chatEventController.abort();chatEventController=null}}
-function stopChatPolling(){if(chatPollTimer!==null){clearInterval(chatPollTimer);chatPollTimer=null}stopChatEvents()}
+function stopChatPolling(){if(chatPollTimer!==null){clearInterval(chatPollTimer);chatPollTimer=null}if(chatOperatorPollTimer!==null){clearInterval(chatOperatorPollTimer);chatOperatorPollTimer=null}stopChatEvents()}
 function startChatEvents(conversationId){
  stopChatEvents();const api=getChatApiClient();if(!api||!conversationId||chatEventUnavailable)return;
  const controller=new AbortController();chatEventController=controller;
@@ -548,7 +548,13 @@ function startChatEvents(conversationId){
   }
  })();
 }
-function startChatPolling(){if(chatPollTimer!==null)clearInterval(chatPollTimer);if(!getChatApiClient())return;chatPollTimer=setInterval(()=>{if(!byId('chat').classList.contains('hidden'))refreshChatConversations(true)},7000)}
+function startChatPolling(){
+ if(chatPollTimer!==null)clearInterval(chatPollTimer);
+ if(chatOperatorPollTimer!==null)clearInterval(chatOperatorPollTimer);
+ if(!getChatApiClient())return;
+ chatPollTimer=setInterval(()=>{if(!byId('chat').classList.contains('hidden'))refreshChatConversations(true)},7000);
+ if(currentRole?.role==='passenger')chatOperatorPollTimer=setInterval(()=>{if(!byId('chat').classList.contains('hidden'))void refreshChatOperators()},15_000);
+}
 function chatRecipientLabel(value){
  if(value==='operators')return 'Operadores de Dante Remises';
  if(value==='available')return 'Cualquier remisero libre';
@@ -567,19 +573,8 @@ async function configureChatRecipients(){
  byId('chatTitle').classList.remove('hidden');
  const add=(value,label)=>{const option=document.createElement('option');option.value=value;option.textContent=label;select.appendChild(option)};
  if(role==='passenger'){
-  try{
-   const result=await getChatApiClient()?.listOperators();
-   chatOperators=Array.isArray(result?.operators)?result.operators:[];
-   chatSelectedOperatorUid=chatOperators[0]?.uid||'';
-   renderChatOperatorMenu();
-   updatePassengerOperatorSelector(activeChatConversation);
-   if(!chatOperators.length)setChatStatus('No hay operadores conectados en este momento.');
-  }catch(error){
-   chatOperators=[];chatSelectedOperatorUid='';
-   updatePassengerOperatorSelector(activeChatConversation);
-   setChatStatus('El selector de operadores estará disponible cuando el servicio de presencia esté actualizado.');
-   console.warn('No se pudieron consultar operadores conectados:',error);
-  }
+  await refreshChatOperators();
+  if(!chatOperators.length)setChatStatus('No hay operadores conectados en este momento, o el servicio de presencia aún no está habilitado.');
  }else if(role==='operator'){
   initial.forEach(c=>add('driver:'+c.id,`${c.driver} · Coche ${c.id}`));
  }else if(role==='admin'){
@@ -607,6 +602,16 @@ async function configureChatRecipients(){
  if(select.options.length)updateChatRecipientTitle();
 }
 function updateChatRecipientTitle(){byId('chatTitle').textContent='Chat con '+chatRecipientLabel(byId('contactChoice').value)}
+async function refreshChatOperators(){
+ if(currentRole?.role!=='passenger')return;
+ const api=getChatApiClient();if(!api)return;
+ try{
+  const result=await api.listOperators();
+  chatOperators=Array.isArray(result?.operators)?result.operators:[];
+  if(!chatOperators.some(item=>item.uid===chatSelectedOperatorUid))chatSelectedOperatorUid=chatOperators[0]?.uid||'';
+  renderChatOperatorMenu();updatePassengerOperatorSelector(activeChatConversation);
+ }catch(error){console.warn('No se pudo actualizar la lista de operadores conectados:',error)}
+}
 function renderChatOperatorMenu(){
  const menu=byId('chatPeerMenu');menu.replaceChildren();
  chatOperators.forEach(operator=>{
