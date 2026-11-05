@@ -39,8 +39,12 @@ export class ChatApiClient {
     const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
     const options = { method, headers, cache: "no-store" };
     if (body !== undefined) {
-      headers["Content-Type"] = "application/json";
-      options.body = JSON.stringify(body);
+      if (typeof FormData !== "undefined" && body instanceof FormData) {
+        options.body = body;
+      } else {
+        headers["Content-Type"] = "application/json";
+        options.body = JSON.stringify(body);
+      }
     }
 
     let response;
@@ -106,6 +110,39 @@ export class ChatApiClient {
     }
     const params = new URLSearchParams({ conversationId, uid });
     return this.request(`/v1/chat/participant-photo?${params.toString()}`);
+  }
+
+  getAttachmentReadUrl(conversationId, key) {
+    if (typeof conversationId !== "string" || !conversationId || typeof key !== "string" || !key) {
+      throw new TypeError("conversationId and attachment key are required");
+    }
+    const params = new URLSearchParams({ conversationId, key });
+    return this.request(`/v1/chat/attachments/read-url?${params.toString()}`);
+  }
+
+  async sendAttachment({ conversationId, file, type, clientMessageId, caption = "", fileName = "" } = {}) {
+    if (typeof conversationId !== "string" || !conversationId) throw new TypeError("conversationId is required");
+    if (!["image", "audio"].includes(type)) throw new TypeError("Attachment type must be image or audio");
+    if (!file || typeof file.arrayBuffer !== "function" || !Number.isFinite(file.size)) throw new TypeError("A file or Blob is required");
+    const maximumBytes = type === "image" ? 8_000_000 : 5_000_000;
+    if (file.size < 1 || file.size > maximumBytes) throw new TypeError("Attachment exceeds the allowed size");
+    if (typeof clientMessageId !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(clientMessageId)) {
+      throw new TypeError("A stable clientMessageId is required");
+    }
+    if (typeof caption !== "string" || caption.length > MAX_MESSAGE_LENGTH) throw new TypeError("Caption is too long");
+    const form = new FormData();
+    form.set("conversationId", conversationId);
+    form.set("type", type);
+    form.set("clientMessageId", clientMessageId);
+    form.set("caption", caption);
+    form.set("file", file, fileName || (type === "image" ? "image.jpg" : "voice-message"));
+    const send = () => this.request("/v1/chat/attachments", { method: "POST", body: form });
+    try {
+      return await send();
+    } catch (error) {
+      if (error instanceof ChatApiError && (error.status === 0 || error.status === 502)) return send();
+      throw error;
+    }
   }
 
   listConversations(cursor = null) {
