@@ -521,10 +521,17 @@ async function configureChatRecipients(){
   }else{
    try{
     const snapshot=await get(ref(db,'profiles')),profiles=snapshot.val()||{};
-    Object.entries(profiles).filter(([uid,p])=>uid!==currentUser.uid&&p&&p.active!==false&&p.status!=='disabled').forEach(([uid,p])=>{
-     const name=[p.name,p.lastName].filter(Boolean).join(' ').trim()||USER_ROLES[uid]?.name||'Usuario';
-     add('user:'+uid,`${name} · ${p.role||USER_ROLES[uid]?.role||'cuenta'}`);
+    const recipients=new Map(Object.entries(USER_ROLES).filter(([uid])=>uid!==currentUser.uid).map(([uid,p])=>[uid,{...p}]));
+    Object.entries(profiles).forEach(([uid,p])=>{
+     if(uid===currentUser.uid)return;
+     if(!p||p.active===false||p.status==='disabled'){recipients.delete(uid);return}
+     const legacy=USER_ROLES[uid]||{};
+     recipients.set(uid,{
+      name:[p.name,p.lastName].filter(Boolean).join(' ').trim()||legacy.name||'Usuario',
+      role:p.role||legacy.role||'cuenta'
+     });
     });
+    recipients.forEach((p,uid)=>add('user:'+uid,`${p.name} · ${p.role}`));
    }catch(error){console.error('No se pudieron cargar destinatarios del chat:',error);setChatStatus('No se pudieron cargar los destinatarios.');}
   }
  }else if(role==='driver'){
