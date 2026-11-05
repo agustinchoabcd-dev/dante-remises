@@ -89,6 +89,26 @@ test("opens a driver conversation with target UID and optional trip context", as
   });
 });
 
+test("opens an authenticated Server-Sent Events stream for one conversation", async () => {
+  let request;
+  const streamBody = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode("event: put\\ndata: {\\"path\\":\\"/\\",\\"data\\":123}\\n\\n"));
+      controller.close();
+    }
+  });
+  const client = makeClient(async (url, options) => {
+    request = { url, options };
+    return new Response(streamBody, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+  });
+  const response = await client.openMessageStream("conversation/one");
+  assert.equal(new URL(request.url).pathname, "/v1/chat/events");
+  assert.equal(new URL(request.url).searchParams.get("conversationId"), "conversation/one");
+  assert.equal(request.options.headers.Authorization, "Bearer firebase-test-token");
+  assert.equal(request.options.headers.Accept, "text/event-stream");
+  assert.match(response.headers.get("Content-Type"), /text\\/event-stream/);
+});
+
 test("loads messages using encoded conversation ID and cursor", async () => {
   let urlSeen;
   const client = makeClient(async url => {
