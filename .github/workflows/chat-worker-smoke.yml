@@ -35,7 +35,7 @@ jobs:
             --header 'Access-Control-Request-Method: POST' \
             --header 'Access-Control-Request-Headers: authorization,content-type' \
             https://dante-remises-b2-test.agustinchoabcd.workers.dev/v1/chat/conversations)"
-          printf '%s\n' "$headers"
+          printf '%s\\n' "$headers"
           printf '%s' "$headers" | grep -Fqi 'access-control-allow-origin: https://agustinchoabcd-dev.github.io'
           printf '%s' "$headers" | grep -Fqi 'access-control-allow-methods: GET,POST,OPTIONS'
           printf '%s' "$headers" | grep -Fqi 'access-control-allow-headers: Authorization,Content-Type'
@@ -47,7 +47,18 @@ jobs:
             --header 'Access-Control-Request-Method: POST' \
             --header 'Access-Control-Request-Headers: authorization,content-type' \
             https://dante-remises-b2-test.agustinchoabcd.workers.dev/v1/chat/conversations)"
-          printf '%s\n' "$headers"
+          printf '%s\\n' "$headers"
           printf '%s' "$headers" | grep -Fqi 'access-control-allow-origin: https://localhost'
 
-# Live checks cover Worker health, unauthenticated rejection, and both app origins.
+      - name: Check actual Capacitor-origin response CORS
+        run: |
+          status="$(curl --silent --show-error --output /tmp/chat-actual.json --dump-header /tmp/chat-actual.headers --write-out '%{http_code}' \
+            --header 'Origin: https://localhost' \
+            --header 'Authorization: Bearer deliberately-invalid-smoke-token' \
+            https://dante-remises-b2-test.agustinchoabcd.workers.dev/v1/chat/conversations)"
+          cat /tmp/chat-actual.json
+          cat /tmp/chat-actual.headers
+          test "$status" = "401"
+          grep -Fqi 'access-control-allow-origin: https://localhost' /tmp/chat-actual.headers
+
+# Live checks cover Worker health, unauthenticated rejection, preflight, and actual response CORS.
