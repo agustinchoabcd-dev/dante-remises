@@ -744,7 +744,9 @@ function clearChatRecording(){
 function cancelChatRecording(){
  if(chatMediaRecorder&&chatMediaRecorder.state==='recording'){
   chatDiscardRecording=true;
-  try{chatMediaRecorder.stop()}catch{}
+  try{chatMediaRecorder.stop()}catch{clearChatRecording()}
+  releaseChatRecordingStream();
+  return;
  }
  clearChatRecording();
 }
@@ -794,7 +796,8 @@ async function sendChatAttachment(file,type,fileName){
   await refreshLatestChatMessages(conversationId);
   await refreshChatConversations(true);
   setChatStatus('Adjunto enviado.');
- }catch(error){setChatStatus(error.message||'No se pudo enviar el adjunto.');notify(error.message||'No se pudo enviar el adjunto.')}
+  return true;
+ }catch(error){setChatStatus(error.message||'No se pudo enviar el adjunto.');notify(error.message||'No se pudo enviar el adjunto.');return false}
  finally{controls.forEach(id=>byId(id).disabled=false)}
 }
 async function compressChatImage(file){
@@ -826,9 +829,9 @@ byId('chatSendRecordingButton').addEventListener('click',async()=>{
  const extension={'audio/webm':'webm','audio/ogg':'ogg','audio/mp4':'m4a','audio/mpeg':'mp3','audio/wav':'wav'}[mimeType]||'webm';
  const file=new File([chatRecordedAudio],`voice-message.${extension}`,{type:mimeType});
  byId('chatSendRecordingButton').disabled=true;
- await sendChatAttachment(file,'audio',file.name);
+ const sent=await sendChatAttachment(file,'audio',file.name);
  byId('chatSendRecordingButton').disabled=false;
- clearChatRecording();
+ if(sent)clearChatRecording();
 });
 function renderChatMessages(messages,scrollMode='bottom'){
  const box=byId('messages'),oldHeight=box.scrollHeight,oldTop=box.scrollTop;
@@ -1085,7 +1088,7 @@ async function resolveAuthenticatedRole(user){
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&currentRole?.role==='operator')void sendOperatorPresence()});
 onAuthStateChanged(auth,async user=>{
  await stopOperatorPresence();
- stopChatPolling();chatApiClient=null;activeChatConversation=null;chatConversations=[];chatResolvedTitles.clear();chatEventUnavailable=false;chatMessagesCursor=null;chatMessages=[];chatMessagesHasMore=false;chatMessagesLoadingOlder=false;chatMessagesConversationId=null;chatRefreshing=false;chatOperators=[];chatSelectedOperatorUid='';
+ stopChatPolling();chatApiClient=null;activeChatConversation=null;chatConversations=[];chatResolvedTitles.clear();chatAttachmentUrls.clear();chatEventUnavailable=false;chatMessagesCursor=null;chatMessages=[];chatMessagesHasMore=false;chatMessagesLoadingOlder=false;chatMessagesConversationId=null;chatRefreshing=false;chatOperators=[];chatSelectedOperatorUid='';
  byId('messages').replaceChildren();byId('chatConversationList').replaceChildren();updateChatHistoryControls();
  await clearDriverPresence();if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
  currentUser=user;currentRole=null;
