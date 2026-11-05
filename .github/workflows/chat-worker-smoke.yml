@@ -1,0 +1,51 @@
+name: Chat Worker live smoke test
+
+on:
+  push:
+    branches: [dante-test]
+    paths:
+      - 'index.html'
+      - '.github/workflows/chat-worker-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check deployed Worker health
+        run: |
+          response="$(curl --fail --silent --show-error https://dante-remises-b2-test.agustinchoabcd.workers.dev/health)"
+          echo "$response"
+          node -e 'const h=JSON.parse(process.argv[1]); for (const key of ["ok","testConfigured","passengerPhotoConfigured","chatConfigured","chatStaffDirectoryConfigured"]) if (h[key] !== true) throw new Error("Worker health check failed: " + key)' "$response"
+
+      - name: Check chat rejects requests without Firebase authentication
+        run: |
+          status="$(curl --silent --output /tmp/chat-unauth.json --write-out '%{http_code}' https://dante-remises-b2-test.agustinchoabcd.workers.dev/v1/chat/conversations)"
+          cat /tmp/chat-unauth.json
+          test "$status" = "401"
+
+      - name: Check GitHub Pages CORS preflight
+        run: |
+          headers="$(curl --silent --show-error --output /dev/null --dump-header - --request OPTIONS \
+            --header 'Origin: https://agustinchoabcd-dev.github.io' \
+            --header 'Access-Control-Request-Method: POST' \
+            --header 'Access-Control-Request-Headers: authorization,content-type' \
+            https://dante-remises-b2-test.agustinchoabcd.workers.dev/v1/chat/conversations)"
+          printf '%s\n' "$headers"
+          printf '%s' "$headers" | grep -Fqi 'access-control-allow-origin: https://agustinchoabcd.github.io'
+          printf '%s' "$headers" | grep -Fqi 'access-control-allow-methods: GET,POST,OPTIONS'
+          printf '%s' "$headers" | grep -Fqi 'access-control-allow-headers: Authorization,Content-Type'
+
+      - name: Check Capacitor localhost CORS preflight
+        run: |
+          headers="$(curl --silent --show-error --output /dev/null --dump-header - --request OPTIONS \
+            --header 'Origin: https://localhost' \
+            --header 'Access-Control-Request-Method: POST' \
+            --header 'Access-Control-Request-Headers: authorization,content-type' \
+            https://dante-remises-b2-test.agustinchoabcd.workers.dev/v1/chat/conversations)"
+          printf '%s\n' "$headers"
+          printf '%s' "$headers" | grep -Fqi 'access-control-allow-origin: https://localhost'
