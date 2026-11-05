@@ -486,7 +486,7 @@ byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='op
 byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
 byId('setFree').addEventListener('click',()=>setStatus(activeDriver,'libre'));
-let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,chatOperatorPollTimer=null,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false;
+let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,chatOperatorPollTimer=null,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false,chatRecordingFinalized=false;
 function getChatApiClient(){
  if(!CHAT_API_BASE_URL||!currentUser)return null;
  if(!chatApiClient)chatApiClient=new ChatApiClient({baseUrl:CHAT_API_BASE_URL,getIdToken:()=>currentUser.getIdToken()});
@@ -736,7 +736,7 @@ function releaseChatRecordingStream(){
  if(chatRecordingTimer!==null){clearInterval(chatRecordingTimer);chatRecordingTimer=null}
 }
 function clearChatRecording(){
- releaseChatRecordingStream();chatMediaRecorder=null;chatAudioChunks=[];chatRecordedAudio=null;chatDiscardRecording=false;
+ releaseChatRecordingStream();chatMediaRecorder=null;chatAudioChunks=[];chatRecordedAudio=null;chatDiscardRecording=false;chatRecordingFinalized=false;
  if(chatRecordingObjectUrl){URL.revokeObjectURL(chatRecordingObjectUrl);chatRecordingObjectUrl=null}
  byId('chatRecordingPreview').pause();byId('chatRecordingPreview').removeAttribute('src');byId('chatRecordingPreview').classList.add('hidden');
  byId('chatRecordButton').classList.remove('hidden');byId('chatRecordButton').disabled=false;byId('chatRecordButton').textContent='🎙️ Grabar audio';
@@ -744,9 +744,9 @@ function clearChatRecording(){
  byId('chatRecordingStatus').textContent='';
 }
 function cancelChatRecording(){
- if(chatMediaRecorder&&chatMediaRecorder.state==='recording'){
+ if(chatMediaRecorder&&!chatRecordingFinalized){
   chatDiscardRecording=true;
-  try{chatMediaRecorder.stop()}catch{clearChatRecording()}
+  if(chatMediaRecorder.state==='recording'){try{chatMediaRecorder.stop()}catch{clearChatRecording()}}
   releaseChatRecordingStream();
   return;
  }
@@ -760,11 +760,12 @@ async function startChatAudioRecording(){
   const formats=['audio/webm;codecs=opus','audio/ogg;codecs=opus','audio/mp4'];
   const selected=formats.find(type=>MediaRecorder.isTypeSupported?.(type))||'';
   chatMediaRecorder=selected?new MediaRecorder(chatMediaStream,{mimeType:selected}):new MediaRecorder(chatMediaStream);
-  chatAudioChunks=[];chatDiscardRecording=false;chatRecordingStartedAt=Date.now();
+  chatAudioChunks=[];chatDiscardRecording=false;chatRecordingFinalized=false;chatRecordingStartedAt=Date.now();
   chatMediaRecorder.addEventListener('dataavailable',event=>{if(event.data?.size)chatAudioChunks.push(event.data)});
   chatMediaRecorder.addEventListener('stop',()=>{
    releaseChatRecordingStream();
    if(chatDiscardRecording){clearChatRecording();return}
+   chatRecordingFinalized=true;
    const mimeType=chatMediaRecorder?.mimeType||chatAudioChunks[0]?.type||selected||'audio/webm';
    chatRecordedAudio=new Blob(chatAudioChunks,{type:mimeType});
    if(chatRecordedAudio.size>5_000_000){notify('El audio supera los 5 MB permitidos. Grabá un mensaje más corto.');clearChatRecording();return}
