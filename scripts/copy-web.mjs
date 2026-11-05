@@ -1,10 +1,20 @@
 import { copyFile, mkdir } from "node:fs/promises";
 
-const source = new URL("../index.html", import.meta.url);
+const sourceDirectory = new URL("../", import.meta.url);
 const destinationDirectory = new URL("../www/", import.meta.url);
-const destination = new URL("../www/index.html", import.meta.url);
+const webAssets = [
+  "index.html",
+  "role-resolver.mjs",
+  "chat-client.mjs"
+];
 
 await mkdir(destinationDirectory, { recursive: true });
-await copyFile(source, destination);
 
-console.log("Web app copied from index.html to www/index.html");
+for (const asset of webAssets) {
+  await copyFile(
+    new URL(asset, sourceDirectory),
+    new URL(asset, destinationDirectory)
+  );
+}
+
+console.log(`Web application copied to www/: ${webAssets.join(", ")}`);
