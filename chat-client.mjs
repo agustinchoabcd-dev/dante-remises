@@ -88,6 +88,26 @@ export class ChatApiClient {
     return this.request("/v1/chat/conversations", { method: "POST", body });
   }
 
+  listOperators() {
+    return this.request("/v1/chat/operators");
+  }
+
+  setOperatorPresence() {
+    return this.request("/v1/chat/presence", { method: "POST" });
+  }
+
+  clearOperatorPresence() {
+    return this.request("/v1/chat/presence", { method: "DELETE" });
+  }
+
+  getParticipantPhoto(conversationId, uid) {
+    if (typeof conversationId !== "string" || !conversationId || typeof uid !== "string" || !uid) {
+      throw new TypeError("conversationId and participant uid are required");
+    }
+    const params = new URLSearchParams({ conversationId, uid });
+    return this.request(`/v1/chat/participant-photo?${params.toString()}`);
+  }
+
   listConversations(cursor = null) {
     const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
     return this.request(`/v1/chat/conversations${query}`);
