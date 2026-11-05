@@ -77,6 +77,46 @@ test("opens an operator support conversation with the expected contract", async 
   assert.deepEqual(JSON.parse(request.options.body), { target: "operators" });
 });
 
+test("lists only server-authorized connected operators", async () => {
+  let request;
+  const client = makeClient(async (url, options) => {
+    request = { url, options };
+    return jsonResponse({ operators: [{ uid: "operator-1", firstName: "Patricia", role: "operator" }] });
+  });
+  const result = await client.listOperators();
+  assert.equal(request.url, "https://chat.example.test/v1/chat/operators");
+  assert.equal(request.options.method, "GET");
+  assert.deepEqual(result.operators[0], { uid: "operator-1", firstName: "Patricia", role: "operator" });
+});
+
+test("operator presence uses authenticated POST and DELETE requests", async () => {
+  const requests = [];
+  const client = makeClient(async (url, options) => {
+    requests.push({ url, options });
+    return jsonResponse({ online: options.method === "POST" });
+  });
+  await client.setOperatorPresence();
+  await client.clearOperatorPresence();
+  assert.deepEqual(requests.map(item => item.options.method), ["POST", "DELETE"]);
+  assert.ok(requests.every(item => item.url === "https://chat.example.test/v1/chat/presence"));
+  assert.ok(requests.every(item => item.options.headers.Authorization === "Bearer firebase-test-token"));
+});
+
+test("requests a participant photo through a conversation-scoped authenticated endpoint", async () => {
+  let request;
+  const client = makeClient(async (url, options) => {
+    request = { url, options };
+    return jsonResponse({ readUrl: "https://storage.example.test/photo.jpg", expiresIn: 300 });
+  });
+  const result = await client.getParticipantPhoto("conversation/one", "passenger-uid");
+  const url = new URL(request.url);
+  assert.equal(url.pathname, "/v1/chat/participant-photo");
+  assert.equal(url.searchParams.get("conversationId"), "conversation/one");
+  assert.equal(url.searchParams.get("uid"), "passenger-uid");
+  assert.equal(request.options.headers.Authorization, "Bearer firebase-test-token");
+  assert.equal(result.expiresIn, 300);
+});
+
 test("opens a driver conversation with target UID and optional trip context", async () => {
   let request;
   const client = makeClient(async (_url, options) => {
