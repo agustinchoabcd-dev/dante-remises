@@ -507,9 +507,9 @@ function startChatEvents(conversationId){
     const chunk=await reader.read();if(chunk.done)break;
     buffer+=decoder.decode(chunk.value,{stream:true});
     let boundary;
-    while((boundary=buffer.search(/\\r?\\n\\r?\\n/))>=0){
-     const block=buffer.slice(0,boundary);buffer=buffer.slice(boundary+(buffer.slice(boundary).startsWith('\\r\\n\\r\\n')?4:2));
-     if(/^event:\\s*(put|patch)\\s*$/m.test(block))void refreshLatestChatMessages(conversationId).catch(error=>console.warn('No se pudo actualizar el chat desde el flujo en tiempo real:',error));
+    while((boundary=buffer.search(/\r?\n\r?\n/))>=0){
+     const block=buffer.slice(0,boundary);buffer=buffer.slice(boundary+(buffer.slice(boundary).startsWith('\r\n\r\n')?4:2));
+     if(/^event:\s*(put|patch)\s*$/m.test(block))void refreshLatestChatMessages(conversationId).catch(error=>console.warn('No se pudo actualizar el chat desde el flujo en tiempo real:',error));
     }
    }
    if(!controller.signal.aborted)throw new Error('El flujo de eventos se cerró.');
