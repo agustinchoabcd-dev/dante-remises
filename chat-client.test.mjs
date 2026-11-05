@@ -8,6 +8,15 @@ test("the application imports the message page merge helper used by chat detail"
   assert.ok(html.includes('import { ChatApiClient, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";'));
 });
 
+test("passenger chat exposes the connected-operator selector in the green chat header", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('id="chatPeerSelect"'));
+  assert.ok(html.includes('id="chatPeerMenu"'));
+  assert.ok(html.includes("api.listOperators()"));
+  assert.ok(html.includes("setInterval(sendOperatorPresence,10_000)"));
+  assert.ok(html.includes("getParticipantPhoto(conversation.conversationId,otherUid)"));
+});
+
 function makeClient(fetchImpl, token = "firebase-test-token") {
   return new ChatApiClient({
     baseUrl: "https://chat.example.test/",
