@@ -49,3 +49,5 @@ jobs:
             https://dante-remises-b2-test.agustinchoabcd.workers.dev/v1/chat/conversations)"
           printf '%s\n' "$headers"
           printf '%s' "$headers" | grep -Fqi 'access-control-allow-origin: https://localhost'
+
+# Live checks cover Worker health, unauthenticated rejection, and both app origins.
