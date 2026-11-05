@@ -622,14 +622,20 @@ function renderChatOperatorMenu(){
 }
 function updatePassengerOperatorSelector(conversation){
  const isPassenger=currentRole?.role==='passenger';
- const operatorConversation=!conversation||conversation.kind==='passenger-operator'||conversation.kind==='operator-support';
- const show=isPassenger&&operatorConversation&&chatOperators.length>0;
+ const show=isPassenger&&chatOperators.length>0;
  byId('chatPeerSelect').classList.toggle('hidden',!show);
  byId('chatTitle').classList.toggle('hidden',show);
  if(!show)return;
  const otherUid=Object.keys(conversation?.participantUids||{}).find(uid=>uid!==currentUser?.uid);
  const operator=chatOperators.find(item=>item.uid===otherUid)||chatOperators.find(item=>item.uid===chatSelectedOperatorUid)||chatOperators[0];
- if(operator){chatSelectedOperatorUid=operator.uid;byId('chatPeerSelectLabel').textContent=operator.firstName+' · operador'}
+ if(conversation?.kind==='passenger-driver'){
+  byId('chatPeerSelectLabel').textContent=conversationTitle(conversation)+' · chofer';
+ }else if(conversation?.kind==='operator-support'){
+  byId('chatPeerSelectLabel').textContent='Operadores de Dante Remises';
+ }else if(operator){
+  chatSelectedOperatorUid=operator.uid;
+  byId('chatPeerSelectLabel').textContent=operator.firstName+' · operador';
+ }
 }
 function conversationTitle(conversation){
  const cached=chatResolvedTitles.get(conversation.conversationId);if(cached)return cached;
