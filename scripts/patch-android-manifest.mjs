@@ -15,6 +15,8 @@ if (!manifestOpen) {
 const declarations = [
   '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
   '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
+  // Declared in the manifest; Android/WebView asks for microphone access only when MediaRecorder is started.
+  '    <uses-permission android:name="android.permission.RECORD_AUDIO" />',
   '    <uses-feature android:name="android.hardware.location.gps" android:required="false" />'
 ];
 
@@ -33,4 +35,4 @@ for (const declaration of declarations) {
 }
 
 await writeFile(manifestPath, manifest, "utf8");
-console.log("AndroidManifest.xml: permisos de ubicación aproximada y precisa declarados.");
+console.log("AndroidManifest.xml: permisos de ubicación y micrófono declarados; el micrófono se solicita al iniciar una grabación.");
