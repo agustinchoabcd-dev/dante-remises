@@ -149,7 +149,7 @@ button,select,input,textarea{font:inherit}button{cursor:pointer;border:0;border-
 <div class="chat-history-toolbar"><button class="secondary hidden" id="chatLoadOlderButton" type="button">Cargar mensajes anteriores</button></div><div class="messages" id="messages" aria-live="polite"><div class="msg">Todavía no hay una conversación abierta.</div></div>
 <form class="chatcompose" id="chatForm"><input id="chatInput" placeholder="Escribí un mensaje…" autocomplete="off" maxlength="2000" required><button class="primary" id="chatSendButton" type="submit">Enviar</button></form>
 </div>
-<p class="hint" id="chatFooterNote">Las conversaciones reales se habilitarán cuando el Worker de chat esté revisado y configurado.</p>
+<p class="hint" id="chatFooterNote">El chat de texto está conectado al servicio de Dante Remises. Los adjuntos, audio y notificaciones todavía no están implementados.</p>
 </div>
 </section>
 <p class="footer hidden" id="appFooter">Dante Remises · Acceso de pasajeros por DNI · Acceso de personal por correo o DNI vinculado · Roles y estados sincronizados con Firebase.</p>
@@ -183,7 +183,7 @@ const ADMIN_UID='2kDmq0zik2SQiqz7WxU8PC9bOlk1';
 const LOCATIONIQ_KEY='pk.5345850e051f788db6c1274d8cb1eb72';
 const PROFILE_PHOTO_WORKER='https://dante-remises-b2-test.agustinchoabcd.workers.dev';
 // Empty until a separately reviewed chat Worker is deployed and its URL is approved.
-const CHAT_API_BASE_URL='';
+const CHAT_API_BASE_URL='https://dante-remises-b2-test.agustinchoabcd.workers.dev';
 const HOME_CENTER=[-32.0717,-64.5363];
 const DRIVER_UID_BY_CAR={'144':ADMIN_UID,'109':'7mrtHvQWCDRElEQcGQP6uLSJGTl2','137':'epd3DZKQ7LRLTO2EmJrTUKu2sf32','104':'jDrJ32nAn6hMAqghkMvpMSeVeCy1'};
 const USER_ROLES={
