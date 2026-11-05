@@ -102,6 +102,41 @@ export class ChatApiClient {
     return this.request(`/v1/chat/messages?${params.toString()}`);
   }
 
+  async openMessageStream(conversationId, { signal } = {}) {
+    if (typeof conversationId !== "string" || !conversationId) {
+      throw new TypeError("conversationId is required");
+    }
+    const token = await this.getIdToken();
+    if (typeof token !== "string" || !token.trim()) {
+      throw new ChatApiError("La sesión expiró. Volvé a iniciar sesión.", { status: 401 });
+    }
+    const params = new URLSearchParams({ conversationId });
+    let response;
+    try {
+      response = await this.fetchImpl(`${this.baseUrl}/v1/chat/events?${params.toString()}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
+        cache: "no-store",
+        signal
+      });
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      throw new ChatApiError("No se pudo abrir la conexión en tiempo real.", { status: 0 });
+    }
+    if (!response.ok) {
+      let payload = null;
+      try { payload = await response.json(); } catch {}
+      throw new ChatApiError(
+        typeof payload?.error === "string" ? payload.error : `El servicio de chat respondió HTTP ${response.status}.`,
+        { status: response.status, payload }
+      );
+    }
+    if (!response.body || typeof response.body.getReader !== "function") {
+      throw new ChatApiError("El dispositivo no admite la conexión de chat en tiempo real.", { status: 0 });
+    }
+    return response;
+  }
+
   async sendMessage({ conversationId, text, clientMessageId } = {}) {
     const cleanText = typeof text === "string" ? text.trim() : "";
     if (!cleanText || cleanText.length > MAX_MESSAGE_LENGTH) {
