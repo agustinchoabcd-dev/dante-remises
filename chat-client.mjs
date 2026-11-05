@@ -11,7 +11,7 @@ export class ChatApiError extends Error {
 }
 
 export class ChatApiClient {
-  constructor({ baseUrl, getIdToken, fetchImpl = fetch }) {
+  constructor({ baseUrl, getIdToken, fetchImpl = globalThis.fetch?.bind(globalThis) }) {
     if (typeof baseUrl !== "string" || !baseUrl.trim()) {
       throw new TypeError("Chat API baseUrl is required");
     }
