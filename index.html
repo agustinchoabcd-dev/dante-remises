@@ -486,7 +486,7 @@ byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='op
 byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
 byId('setFree').addEventListener('click',()=>setStatus(activeDriver,'libre'));
-let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,chatOperatorPollTimer=null,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false,chatRecordingFinalized=false;
+let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,operatorPresenceUnavailable=false,chatOperatorPollTimer=null,chatOperatorServiceUnavailable=false,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false,chatRecordingFinalized=false;
 function getChatApiClient(){
  if(!CHAT_API_BASE_URL||!currentUser)return null;
  if(!chatApiClient)chatApiClient=new ChatApiClient({baseUrl:CHAT_API_BASE_URL,getIdToken:()=>currentUser.getIdToken()});
@@ -496,12 +496,18 @@ async function sendOperatorPresence(){
  if(currentRole?.role!=='operator'||operatorPresenceBusy)return;
  const api=getChatApiClient();if(!api)return;
  operatorPresenceBusy=true;
- try{await api.setOperatorPresence()}catch(error){console.warn('No se pudo renovar la presencia del operador:',error)}
+ try{await api.setOperatorPresence()}catch(error){
+  if(error?.status===404||error?.status===501){
+   operatorPresenceUnavailable=true;
+   if(operatorPresenceTimer!==null){clearInterval(operatorPresenceTimer);operatorPresenceTimer=null}
+  }else console.warn('No se pudo renovar la presencia del operador:',error)
+ }
  finally{operatorPresenceBusy=false}
 }
 function startOperatorPresence(){
  if(operatorPresenceTimer!==null)clearInterval(operatorPresenceTimer);
  operatorPresenceTimer=null;
+ operatorPresenceUnavailable=false;
  if(currentRole?.role!=='operator'||!getChatApiClient())return;
  void sendOperatorPresence();
  operatorPresenceTimer=setInterval(sendOperatorPresence,10_000);
@@ -554,7 +560,7 @@ function startChatPolling(){
  if(chatOperatorPollTimer!==null)clearInterval(chatOperatorPollTimer);
  if(!getChatApiClient())return;
  chatPollTimer=setInterval(()=>{if(!byId('chat').classList.contains('hidden'))refreshChatConversations(true)},7000);
- if(currentRole?.role==='passenger')chatOperatorPollTimer=setInterval(()=>{if(!byId('chat').classList.contains('hidden'))void refreshChatOperators()},15_000);
+ if(currentRole?.role==='passenger'&&!chatOperatorServiceUnavailable)chatOperatorPollTimer=setInterval(()=>{if(!byId('chat').classList.contains('hidden'))void refreshChatOperators()},15_000);
 }
 function chatRecipientLabel(value){
  if(value==='operators')return 'Operadores de Dante Remises';
@@ -604,14 +610,19 @@ async function configureChatRecipients(){
 }
 function updateChatRecipientTitle(){byId('chatTitle').textContent='Chat con '+chatRecipientLabel(byId('contactChoice').value)}
 async function refreshChatOperators(){
- if(currentRole?.role!=='passenger')return;
+ if(currentRole?.role!=='passenger'||chatOperatorServiceUnavailable)return;
  const api=getChatApiClient();if(!api)return;
  try{
   const result=await api.listOperators();
   chatOperators=Array.isArray(result?.operators)?result.operators:[];
   if(!chatOperators.some(item=>item.uid===chatSelectedOperatorUid))chatSelectedOperatorUid=chatOperators[0]?.uid||'';
   renderChatOperatorMenu();updatePassengerOperatorSelector(activeChatConversation);
- }catch(error){console.warn('No se pudo actualizar la lista de operadores conectados:',error)}
+ }catch(error){
+  if(error?.status===404||error?.status===501){
+   chatOperatorServiceUnavailable=true;chatOperators=[];renderChatOperatorMenu();updatePassengerOperatorSelector(activeChatConversation);
+   if(chatOperatorPollTimer!==null){clearInterval(chatOperatorPollTimer);chatOperatorPollTimer=null}
+  }else console.warn('No se pudo actualizar la lista de operadores conectados:',error)
+ }
 }
 function renderChatOperatorMenu(){
  const menu=byId('chatPeerMenu');menu.replaceChildren();
@@ -1101,7 +1112,7 @@ async function resolveAuthenticatedRole(user){
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&currentRole?.role==='operator')void sendOperatorPresence()});
 onAuthStateChanged(auth,async user=>{
  await stopOperatorPresence();
- stopChatPolling();chatApiClient=null;activeChatConversation=null;chatConversations=[];chatResolvedTitles.clear();chatAttachmentUrls.clear();chatEventUnavailable=false;chatMessagesCursor=null;chatMessages=[];chatMessagesHasMore=false;chatMessagesLoadingOlder=false;chatMessagesConversationId=null;chatRefreshing=false;chatOperators=[];chatSelectedOperatorUid='';
+ stopChatPolling();chatApiClient=null;activeChatConversation=null;chatConversations=[];chatResolvedTitles.clear();chatAttachmentUrls.clear();chatEventUnavailable=false;operatorPresenceUnavailable=false;chatOperatorServiceUnavailable=false;chatMessagesCursor=null;chatMessages=[];chatMessagesHasMore=false;chatMessagesLoadingOlder=false;chatMessagesConversationId=null;chatRefreshing=false;chatOperators=[];chatSelectedOperatorUid='';
  byId('messages').replaceChildren();byId('chatConversationList').replaceChildren();updateChatHistoryControls();
  await clearDriverPresence();if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
  currentUser=user;currentRole=null;
