@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { ChatApiClient, ChatApiError, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";
+
+test("the application imports the message page merge helper used by chat detail", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.match(html, /import\\s*\\{[^}]*\\bmergeChatMessagePages\\b[^}]*\\}\\s*from\\s*["\']\\.\\/chat-client\\.mjs["\']/);
+});
 
 function makeClient(fetchImpl, token = "firebase-test-token") {
   return new ChatApiClient({
