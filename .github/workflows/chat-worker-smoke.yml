@@ -36,7 +36,7 @@ jobs:
             --header 'Access-Control-Request-Headers: authorization,content-type' \
             https://dante-remises-b2-test.agustinchoabcd.workers.dev/v1/chat/conversations)"
           printf '%s\n' "$headers"
-          printf '%s' "$headers" | grep -Fqi 'access-control-allow-origin: https://agustinchoabcd.github.io'
+          printf '%s' "$headers" | grep -Fqi 'access-control-allow-origin: https://agustinchoabcd-dev.github.io'
           printf '%s' "$headers" | grep -Fqi 'access-control-allow-methods: GET,POST,OPTIONS'
           printf '%s' "$headers" | grep -Fqi 'access-control-allow-headers: Authorization,Content-Type'
 
