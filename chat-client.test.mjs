@@ -16,6 +16,25 @@ function jsonResponse(payload, status = 200, headers = {}) {
   });
 }
 
+test("uses the global fetch receiver when no fetch implementation is injected", async () => {
+  const originalFetch = globalThis.fetch;
+  let receiver = null;
+  globalThis.fetch = function () {
+    receiver = this;
+    return Promise.resolve(jsonResponse({ conversations: [], nextCursor: null, hasMore: false }));
+  };
+  try {
+    const client = new ChatApiClient({
+      baseUrl: "https://chat.example.test",
+      getIdToken: async () => "firebase-test-token"
+    });
+    await client.listConversations();
+    assert.equal(receiver, globalThis);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("requires HTTPS outside localhost", () => {
   assert.throws(() => new ChatApiClient({
     baseUrl: "http://chat.example.test",
