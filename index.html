@@ -659,7 +659,7 @@ async function renderChatPeerAvatar(conversation){
  const otherUid=Object.keys(conversation?.participantUids||{}).find(uid=>uid!==currentUser?.uid);
  let photo=otherUid?staffPhotos[otherUid]?.profilePhoto:'';
  target.replaceChildren();target.textContent='👤';
- if(!photo&&otherUid&&currentRole?.role==='driver'&&conversation?.kind==='passenger-driver'){
+ if(!photo&&otherUid&&['driver','admin'].includes(currentRole?.role)&&conversation?.kind==='passenger-driver'){
   try{
    const result=await getChatApiClient()?.getParticipantPhoto(conversation.conversationId,otherUid);
    if(typeof result?.readUrl==='string'&&result.readUrl.startsWith('https://'))photo=result.readUrl;
