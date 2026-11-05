@@ -485,7 +485,7 @@ byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='op
 byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
 byId('setFree').addEventListener('click',()=>setStatus(activeDriver,'libre'));
-let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false;
+let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false;
 function getChatApiClient(){
  if(!CHAT_API_BASE_URL||!currentUser)return null;
  if(!chatApiClient)chatApiClient=new ChatApiClient({baseUrl:CHAT_API_BASE_URL,getIdToken:()=>currentUser.getIdToken()});
@@ -495,13 +495,13 @@ function setChatStatus(message){byId('chatStatus').textContent=message}
 function stopChatEvents(){if(chatEventReconnectTimer!==null){clearTimeout(chatEventReconnectTimer);chatEventReconnectTimer=null}if(chatEventController){chatEventController.abort();chatEventController=null}}
 function stopChatPolling(){if(chatPollTimer!==null){clearInterval(chatPollTimer);chatPollTimer=null}stopChatEvents()}
 function startChatEvents(conversationId){
- stopChatEvents();const api=getChatApiClient();if(!api||!conversationId)return;
+ stopChatEvents();const api=getChatApiClient();if(!api||!conversationId||chatEventUnavailable)return;
  const controller=new AbortController();chatEventController=controller;
  (async()=>{
   try{
    const response=await api.openMessageStream(conversationId,{signal:controller.signal});
    if(controller.signal.aborted)return;
-   chatEventRetryMs=1000;setChatStatus('Chat en tiempo real conectado.');
+   chatEventRetryMs=1000;chatEventUnavailable=false;setChatStatus('Chat en tiempo real conectado.');
    const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';
    while(!controller.signal.aborted){
     const chunk=await reader.read();if(chunk.done)break;
@@ -516,6 +516,11 @@ function startChatEvents(conversationId){
   }catch(error){
    if(controller.signal.aborted)return;
    if(chatEventController===controller)chatEventController=null;
+   if(error?.status===404||error?.status===501){
+    chatEventUnavailable=true;
+    setChatStatus('El Worker todavía no habilita el flujo en tiempo real; se mantiene el refresco de respaldo cada 7 segundos.');
+    return;
+   }
    console.warn('Chat SSE desconectado; se intentará reconectar:',error);
    setChatStatus('Conexión en tiempo real interrumpida; reconectando…');
    const delay=chatEventRetryMs;chatEventRetryMs=Math.min(15000,chatEventRetryMs*2);
@@ -706,7 +711,7 @@ async function refreshChatConversations(silent=false){
    activeChatConversation=null;chatMessagesConversationId=null;chatMessages=[];chatMessagesCursor=null;chatMessagesHasMore=false;
    byId('chatTitle').textContent='Elegí una conversación';renderChatMessages([],'bottom');updateChatHistoryControls();
    setChatStatus('No hay conversaciones todavía.');
-  }else setChatStatus(chatEventController?'Chat en tiempo real conectado.':'Mensajería conectada · comprobando mensajes cada 7 segundos hasta habilitar el flujo en tiempo real.');
+  }else setChatStatus(chatEventController?'Chat en tiempo real conectado.':chatEventUnavailable?'Refresco de respaldo cada 7 segundos; el Worker aún no habilitó el flujo en tiempo real.':'Mensajería conectada · comprobando mensajes cada 7 segundos hasta habilitar el flujo en tiempo real.');
   return true;
  }catch(error){if(!silent)setChatStatus(error.message||'No se pudieron actualizar las conversaciones.');return false}
  finally{chatRefreshing=false;if(chatRefreshPending){chatRefreshPending=false;void refreshChatConversations(true)}}
@@ -852,7 +857,7 @@ async function resolveAuthenticatedRole(user){
  return resolveRoleFromProfile({uid:user.uid,profile,legacyStaff,adminUid:ADMIN_UID,userEmail:user.email});
 }
 onAuthStateChanged(auth,async user=>{
- stopChatPolling();chatApiClient=null;activeChatConversation=null;chatConversations=[];chatResolvedTitles.clear();chatMessagesCursor=null;chatMessages=[];chatMessagesHasMore=false;chatMessagesLoadingOlder=false;chatMessagesConversationId=null;chatRefreshing=false;
+ stopChatPolling();chatApiClient=null;activeChatConversation=null;chatConversations=[];chatResolvedTitles.clear();chatEventUnavailable=false;chatMessagesCursor=null;chatMessages=[];chatMessagesHasMore=false;chatMessagesLoadingOlder=false;chatMessagesConversationId=null;chatRefreshing=false;
  byId('messages').replaceChildren();byId('chatConversationList').replaceChildren();updateChatHistoryControls();
  await clearDriverPresence();if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
  currentUser=user;currentRole=null;
