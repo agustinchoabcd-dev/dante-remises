@@ -816,7 +816,7 @@ async function startChatAudioRecording(){
   chatMediaRecorder=recorder;chatAudioChunks=[];chatDiscardRecording=false;chatRecordingFinalized=false;chatRecordingStartedAt=Date.now();
   recorder.addEventListener('dataavailable',event=>{if(event.data?.size)chatAudioChunks.push(event.data)});
   recorder.addEventListener('stop',()=>{
-   releaseChatRecordingStream();
+   releaseChatRecordingStream();byId('chatRecordButton').classList.remove('recording');
    if(chatDiscardRecording){clearChatRecording();return}
    chatRecordingFinalized=true;
    const mimeType=recorder.mimeType||chatAudioChunks[0]?.type||selected||'audio/webm';
