@@ -93,7 +93,7 @@ test("opens an authenticated Server-Sent Events stream for one conversation", as
   let request;
   const streamBody = new ReadableStream({
     start(controller) {
-      controller.enqueue(new TextEncoder().encode("event: put\\ndata: {\\"path\\":\\"/\\",\\"data\\":123}\\n\\n"));
+      controller.enqueue(new TextEncoder().encode("event: put\ndata: {\"path\":\"/\",\"data\":123}\n\n"));
       controller.close();
     }
   });
