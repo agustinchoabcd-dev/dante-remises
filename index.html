@@ -648,7 +648,8 @@ function conversationTitle(conversation){
 }
 async function resolveConversationTitle(conversation){
  const cached=chatResolvedTitles.get(conversation.conversationId);if(cached)return cached;
- if(['admin','driver'].includes(currentRole?.role)&&conversation.kind==='passenger-driver'){
+ const canResolvePassengerName=['admin','driver'].includes(currentRole?.role)&&conversation.kind==='passenger-driver'||currentRole?.role==='operator'&&['passenger-operator','operator-support'].includes(conversation.kind);
+ if(canResolvePassengerName){
   const otherUid=Object.keys(conversation.participantUids||{}).find(uid=>uid!==currentUser?.uid);
   if(otherUid){
    let name='';
@@ -665,7 +666,8 @@ async function renderChatPeerAvatar(conversation){
  const otherUid=Object.keys(conversation?.participantUids||{}).find(uid=>uid!==currentUser?.uid);
  let photo=otherUid?staffPhotos[otherUid]?.profilePhoto:'';
  target.replaceChildren();target.textContent='👤';
- if(!photo&&otherUid&&['driver','admin'].includes(currentRole?.role)&&conversation?.kind==='passenger-driver'){
+ const canReadPassengerPhoto=['driver','admin'].includes(currentRole?.role)&&conversation?.kind==='passenger-driver'||currentRole?.role==='operator'&&['passenger-operator','operator-support'].includes(conversation?.kind);
+ if(!photo&&otherUid&&canReadPassengerPhoto){
   try{
    const result=await getChatApiClient()?.getParticipantPhoto(conversation.conversationId,otherUid);
    if(typeof result?.readUrl==='string'&&result.readUrl.startsWith('https://'))photo=result.readUrl;
