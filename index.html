@@ -717,7 +717,13 @@ async function renderChatPeerAvatar(conversation){
  target.replaceChildren();target.textContent='👤';
  if(!photo&&otherUid){
   try{
-   const result=await getChatApiClient()?.getProfilePhoto(otherUid);
+   const api=getChatApiClient();
+   let result;
+   try{result=await api?.getProfilePhoto(otherUid)}
+   catch(error){
+    if(error?.status!==404&&error?.status!==501)throw error;
+    result=await api?.getParticipantPhoto(conversation.conversationId,otherUid);
+   }
    if(typeof result?.readUrl==='string'&&result.readUrl.startsWith('https://'))photo=result.readUrl;
   }catch(error){console.warn('No se pudo obtener la foto de perfil del participante:',error)}
  }
