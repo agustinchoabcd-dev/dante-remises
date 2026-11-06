@@ -112,6 +112,14 @@ export class ChatApiClient {
     return this.request(`/v1/chat/participant-photo?${params.toString()}`);
   }
 
+  getProfilePhoto(uid) {
+    if (typeof uid !== "string" || !uid) {
+      throw new TypeError("profile uid is required");
+    }
+    const params = new URLSearchParams({ uid });
+    return this.request(`/v1/chat/profile-photo?${params.toString()}`);
+  }
+
   getAttachmentReadUrl(conversationId, key) {
     if (typeof conversationId !== "string" || !conversationId || typeof key !== "string" || !key) {
       throw new TypeError("conversationId and attachment key are required");
