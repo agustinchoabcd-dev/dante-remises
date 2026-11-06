@@ -715,12 +715,11 @@ async function renderChatPeerAvatar(conversation){
  const otherUid=Object.keys(conversation?.participantUids||{}).find(uid=>uid!==currentUser?.uid);
  let photo=otherUid?staffPhotos[otherUid]?.profilePhoto:'';
  target.replaceChildren();target.textContent='👤';
- const canReadPassengerPhoto=['driver','admin'].includes(currentRole?.role)&&conversation?.kind==='passenger-driver'||currentRole?.role==='operator'&&['passenger-operator','operator-support'].includes(conversation?.kind);
- if(!photo&&otherUid&&canReadPassengerPhoto){
+ if(!photo&&otherUid){
   try{
-   const result=await getChatApiClient()?.getParticipantPhoto(conversation.conversationId,otherUid);
+   const result=await getChatApiClient()?.getProfilePhoto(otherUid);
    if(typeof result?.readUrl==='string'&&result.readUrl.startsWith('https://'))photo=result.readUrl;
-  }catch(error){console.warn('No se pudo obtener la foto privada del pasajero para este chat:',error)}
+  }catch(error){console.warn('No se pudo obtener la foto de perfil del participante:',error)}
  }
  if(version!==chatPeerAvatarLoadVersion||!photo)return;
  const image=document.createElement('img');image.src=photo;image.alt='Foto de perfil';image.referrerPolicy='no-referrer';
