@@ -14,7 +14,7 @@ test("passenger chat exposes the connected-operator selector in the green chat h
   assert.ok(html.includes('id="chatPeerMenu"'));
   assert.ok(html.includes("api.listOperators()"));
   assert.ok(html.includes("setInterval(sendOperatorPresence,10_000)"));
-  assert.ok(html.includes("getParticipantPhoto(conversation.conversationId,otherUid)"));
+  assert.ok(html.includes("getProfilePhoto(otherUid)"));
 });
 
 test("chat composer exposes photo attachments and on-demand voice recording", async () => {
@@ -120,6 +120,21 @@ test("operator presence uses authenticated POST and DELETE requests", async () =
   assert.deepEqual(requests.map(item => item.options.method), ["POST", "DELETE"]);
   assert.ok(requests.every(item => item.url === "https://chat.example.test/v1/chat/presence"));
   assert.ok(requests.every(item => item.options.headers.Authorization === "Bearer firebase-test-token"));
+});
+
+test("requests any active profile photo through an authenticated endpoint without a conversation id", async () => {
+  let request;
+  const client = makeClient(async (url, options) => {
+    request = { url, options };
+    return jsonResponse({ readUrl: "https://storage.example.test/photo.jpg", expiresIn: 300 });
+  });
+  const result = await client.getProfilePhoto("passenger-uid");
+  const url = new URL(request.url);
+  assert.equal(url.pathname, "/v1/chat/profile-photo");
+  assert.equal(url.searchParams.get("uid"), "passenger-uid");
+  assert.equal(url.searchParams.has("conversationId"), false);
+  assert.equal(request.options.headers.Authorization, "Bearer firebase-test-token");
+  assert.equal(result.expiresIn, 300);
 });
 
 test("requests a participant photo through a conversation-scoped authenticated endpoint", async () => {
