@@ -99,11 +99,65 @@ jobs:
           echo "### Android debug signing certificate" >> "$GITHUB_STEP_SUMMARY"
           echo "$fingerprint" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Pin debug variant to persistent signing key
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("android/app/build.gradle")
+          text = path.read_text(encoding="utf-8")
+          marker = "    signingConfigs {\\n        debug {\\n            storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')\\n            storePassword 'android'\\n            keyAlias 'androiddebugkey'\\n            keyPassword 'android'\\n        }\\n    }\\n"
+          debug_type = "        debug {\\n            signingConfig signingConfigs.debug\\n        }\\n"
+          if "storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')" in text:
+              raise SystemExit("Explicit debug signing configuration already exists; refusing to duplicate it.")
+          if text.count("    buildTypes {") != 1:
+              raise SystemExit("Unexpected Capacitor Gradle template: expected one buildTypes block.")
+          if text.count("        release {") != 1:
+              raise SystemExit("Unexpected Capacitor Gradle template: expected one release build type.")
+          text = text.replace("    buildTypes {\\n", marker + "    buildTypes {\\n" + debug_type, 1)
+          path.write_text(text, encoding="utf-8")
+          print("Configured debug variant to use $HOME/.android/debug.keystore.")
+          PY
+          grep -n -A16 -B2 "signingConfigs" android/app/build.gradle
+
       - name: Build debug APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
+
+      - name: Verify APK package and signing certificate
+        env:
+          EXPECTED_APPLICATION_ID: com.danteremises.test
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          BUILD_TOOLS_DIR="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+          AAPT="$BUILD_TOOLS_DIR/aapt"
+          test -x "$APKSIGNER"
+          test -x "$AAPT"
+          KEYSTORE_FP="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | awk '/SHA256:/{print toupper($2); exit}' | tr -d ':')"
+          APK_FP="$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print toupper($2); exit}' | tr -d ':')"
+          APK_APP_ID="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+          if [ -z "$APK_FP" ] || [ "$APK_FP" != "$KEYSTORE_FP" ]; then
+            echo "::error::APK signing certificate does not match DANTE_DEBUG_KEYSTORE_BASE64."
+            echo "Keystore SHA-256: $KEYSTORE_FP"
+            echo "APK SHA-256: ${APK_FP:-not detected}"
+            exit 1
+          fi
+          if [ "$APK_APP_ID" != "$EXPECTED_APPLICATION_ID" ]; then
+            echo "::error::Unexpected APK applicationId: ${APK_APP_ID:-not detected}"
+            exit 1
+          fi
+          echo "APK certificate verified: $APK_FP"
+          echo "APK applicationId verified: $APK_APP_ID"
+          {
+            echo "### Verified Android APK"
+            echo "- applicationId: `$APK_APP_ID`"
+            echo "- signing certificate SHA-256: `$APK_FP`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
