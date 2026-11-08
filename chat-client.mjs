@@ -1,3 +1,5 @@
+import {performanceMonitor} from "./perf-monitor.mjs";
+
 const MAX_MESSAGE_LENGTH = 2000;
 
 export class ChatApiError extends Error {
@@ -49,7 +51,7 @@ export class ChatApiClient {
 
     let response;
     try {
-      response = await this.fetchImpl(`${this.baseUrl}${path}`, options);
+      response = await performanceMonitor.measureAsync(`chat.fetch.${method}.${path.split("?")[0]}`,()=>this.fetchImpl(`${this.baseUrl}${path}`,options));
     } catch (error) {
       const causeName = error instanceof Error ? error.name : "UnknownError";
       const causeMessage = error instanceof Error ? error.message : String(error);

@@ -5,7 +5,8 @@ const destinationDirectory = new URL("../www/", import.meta.url);
 const webAssets = [
   "index.html",
   "role-resolver.mjs",
-  "chat-client.mjs"
+  "chat-client.mjs",
+  "perf-monitor.mjs"
 ];
 
 await mkdir(destinationDirectory, { recursive: true });
