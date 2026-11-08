@@ -72,6 +72,36 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
+      - name: Set monotonically increasing Android version
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          gradle = Path("android/app/build.gradle")
+          text = gradle.read_text(encoding="utf-8")
+          version_code = int(os.environ["ANDROID_VERSION_CODE"])
+          if version_code < 1 or version_code > 2100000000:
+              raise SystemExit(f"Android versionCode out of range: {version_code}")
+          package_version = json.loads(Path("package.json").read_text(encoding="utf-8"))["version"]
+          version_name = f"{package_version}+{version_code}"
+          code_pattern = re.compile(r"(?m)^(\\s*versionCode\\s+)\\d+(\\s*)$")
+          name_pattern = re.compile(r"(?m)^(\\s*versionName\\s+)[\\"\'][^\\"\']*[\\"\'](\\s*)$")
+          if len(code_pattern.findall(text)) != 1:
+              raise SystemExit("Expected exactly one generated Android versionCode declaration.")
+          if len(name_pattern.findall(text)) != 1:
+              raise SystemExit("Expected exactly one generated Android versionName declaration.")
+          text = code_pattern.sub(lambda m: f"{m.group(1)}{version_code}{m.group(2)}", text)
+          text = name_pattern.sub(lambda m: f'{m.group(1)}"{version_name}"{m.group(2)}', text)
+          gradle.write_text(text, encoding="utf-8")
+          print(f"Android version configured: versionCode={version_code}, versionName={version_name}")
+          PY
+          grep -n -E 'versionCode|versionName' android/app/build.gradle
       - name: Declare Android location permissions
         run: node scripts/patch-android-manifest.mjs
 
@@ -128,6 +158,7 @@ jobs:
       - name: Verify APK package and signing certificate
         env:
           EXPECTED_APPLICATION_ID: com.danteremises.test
+          EXPECTED_VERSION_CODE: ${{ github.run_number }}
         run: |
           set -euo pipefail
           APK="android/app/build/outputs/apk/debug/app-debug.apk"
@@ -145,7 +176,11 @@ jobs:
           }
           printf '%s\n' "$APKSIGNER_OUTPUT"
           APK_FP="$(printf '%s\n' "$APKSIGNER_OUTPUT" | python3 -c 'import re,sys; s=sys.stdin.read(); lines="\n".join(x for x in s.splitlines() if "sha-256" in x.lower()); m=re.search(r"(?i)(?:[0-9a-f]{2}:){31}[0-9a-f]{2}|[0-9a-f]{64}", lines); print(m.group(0).replace(":","").upper() if m else "")')"
-          APK_APP_ID="$("$AAPT" dump badging "$APK" | grep -o "package: name='[^']*'" | cut -d "'" -f 2 | head -n 1)"
+          BADGING="$("$AAPT" dump badging "$APK")"
+          APK_APP_ID="$(printf '%s\\n' "$BADGING" | sed -n "s/^package: name='\\([^\']*\\)'.*/\\1/p" | head -n 1)"
+          APK_VERSION_CODE="$(printf '%s\\n' "$BADGING" | sed -n "s/^package:.*versionCode='\\([^\']*\\)'.*/\\1/p" | head -n 1)"
+          APK_VERSION_NAME="$(printf '%s\\n' "$BADGING" | sed -n "s/^package:.*versionName='\\([^\']*\\)'.*/\\1/p" | head -n 1)"
+          APK_SHA256="$(sha256sum "$APK" | awk '{print $1}')"
           if [ -z "$APK_FP" ]; then
             echo "::error::Could not extract the APK SHA-256 signing certificate from apksigner output."
             exit 1
@@ -160,12 +195,22 @@ jobs:
             echo "::error::Unexpected APK applicationId: ${APK_APP_ID:-not detected}"
             exit 1
           fi
+          if [ "$APK_VERSION_CODE" != "$EXPECTED_VERSION_CODE" ]; then
+            echo "::error::Unexpected APK versionCode: ${APK_VERSION_CODE:-not detected}; expected $EXPECTED_VERSION_CODE"
+            exit 1
+          fi
           echo "APK certificate verified: $APK_FP"
           echo "APK applicationId verified: $APK_APP_ID"
+          echo "APK versionCode verified: $APK_VERSION_CODE"
+          echo "APK versionName: $APK_VERSION_NAME"
+          echo "APK SHA-256: $APK_SHA256"
           {
             echo "### Verified Android APK"
-            echo "- applicationId: `$APK_APP_ID`"
-            echo "- signing certificate SHA-256: `$APK_FP`"
+            echo "- applicationId: $APK_APP_ID"
+            echo "- versionCode: $APK_VERSION_CODE"
+            echo "- versionName: $APK_VERSION_NAME"
+            echo "- signing certificate SHA-256: $APK_FP"
+            echo "- APK SHA-256: $APK_SHA256"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload debug APK
