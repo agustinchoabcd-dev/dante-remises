@@ -48,7 +48,7 @@ jobs:
           import re
           from pathlib import Path
           html = Path("index.html").read_text(encoding="utf-8")
-          scripts = re.findall(r'<script type="module">\\s*(.*?)\\s*</script>', html, re.DOTALL)
+          scripts = re.findall(r'<script type="module">\s*(.*?)\s*</script>', html, re.DOTALL)
           if len(scripts) != 1:
               raise SystemExit(f"Expected one module script, found {len(scripts)}")
           Path("/tmp/dante-remises-inline.mjs").write_text(scripts[0], encoding="utf-8")
@@ -105,15 +105,15 @@ jobs:
           from pathlib import Path
           path = Path("android/app/build.gradle")
           text = path.read_text(encoding="utf-8")
-          marker = "    signingConfigs {\\n        debug {\\n            storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')\\n            storePassword 'android'\\n            keyAlias 'androiddebugkey'\\n            keyPassword 'android'\\n        }\\n    }\\n"
-          debug_type = "        debug {\\n            signingConfig signingConfigs.debug\\n        }\\n"
+          marker = "    signingConfigs {\n        debug {\n            storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n    }\n"
+          debug_type = "        debug {\n            signingConfig signingConfigs.debug\n        }\n"
           if "storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')" in text:
               raise SystemExit("Explicit debug signing configuration already exists; refusing to duplicate it.")
           if text.count("    buildTypes {") != 1:
               raise SystemExit("Unexpected Capacitor Gradle template: expected one buildTypes block.")
           if text.count("        release {") != 1:
               raise SystemExit("Unexpected Capacitor Gradle template: expected one release build type.")
-          text = text.replace("    buildTypes {\\n", marker + "    buildTypes {\\n" + debug_type, 1)
+          text = text.replace("    buildTypes {\n", marker + "    buildTypes {\n" + debug_type, 1)
           path.write_text(text, encoding="utf-8")
           print("Configured debug variant to use $HOME/.android/debug.keystore.")
           PY
@@ -140,11 +140,11 @@ jobs:
           KEYSTORE_FP="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | awk '/SHA256:/{print toupper($2); exit}' | tr -d ':')"
           APKSIGNER_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$APK" 2>&1)" || {
             echo "::error::apksigner could not verify the generated APK."
-            printf '%s\\n' "$APKSIGNER_OUTPUT"
+            printf '%s\n' "$APKSIGNER_OUTPUT"
             exit 1
           }
-          printf '%s\\n' "$APKSIGNER_OUTPUT"
-          APK_FP="$(printf '%s\\n' "$APKSIGNER_OUTPUT" | python3 -c 'import re,sys; s=sys.stdin.read(); lines="\\n".join(x for x in s.splitlines() if "sha-256" in x.lower()); m=re.search(r"(?i)(?:[0-9a-f]{2}:){31}[0-9a-f]{2}|[0-9a-f]{64}", lines); print(m.group(0).replace(":","").upper() if m else "")')"
+          printf '%s\n' "$APKSIGNER_OUTPUT"
+          APK_FP="$(printf '%s\n' "$APKSIGNER_OUTPUT" | python3 -c 'import re,sys; s=sys.stdin.read(); lines="\n".join(x for x in s.splitlines() if "sha-256" in x.lower()); m=re.search(r"(?i)(?:[0-9a-f]{2}:){31}[0-9a-f]{2}|[0-9a-f]{64}", lines); print(m.group(0).replace(":","").upper() if m else "")')"
           APK_APP_ID="$("$AAPT" dump badging "$APK" | grep -o "package: name='[^']*'" | cut -d "'" -f 2 | head -n 1)"
           if [ -z "$APK_FP" ]; then
             echo "::error::Could not extract the APK SHA-256 signing certificate from apksigner output."
