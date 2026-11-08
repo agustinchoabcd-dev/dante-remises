@@ -14,7 +14,6 @@ on:
     paths-ignore:
       - 'chat-worker/**'
       - '.github/workflows/chat-candidate-tests.yml'
-      - '.github/workflows/android-apk.yml'
 
 permissions:
   contents: read
@@ -106,15 +105,15 @@ jobs:
           from pathlib import Path
           path = Path("android/app/build.gradle")
           text = path.read_text(encoding="utf-8")
-          marker = "    signingConfigs {\\n        debug {\\n            storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')\\n            storePassword 'android'\\n            keyAlias 'androiddebugkey'\\n            keyPassword 'android'\\n        }\\n    }\\n"
-          debug_type = "        debug {\\n            signingConfig signingConfigs.debug\\n        }\\n"
+          marker = "    signingConfigs {\n        debug {\n            storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n    }\n"
+          debug_type = "        debug {\n            signingConfig signingConfigs.debug\n        }\n"
           if "storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')" in text:
               raise SystemExit("Explicit debug signing configuration already exists; refusing to duplicate it.")
           if text.count("    buildTypes {") != 1:
               raise SystemExit("Unexpected Capacitor Gradle template: expected one buildTypes block.")
           if text.count("        release {") != 1:
               raise SystemExit("Unexpected Capacitor Gradle template: expected one release build type.")
-          text = text.replace("    buildTypes {\\n", marker + "    buildTypes {\\n" + debug_type, 1)
+          text = text.replace("    buildTypes {\n", marker + "    buildTypes {\n" + debug_type, 1)
           path.write_text(text, encoding="utf-8")
           print("Configured debug variant to use $HOME/.android/debug.keystore.")
           PY
@@ -140,7 +139,7 @@ jobs:
           test -x "$AAPT"
           KEYSTORE_FP="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | awk '/SHA256:/{print toupper($2); exit}' | tr -d ':')"
           APK_FP="$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print toupper($2); exit}' | tr -d ':')"
-          APK_APP_ID="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+          APK_APP_ID="$("$AAPT" dump badging "$APK" | grep -o "package: name='[^']*'" | cut -d "'" -f 2 | head -n 1)"
           if [ -z "$APK_FP" ] || [ "$APK_FP" != "$KEYSTORE_FP" ]; then
             echo "::error::APK signing certificate does not match DANTE_DEBUG_KEYSTORE_BASE64."
             echo "Keystore SHA-256: $KEYSTORE_FP"
