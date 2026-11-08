@@ -90,8 +90,8 @@ jobs:
               raise SystemExit(f"Android versionCode out of range: {version_code}")
           package_version = json.loads(Path("package.json").read_text(encoding="utf-8"))["version"]
           version_name = f"{package_version}+{version_code}"
-          code_pattern = re.compile(r"(?m)^(\\s*versionCode\\s+)\\d+(\\s*)$")
-          name_pattern = re.compile(r"(?m)^(\\s*versionName\\s+)[\\"\'][^\\"\']*[\\"\'](\\s*)$")
+          code_pattern = re.compile(r"(?m)^(\s*versionCode\s+)\d+(\s*)$")
+          name_pattern = re.compile(r"(?m)^(\s*versionName\s+)[\"\'][^\"\']*[\"\'](\s*)$")
           if len(code_pattern.findall(text)) != 1:
               raise SystemExit("Expected exactly one generated Android versionCode declaration.")
           if len(name_pattern.findall(text)) != 1:
@@ -177,9 +177,9 @@ jobs:
           printf '%s\n' "$APKSIGNER_OUTPUT"
           APK_FP="$(printf '%s\n' "$APKSIGNER_OUTPUT" | python3 -c 'import re,sys; s=sys.stdin.read(); lines="\n".join(x for x in s.splitlines() if "sha-256" in x.lower()); m=re.search(r"(?i)(?:[0-9a-f]{2}:){31}[0-9a-f]{2}|[0-9a-f]{64}", lines); print(m.group(0).replace(":","").upper() if m else "")')"
           BADGING="$("$AAPT" dump badging "$APK")"
-          APK_APP_ID="$(printf '%s\\n' "$BADGING" | sed -n "s/^package: name='\\([^\']*\\)'.*/\\1/p" | head -n 1)"
-          APK_VERSION_CODE="$(printf '%s\\n' "$BADGING" | sed -n "s/^package:.*versionCode='\\([^\']*\\)'.*/\\1/p" | head -n 1)"
-          APK_VERSION_NAME="$(printf '%s\\n' "$BADGING" | sed -n "s/^package:.*versionName='\\([^\']*\\)'.*/\\1/p" | head -n 1)"
+          APK_APP_ID="$(printf '%s\n' "$BADGING" | sed -n "s/^package: name='\([^\']*\)'.*/\1/p" | head -n 1)"
+          APK_VERSION_CODE="$(printf '%s\n' "$BADGING" | sed -n "s/^package:.*versionCode='\([^\']*\)'.*/\1/p" | head -n 1)"
+          APK_VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/^package:.*versionName='\([^\']*\)'.*/\1/p" | head -n 1)"
           APK_SHA256="$(sha256sum "$APK" | awk '{print $1}')"
           if [ -z "$APK_FP" ]; then
             echo "::error::Could not extract the APK SHA-256 signing certificate from apksigner output."
