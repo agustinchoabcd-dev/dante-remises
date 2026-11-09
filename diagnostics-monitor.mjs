@@ -48,7 +48,10 @@ export function createDiagnosticsMonitor({
   runtime = globalThis,
   fetchImpl = (...args) => runtime.fetch(...args),
   now = () => Date.now(),
-  randomUUID = () => runtime.crypto?.randomUUID?.() || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+  randomUUID = () => runtime.crypto?.randomUUID?.() || (() => {
+    const hex = () => Math.floor(Math.random() * 0x10000).toString(16).padStart(4, "0");
+    return `${hex()}${hex()}-${hex()}-4${hex().slice(1)}-${((8 + Math.floor(Math.random() * 4)).toString(16))}${hex().slice(1)}-${hex()}${hex()}${hex()}`;
+  })()
 } = {}) {
   const startedAt = now();
   const sessionId = `s${startedAt.toString(36)}-${randomUUID()}`;
