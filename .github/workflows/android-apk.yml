@@ -118,7 +118,7 @@ jobs:
           if not path.is_file():
               raise SystemExit(f"Generated Gradle Wrapper properties file was not found: {path}")
           text = path.read_text(encoding="utf-8")
-          url = r"distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip"
+          url = r"distributionUrl=https\://mirrors.huaweicloud.com/gradle/gradle-8.14.3-bin.zip"
           text = re.sub(r"(?m)^distributionUrl=.*$", url, text)
           properties = {
               "networkTimeout": "120000",
@@ -132,7 +132,7 @@ jobs:
               else:
                   text = text.rstrip() + "\n" + line + "\n"
           path.write_text(text, encoding="utf-8")
-          print("Pinned Gradle 8.14.3 bin distribution, SHA-256 and 120s wrapper timeout.")
+          print("Pinned Huawei Gradle mirror, Gradle 8.14.3 bin and official SHA-256.")
           PY
           cat android/gradle/wrapper/gradle-wrapper.properties
 
@@ -142,16 +142,36 @@ jobs:
           cache-provider: basic
           cache-read-only: ${{ github.ref != 'refs/heads/dante-test' }}
 
-      - name: Download and install verified Gradle distribution with retries
+      - name: Download and install verified Gradle distribution
         env:
           GRADLE_VERSION: 8.14.3
           GRADLE_SHA256: bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531
         run: |
           set -euo pipefail
           archive="$RUNNER_TEMP/gradle-$GRADLE_VERSION-bin.zip"
+          temporary="$archive.part"
           install_dir="$RUNNER_TEMP/gradle"
-          curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 --retry-max-time 600 --connect-timeout 30 --max-time 600 --output "$archive" "https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
-          printf '%s  %s\n' "$GRADLE_SHA256" "$archive" | sha256sum --check -
+          url1="https://mirrors.huaweicloud.com/gradle/gradle-$GRADLE_VERSION-bin.zip"
+          url2="https://repo.huaweicloud.com/gradle/gradle-$GRADLE_VERSION-bin.zip"
+          url3="https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
+          downloaded=false
+          for url in "$url1" "$url2" "$url3"; do
+            echo "Trying Gradle distribution source: $url"
+            rm -f "$temporary"
+            if curl --fail --location --retry 2 --retry-all-errors --retry-delay 3 --retry-max-time 300 --connect-timeout 30 --max-time 600 --output "$temporary" "$url"; then
+              if printf '%s  %s\n' "$GRADLE_SHA256" "$temporary" | sha256sum --check --status; then
+                mv "$temporary" "$archive"
+                echo "Verified Gradle distribution SHA-256 from: $url"
+                downloaded=true
+                break
+              fi
+              echo "::warning::Checksum mismatch from $url; refusing this copy."
+            fi
+          done
+          if [ "$downloaded" != true ]; then
+            echo "::error::Could not download a Gradle 8.14.3 distribution matching the official SHA-256."
+            exit 1
+          fi
           mkdir -p "$install_dir"
           unzip -q "$archive" -d "$install_dir"
           test -x "$install_dir/gradle-$GRADLE_VERSION/bin/gradle"
