@@ -46,8 +46,8 @@ test("diagnostics monitor captures only allowlisted events and scalar details", 
 test("diagnostics monitor bounds its in-memory event buffer", () => {
   const runtime = fakeRuntime();
   const monitor = createDiagnosticsMonitor({ runtime, now: () => 1_800_000_000_000 });
-  for (let i = 0; i < 130; i++) monitor.mark("app.start", { count: i });
-  assert.equal(monitor.snapshot().length, 120);
+  for (let i = 0; i < 90; i++) monitor.mark("app.start", { count: i });
+  assert.equal(monitor.snapshot().length, 80);
   assert.equal(monitor.snapshot()[0].details.count, 10);
 });
 
