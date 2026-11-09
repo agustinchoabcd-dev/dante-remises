@@ -55,6 +55,8 @@ export function installAppTelemetry({ runtime = globalThis, monitor } = {}) {
   if (typeof runtime.fetch === "function") {
     const originalFetch = runtime.fetch;
     runtime.fetch = async function(...args) {
+      const requestUrl = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
+      if (requestUrl.includes("/v1/chat/diagnostics")) return originalFetch.apply(this, args);
       const startedAt = Date.now();
       const service = serviceForUrl(args[0], runtime.location?.href || "https://localhost/");
       const request = args[1] || {};
