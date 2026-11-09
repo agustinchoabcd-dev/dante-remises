@@ -1,4 +1,4 @@
-const MAX_EVENTS = 120;
+const MAX_EVENTS = 80;
 const ALLOWED_TYPES = new Set([
   "app.start", "app.visibility", "auth.state", "auth.role.error",
   "firebase.cars.listener.attached", "firebase.cars.first_snapshot",
@@ -99,9 +99,11 @@ export function createDiagnosticsMonitor({
     if (!endpoint || !getToken || !events.length || revision <= uploadedRevision) return false;
     if (inFlight) return inFlight;
     inFlight = (async () => {
+      let authenticated = false;
       try {
         const token = await getToken();
         if (!token) return false;
+        authenticated = true;
         const revisionAtSend = revision;
         const context = typeof getContext === "function" ? getContext() || {} : {};
         const payload = {
@@ -132,7 +134,7 @@ export function createDiagnosticsMonitor({
         return false;
       } finally {
         inFlight = null;
-        if (revision > uploadedRevision) schedule(5000);
+        if (authenticated && revision > uploadedRevision) schedule(5000);
       }
     })();
     return inFlight;
