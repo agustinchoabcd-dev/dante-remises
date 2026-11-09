@@ -72,6 +72,41 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
+      - name: Use Maven Central mirror for Kotlin compiler artifacts
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("node_modules/@capacitor/local-notifications/android/build.gradle")
+          if not path.is_file():
+              raise SystemExit(f"Local Notifications Gradle file not found: {path}")
+          text = path.read_text(encoding="utf-8")
+          marker = "buildscript {"
+          repository_block = """        maven {
+                    url = "https://maven.wso2.org/nexus/content/repositories/central/"
+                    content {
+                        includeGroup("org.jetbrains.kotlin")
+                    }
+                }
+                mavenCentral()"""
+          if "maven.wso2.org/nexus/content/repositories/central" in text:
+              print("Kotlin Maven Central mirror already configured.")
+          else:
+              if text.count(marker) != 1:
+                  raise SystemExit("Unexpected Local Notifications Gradle file: buildscript block count differs.")
+              start = text.index(marker)
+              repo_start = text.index("    repositories {", start)
+              central = text.index("        mavenCentral()", repo_start)
+              if text.index("    }", repo_start) < central:
+                  raise SystemExit("Unexpected buildscript repositories structure.")
+              text = text[:central] + repository_block + text[central + len("        mavenCentral()"):]
+              path.write_text(text, encoding="utf-8")
+              print("Added group-restricted Maven Central mirror for org.jetbrains.kotlin.")
+          PY
+          sed -n '1,42p' node_modules/@capacitor/local-notifications/android/build.gradle
+
+
       - name: Increase Gradle Wrapper download timeout
         run: |
           python3 - <<'PY'
