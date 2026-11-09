@@ -184,12 +184,13 @@ let currentUser = null;
 let currentRole = null;
 let registrationInProgress = false;
 let remoteReady = false;
+let latestDriverPresence = {};
 const ADMIN_UID='2kDmq0zik2SQiqz7WxU8PC9bOlk1';
 const LOCATIONIQ_KEY='pk.5345850e051f788db6c1274d8cb1eb72';
 const PROFILE_PHOTO_WORKER='https://dante-remises-b2-test.agustinchoabcd.workers.dev';
 // Empty until a separately reviewed chat Worker is deployed and its URL is approved.
 const CHAT_API_BASE_URL='https://dante-remises-b2-test.agustinchoabcd.workers.dev'; // Shared B2 + chat Worker; Firebase ID tokens are sent per request.
-diagnostics.configure({endpoint:CHAT_API_BASE_URL+"/v1/chat/diagnostics",getToken:()=>auth.currentUser?.getIdToken(),getContext:()=>({role:currentRole?.role||"unknown",carId:currentRole?.carId||(currentRole?.role==="admin"?"144":"")}),client:{appVersion:"0.6.1",build:"152-diag"}});
+diagnostics.configure({endpoint:CHAT_API_BASE_URL+"/v1/chat/diagnostics",getToken:()=>auth.currentUser?.getIdToken(),getContext:()=>({role:currentRole?.role||"unknown",carId:currentRole?.carId||(currentRole?.role==="admin"?"144":"")}),client:{appVersion:"0.6.1",build:"dante-test-presence-photo-fix"}});
 const HOME_CENTER=[-32.0717,-64.5363];
 const DRIVER_UID_BY_CAR={'144':ADMIN_UID,'109':'7mrtHvQWCDRElEQcGQP6uLSJGTl2','137':'epd3DZKQ7LRLTO2EmJrTUKu2sf32','104':'jDrJ32nAn6hMAqghkMvpMSeVeCy1'};
 const USER_ROLES={
@@ -222,6 +223,7 @@ const cars=Object.fromEntries(initial.map(x=>[x.id,{...x,status:'desconectado',o
 let activeDriver='144';
 const carsRef=ref(db,'cars');
 function driverUidForCar(carId){const car=cars[carId];return resolveDriverUidForCar({driverUid:car?.driverUid,driverUidConfigured:car?.driverUidConfigured===true},DRIVER_UID_BY_CAR[carId])}
+function refreshCarPresenceFromSnapshot(){initial.forEach(x=>{const presence=latestDriverPresence[x.id];cars[x.id].online=presence?.connected===true&&presence.uid===driverUidForCar(x.id)})}
 const dniEmail=dni=>`dni${String(dni).replace(/\D/g,'')}@login.dante-remises.invalid`;
 const cleanDni=value=>String(value||'').replace(/\D/g,'');
 const byId=id=>document.getElementById(id);
@@ -1180,7 +1182,7 @@ onAuthStateChanged(auth,async user=>{
  byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress)return;
  if(user&&!currentRole){byId('authStatus').textContent='Cuenta sin rol asignado. Contactá a Agustín.';await signOut(auth);notify('Esta cuenta no está habilitada en Dante Remises.');return}
- if(user){if(currentRole.role==='operator')startOperatorPresence();diagnostics.mark("firebase.presence.listener.attached");driverPresenceUnsub=onValue(ref(db,'driverPresence'),snap=>{const presence=snap.val()||{};initial.forEach(x=>{cars[x.id].online=presence[x.id]?.connected===true&&presence[x.id]?.uid===driverUidForCar(x.id)});diagnostics.mark("firebase.presence.snapshot",{summary:initial.map(x=>x.id+":"+(cars[x.id].online?"1":"0")).join("|")});if(selectedPassengerDriver&&!cars[selectedPassengerDriver]?.online){stopPassengerLocationWatch();byId('driverLocationNote').textContent='El chofer se desconectó; su ubicación y disponibilidad ya no están disponibles.'}render('driver-presence')},error=>{diagnostics.mark("firebase.presence.error",{code:error?.code||"",name:error?.name||"Error"});console.error('No se pudo consultar la presencia de los choferes:',error);initial.forEach(x=>{cars[x.id].online=false});render('driver-presence-error')});if(['driver','admin'].includes(currentRole.role)){const connectedRef=ref(db,'.info/connected');driverConnectionUnsub=onValue(connectedRef,snapshot=>{if(snapshot.val()!==true||currentUser?.uid!==user.uid||!['driver','admin'].includes(currentRole?.role))return;void registerDriverPresence(user,currentRole).then(()=>{perf.mark('auth.driver-presence.done');diagnostics.mark('firebase.presence.registered',{carId:currentRole?.carId||(currentRole?.role==='admin'?'144':'')})}).catch(error=>{diagnostics.mark('firebase.presence.error',{code:error?.code||'',name:error?.name||'Error'});console.error('No se pudo registrar la presencia del chofer:',error);notify('No se pudo confirmar tu conexión como chofer. No recibirás solicitudes hasta reconectar.')})})}}else{initial.forEach(x=>{cars[x.id].online=false});render('unspecified')}
+ if(user){if(currentRole.role==='operator')startOperatorPresence();diagnostics.mark("firebase.presence.listener.attached");driverPresenceUnsub=onValue(ref(db,'driverPresence'),snap=>{latestDriverPresence=snap.val()||{};refreshCarPresenceFromSnapshot();diagnostics.mark("firebase.presence.snapshot",{summary:initial.map(x=>x.id+":"+(cars[x.id].online?"1":"0")).join("|")});if(selectedPassengerDriver&&!cars[selectedPassengerDriver]?.online){stopPassengerLocationWatch();byId('driverLocationNote').textContent='El chofer se desconectó; su ubicación y disponibilidad ya no están disponibles.'}render('driver-presence')},error=>{diagnostics.mark("firebase.presence.error",{code:error?.code||"",name:error?.name||"Error"});console.error('No se pudo consultar la presencia de los choferes:',error);latestDriverPresence={};refreshCarPresenceFromSnapshot();render('driver-presence-error')});if(['driver','admin'].includes(currentRole.role)){const connectedRef=ref(db,'.info/connected');driverConnectionUnsub=onValue(connectedRef,snapshot=>{if(snapshot.val()!==true||currentUser?.uid!==user.uid||!['driver','admin'].includes(currentRole?.role))return;void registerDriverPresence(user,currentRole).then(()=>{perf.mark('auth.driver-presence.done');diagnostics.mark('firebase.presence.registered',{carId:currentRole?.carId||(currentRole?.role==='admin'?'144':'')})}).catch(error=>{diagnostics.mark('firebase.presence.error',{code:error?.code||'',name:error?.name||'Error'});console.error('No se pudo registrar la presencia del chofer:',error);notify('No se pudo confirmar tu conexión como chofer. No recibirás solicitudes hasta reconectar.')})})}}else{latestDriverPresence={};refreshCarPresenceFromSnapshot();render('unspecified')}
  if(user&&currentRole?.role==='passenger'){passengerPhotoReady=false;byId('pasajero').classList.add('hidden');byId('configuracion').classList.remove('hidden')}
  const roleText=!user?'Sesión cerrada.':currentRole.role==='admin'?'Administrador total y chofer · '+currentRole.name:currentRole.role==='driver'?'Chofer · Coche '+currentRole.carId+' · '+currentRole.name:currentRole.role==='operator'?'Operador · '+currentRole.name:'Pasajero · '+currentRole.name;
  if(user){const pendingWelcome=sessionStorage.getItem('danteWelcomeName');if(pendingWelcome){sessionStorage.removeItem('danteWelcomeName')}}
@@ -1219,6 +1221,7 @@ function applyCarsSnapshot(snapshot,source){
  if(carsFirstSnapshot){carsFirstSnapshot=false;perf.mark('firebase.cars.first-snapshot',{children:snapshot.numChildren()});diagnostics.mark('firebase.cars.first_snapshot',{children:snapshot.numChildren(),elapsedMs:Date.now()-carsListenerStartedAt,kind:source})}
  const data=snapshot.val()||{};
  initial.forEach(x=>{const r=data[x.id];if(r){cars[x.id].driverUidConfigured=Object.prototype.hasOwnProperty.call(r,'driverUid');cars[x.id].driverUid=typeof r.driverUid==='string'?r.driverUid:null;cars[x.id].status=r.status||'desconectado';cars[x.id].until=r.until||null;cars[x.id].indefinite=!!r.indefinite;cars[x.id].activeTripId=r.activeTripId||null;cars[x.id].driverPhoto=photoForCar(x.id,'profilePhoto');cars[x.id].vehiclePhoto=photoForCar(x.id,'vehiclePhoto');cars[x.id].driverPhotoTransform=transformForCar(x.id,'profilePhoto');cars[x.id].vehiclePhotoTransform=transformForCar(x.id,'vehiclePhoto')}else{cars[x.id].driverUid=null;cars[x.id].driverUidConfigured=false;cars[x.id].status='desconectado';cars[x.id].until=null;cars[x.id].indefinite=false;cars[x.id].activeTripId=null}});
+ refreshCarPresenceFromSnapshot();
  remoteReady=true;diagnostics.mark('firebase.cars.ready',{ready:true,kind:source});diagnostics.mark('firebase.cars.snapshot',{children:snapshot.numChildren(),elapsedMs:Date.now()-carsListenerStartedAt,summary:initial.map(x=>x.id+':'+cars[x.id].status).join('|'),kind:source});render('cars-'+source);
  if(selectedPassengerDriver&&cars[selectedPassengerDriver]?.status!=='libre'&&!cars[selectedPassengerDriver]?.activeTripId){stopPassengerLocationWatch();byId('driverLocationNote').textContent='El coche dejó de estar Libre; su ubicación ya no está disponible.'}
  if(currentUser&&['driver','admin'].includes(currentRole?.role))void restoreDriverActiveTrip();
@@ -1252,15 +1255,61 @@ byId('personalProfileFile').addEventListener('change',async e=>{try{pendingPerso
 byId('personalVehicleFile').addEventListener('change',async e=>{try{pendingPersonalPhotos.vehiclePhoto=await compressImage(e.target.files?.[0]);paintPersonalizationPreviews();byId('personalizationStatus').textContent='Foto del vehículo lista para guardar.'}catch(err){notify(err.message)}});
 byId('personalizationTarget').addEventListener('change',()=>{personalizationTarget=selectedPhotoTarget();pendingPersonalPhotos={profilePhoto:null,vehiclePhoto:null};pendingPhotoTransforms={profilePhoto:null,vehiclePhoto:null};paintPersonalizationPreviews()});
 byId('clearPersonalization').addEventListener('click',()=>{pendingPersonalPhotos={profilePhoto:null,vehiclePhoto:null};pendingPhotoTransforms={profilePhoto:null,vehiclePhoto:null};byId('personalProfileFile').value='';byId('personalVehicleFile').value='';paintPersonalizationPreviews();byId('personalizationStatus').textContent='Cambios pendientes descartados.'});
-byId('savePersonalization').addEventListener('click',async()=>{const uid=selectedPhotoTarget(),target=STAFF_PHOTO_USERS[uid],admin=currentUser?.uid===ADMIN_UID;if(!target||(!admin&&uid!==currentUser?.uid)||(!admin&&!['driver','operator'].includes(currentRole?.role))){notify('No tenés permiso para modificar este perfil.');return}if(!pendingPersonalPhotos.profilePhoto&&!pendingPersonalPhotos.vehiclePhoto&&!pendingPhotoTransforms.profilePhoto&&!pendingPhotoTransforms.vehiclePhoto){notify('No hay cambios para guardar.');return}if(target.role==='operator'&&pendingPersonalPhotos.vehiclePhoto){notify('Los operadores solo pueden modificar su foto de perfil.');return}const payload={...staffPhotos[uid],updatedAt:Date.now(),updatedBy:currentUser.uid};if(pendingPersonalPhotos.profilePhoto)payload.profilePhoto=pendingPersonalPhotos.profilePhoto;if(pendingPersonalPhotos.vehiclePhoto)payload.vehiclePhoto=pendingPersonalPhotos.vehiclePhoto;if(pendingPhotoTransforms.profilePhoto)payload.profilePhotoTransform=pendingPhotoTransforms.profilePhoto;if(pendingPhotoTransforms.vehiclePhoto&&target.role!=='operator')payload.vehiclePhotoTransform=pendingPhotoTransforms.vehiclePhoto;const photoKinds=[...(pendingPersonalPhotos.profilePhoto?["profilePhoto"]:[]),...(pendingPersonalPhotos.vehiclePhoto?["vehiclePhoto"]:[])];const photoCount=photoKinds.length;const photoPhase=photoKinds.join("+")||(pendingPhotoTransforms.profilePhoto||pendingPhotoTransforms.vehiclePhoto?"transform":"none");diagnostics.mark("firebase.staffPhotos.write.start",{carId:target.carId||"",count:photoCount,phase:photoPhase});try{await set(ref(db,'staffPhotos/'+uid),payload);diagnostics.mark("firebase.staffPhotos.write.success",{carId:target.carId||"",count:photoCount,phase:photoPhase});pendingPersonalPhotos={profilePhoto:null,vehiclePhoto:null};pendingPhotoTransforms={profilePhoto:null,vehiclePhoto:null};byId('personalProfileFile').value='';byId('personalVehicleFile').value='';byId('personalizationStatus').textContent='¡Guardado! Las fotos ya están disponibles para todos.';notify('Personalización guardada para todos.')}catch(err){diagnostics.mark("firebase.staffPhotos.write.error",{carId:target.carId||"",name:err?.name||"Error",code:err?.code||""});console.error(err);byId('personalizationStatus').textContent='Firebase rechazó el guardado. Revisá las Rules actualizadas.';notify('No se pudo guardar. Verificá las reglas de Firebase.')}});
+byId('savePersonalization').addEventListener('click',async()=>{
+ const uid=selectedPhotoTarget(),target=STAFF_PHOTO_USERS[uid],admin=currentUser?.uid===ADMIN_UID;
+ if(!target||(!admin&&uid!==currentUser?.uid)||(!admin&&!['driver','operator'].includes(currentRole?.role))){notify('No tenés permiso para modificar este perfil.');return}
+ if(!pendingPersonalPhotos.profilePhoto&&!pendingPersonalPhotos.vehiclePhoto&&!pendingPhotoTransforms.profilePhoto&&!pendingPhotoTransforms.vehiclePhoto){notify('No hay cambios para guardar.');return}
+ if(target.role==='operator'&&pendingPersonalPhotos.vehiclePhoto){notify('Los operadores solo pueden modificar su foto de perfil.');return}
+ const payload={updatedAt:Date.now(),updatedBy:currentUser.uid};
+ if(pendingPersonalPhotos.profilePhoto)payload.profilePhoto=pendingPersonalPhotos.profilePhoto;
+ if(pendingPersonalPhotos.vehiclePhoto)payload.vehiclePhoto=pendingPersonalPhotos.vehiclePhoto;
+ if(pendingPhotoTransforms.profilePhoto)payload.profilePhotoTransform=pendingPhotoTransforms.profilePhoto;
+ if(pendingPhotoTransforms.vehiclePhoto&&target.role!=='operator')payload.vehiclePhotoTransform=pendingPhotoTransforms.vehiclePhoto;
+ const photoKinds=[...(pendingPersonalPhotos.profilePhoto?["profilePhoto"]:[]),...(pendingPersonalPhotos.vehiclePhoto?["vehiclePhoto"]:[])];
+ const photoCount=photoKinds.length,photoPhase=photoKinds.join("+")||(pendingPhotoTransforms.profilePhoto||pendingPhotoTransforms.vehiclePhoto?"transform":"none");
+ const payloadBytes=new TextEncoder().encode(JSON.stringify(payload)).length;
+ diagnostics.mark("firebase.staffPhotos.write.start",{carId:target.carId||"",count:photoCount,phase:photoPhase,bytes:payloadBytes});
+ let writeCompleted=false;
+ try{
+  await update(ref(db,'staffPhotos/'+uid),payload);
+  writeCompleted=true;
+  diagnostics.mark("firebase.staffPhotos.write.success",{carId:target.carId||"",count:photoCount,phase:photoPhase,bytes:payloadBytes});
+  const verificationSnapshot=await get(ref(db,'staffPhotos/'+uid));
+  const saved=verificationSnapshot.val();
+  const verified=!!saved&&Object.entries(payload).every(([key,value])=>JSON.stringify(saved[key])===JSON.stringify(value));
+  if(!verified)throw new Error('Firebase aceptó la escritura, pero la lectura posterior no confirmó todos los campos.');
+  staffPhotos[uid]=saved;
+  diagnostics.mark("firebase.staffPhotos.write.verified",{carId:target.carId||"",count:photoCount,phase:photoPhase,bytes:payloadBytes,profilePresent:!!saved.profilePhoto,vehiclePresent:!!saved.vehiclePhoto});
+  void diagnostics.flush();
+  pendingPersonalPhotos={profilePhoto:null,vehiclePhoto:null};
+  pendingPhotoTransforms={profilePhoto:null,vehiclePhoto:null};
+  byId('personalProfileFile').value='';byId('personalVehicleFile').value='';
+  paintPersonalizationPreviews();render('staff-photos-save-verified');
+  byId('personalizationStatus').textContent='¡Guardado y comprobado! Firebase devolvió las fotos después de escribirlas.';
+  notify('Personalización guardada y comprobada.');
+ }catch(err){
+  if(writeCompleted){
+   diagnostics.mark("firebase.staffPhotos.write.verify_error",{carId:target.carId||"",name:err?.name||"Error",code:err?.code||"",phase:photoPhase});
+   byId('personalizationStatus').textContent='Firebase aceptó la escritura, pero no pude comprobar la lectura posterior. Los cambios siguen pendientes de verificación.';
+   notify('Guardado enviado, pero falta comprobar que las fotos se puedan recuperar.');
+  }else{
+   diagnostics.mark("firebase.staffPhotos.write.error",{carId:target.carId||"",name:err?.name||"Error",code:err?.code||"",phase:photoPhase});
+   console.error(err);byId('personalizationStatus').textContent='Firebase rechazó el guardado. Revisá las Rules actualizadas.';notify('No se pudo guardar. Verificá las reglas de Firebase.');
+  }
+ }
+});;
 let staffPhotosFirstSnapshot=true;
+let staffPhotosListenerHasData=false;
 function applyStaffPhotosSnapshot(snap,source){
  if(staffPhotosFirstSnapshot){staffPhotosFirstSnapshot=false;perf.mark('firebase.staffPhotos.first-snapshot',{children:snap.numChildren()});diagnostics.mark("firebase.staffPhotos.first_snapshot",{children:snap.numChildren(),kind:source})}
- const data=snap.val()||{};Object.keys(staffPhotos).forEach(k=>delete staffPhotos[k]);Object.assign(staffPhotos,data);diagnostics.mark("firebase.staffPhotos.snapshot",{children:Object.keys(staffPhotos).length,kind:source});if(currentUser){paintPersonalizationPreviews();render('staff-photos-'+source)}
+ const data=snap.val()||{},childCount=Object.keys(data).length;
+ if(source==='listener')staffPhotosListenerHasData=childCount>0;
+ if(childCount===0&&Object.keys(staffPhotos).length>0){diagnostics.mark("firebase.staffPhotos.snapshot.empty_ignored",{children:0,kind:source});return}
+ Object.keys(staffPhotos).forEach(k=>delete staffPhotos[k]);Object.assign(staffPhotos,data);diagnostics.mark("firebase.staffPhotos.snapshot",{children:Object.keys(staffPhotos).length,kind:source});if(currentUser){paintPersonalizationPreviews();render('staff-photos-'+source)}
 }
 perf.mark('firebase.staffPhotos.listener.attached');diagnostics.mark("firebase.staffPhotos.listener.attached");
 onValue(ref(db,'staffPhotos'),snap=>{diagnostics.mark("firebase.staffPhotos.callback.enter");applyStaffPhotosSnapshot(snap,'listener')},err=>{diagnostics.mark("firebase.staffPhotos.error",{code:err?.code||"",name:err?.name||"Error"});console.error('No se pudieron leer las fotos compartidas:',err)});
-void get(ref(db,'staffPhotos')).then(snap=>{if(staffPhotosFirstSnapshot){diagnostics.mark("firebase.staffPhotos.initial_get.success",{children:snap.numChildren()});applyStaffPhotosSnapshot(snap,'initial-get')}}).catch(err=>{diagnostics.mark("firebase.staffPhotos.initial_get.error",{code:err?.code||"",name:err?.name||"Error"});console.error('No se pudo recuperar la carga inicial de fotos:',err)});
+void get(ref(db,'staffPhotos')).then(snap=>{const children=snap.numChildren();diagnostics.mark("firebase.staffPhotos.initial_get.success",{children});if(!staffPhotosListenerHasData||(!Object.keys(staffPhotos).length&&children>0))applyStaffPhotosSnapshot(snap,'initial-get')}).catch(err=>{diagnostics.mark("firebase.staffPhotos.initial_get.error",{code:err?.code||"",name:err?.name||"Error"});console.error('No se pudo recuperar la carga inicial de fotos:',err)});
 
 fillSelects();render('initial');perf.mark('app.initial.render.done');setInterval(()=>{const before=Object.values(cars).map(c=>c.until).join(',');refreshExpired();render('expiry-tick')},10000);
 </script>
