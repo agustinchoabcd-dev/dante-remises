@@ -7,7 +7,7 @@ const ALLOWED_TYPES = new Set([
   "firebase.staffPhotos.first_snapshot", "firebase.staffPhotos.snapshot", "firebase.staffPhotos.error",
   "firebase.staffPhotos.write.start", "firebase.staffPhotos.write.success", "firebase.staffPhotos.write.error",
   "firebase.presence.listener.attached", "firebase.presence.snapshot",
-  "firebase.presence.error", "firebase.status.write.start",
+  "firebase.presence.error", "firebase.presence.registered", "firebase.cars.initial_get.success", "firebase.cars.initial_get.error", "firebase.staffPhotos.initial_get.success", "firebase.staffPhotos.initial_get.error", "firebase.status.write.start",
   "firebase.status.write.success", "firebase.status.write.error",
   "js.error", "js.unhandled_rejection"
 ]);
