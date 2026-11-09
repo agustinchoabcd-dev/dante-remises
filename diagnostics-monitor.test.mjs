@@ -114,3 +114,24 @@ test("diagnostics sends ordered event batches and preserves the next sequence", 
   assert.equal(sent[1].events.at(-1).seq, 125);
   assert.equal(monitor.pendingCount, 0);
 });
+
+test("Android WebView metadata prefers the Chrome engine version over Version/4.0", async () => {
+  const runtime = fakeRuntime();
+  runtime.navigator.userAgent = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/120.0.0.0 Mobile Safari/537.36";
+  let sent;
+  const monitor = createDiagnosticsMonitor({
+    runtime,
+    now: () => 1_800_000_000_000,
+    fetchImpl: async (_url, options) => { sent = JSON.parse(options.body); return { ok: true, status: 202 }; }
+  });
+  monitor.configure({ endpoint: "https://worker.example.test/v1/chat/diagnostics", getToken: async () => "token" });
+  monitor.mark("app.start");
+  assert.equal(await monitor.flush(), true);
+  assert.equal(sent.client.browserMajor, 120);
+});
+
+test("diagnostics monitor accepts availability reconnect events", () => {
+  const runtime = fakeRuntime();
+  const monitor = createDiagnosticsMonitor({ runtime, now: () => 1_800_000_000_000 });
+  assert.equal(monitor.mark("firebase.availability.connect", { connected: true }), true);
+});
