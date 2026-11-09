@@ -12,7 +12,7 @@ const ALLOWED_TYPES = new Set([
   "firebase.presence.error", "firebase.presence.registered", "firebase.cars.initial_get.success", "firebase.cars.initial_get.error", "firebase.staffPhotos.initial_get.success", "firebase.staffPhotos.initial_get.error", "firebase.status.write.start",
   "firebase.status.write.success", "firebase.status.write.error",
   "js.error", "js.unhandled_rejection",
-  "ui.click", "ui.change", "ui.submit", "ui.view", "ui.action",
+  "ui.click", "ui.change", "ui.submit", "ui.view", "ui.render", "ui.action",
   "network.fetch.start", "network.fetch.end", "network.fetch.error", "network.online", "network.offline",
   "performance.longtask", "console.error", "console.warn", "app.lifecycle", "firebase.operation"
 ]);
