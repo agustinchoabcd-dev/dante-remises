@@ -4,8 +4,8 @@ const ALLOWED_TYPES = new Set([
   "firebase.cars.listener.attached", "firebase.cars.callback.enter", "firebase.cars.first_snapshot",
   "firebase.cars.snapshot", "firebase.cars.error", "firebase.cars.ready",
   "firebase.staffPhotos.listener.attached", "firebase.staffPhotos.callback.enter",
-  "firebase.staffPhotos.first_snapshot", "firebase.staffPhotos.snapshot", "firebase.staffPhotos.error",
-  "firebase.staffPhotos.write.start", "firebase.staffPhotos.write.success", "firebase.staffPhotos.write.error",
+  "firebase.staffPhotos.first_snapshot", "firebase.staffPhotos.snapshot", "firebase.staffPhotos.snapshot.empty_ignored", "firebase.staffPhotos.error",
+  "firebase.staffPhotos.write.start", "firebase.staffPhotos.write.success", "firebase.staffPhotos.write.verified", "firebase.staffPhotos.write.verify_error", "firebase.staffPhotos.write.error",
   "firebase.presence.listener.attached", "firebase.presence.snapshot",
   "firebase.presence.error", "firebase.presence.registered", "firebase.cars.initial_get.success", "firebase.cars.initial_get.error", "firebase.staffPhotos.initial_get.success", "firebase.staffPhotos.initial_get.error", "firebase.status.write.start",
   "firebase.status.write.success", "firebase.status.write.error",
@@ -14,7 +14,7 @@ const ALLOWED_TYPES = new Set([
 const ALLOWED_DETAILS = new Set([
   "phase", "code", "name", "children", "carId", "status", "online",
   "connected", "role", "elapsedMs", "count", "authenticated",
-  "summary", "networkOnline", "ready", "durationMs", "line", "column", "source", "bytes", "kind"
+  "summary", "networkOnline", "ready", "durationMs", "line", "column", "source", "bytes", "kind", "profilePresent", "vehiclePresent"
 ]);
 
 function cleanDetails(value) {
