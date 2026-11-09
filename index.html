@@ -282,8 +282,9 @@ function renderContent(){refreshExpired();initial.forEach(x=>{cars[x.id].driverP
 const c=cars[activeDriver];byId('driverStatus').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${c.driver}</div><div class="model">${c.id} · ${c.model}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;
 }
 function render(reason="unspecified"){
- diagnostics.mark("ui.render",{action:reason});
  const result=perf.measure(`ui.render.${reason}`,renderContent);
+ const measured=perf.records.at(-1);
+ diagnostics.mark("ui.render",{action:reason,durationMs:measured?.durationMs||0,result:measured?.details?.failed?"error":"success"});
  availabilityRefresh.schedule();
  return result;
 }
