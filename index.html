@@ -1178,7 +1178,7 @@ onAuthStateChanged(auth,async user=>{
  byId('messages').replaceChildren();byId('chatConversationList').replaceChildren();updateChatHistoryControls();
  if(driverConnectionUnsub){driverConnectionUnsub();driverConnectionUnsub=null}await clearDriverPresence();perf.mark('auth.presence-cleanup.done');if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
  currentUser=user;currentRole=null;activeTripRestoreVersion++;if(!user){activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden')}
- if(user){try{currentRole=await resolveAuthenticatedRole(user);perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void diagnostics.flush()}catch(error){diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';await signOut(auth);notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
+ if(user){try{currentRole=await resolveAuthenticatedRole(user);perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void refreshStaffPhotosForAuthenticatedUser(user);void diagnostics.flush()}catch(error){diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';await signOut(auth);notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
  byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress)return;
  if(user&&!currentRole){byId('authStatus').textContent='Cuenta sin rol asignado. Contactá a Agustín.';await signOut(auth);notify('Esta cuenta no está habilitada en Dante Remises.');return}
@@ -1298,6 +1298,19 @@ byId('savePersonalization').addEventListener('click',async()=>{
   }
  }
 });
+function refreshStaffPhotosForAuthenticatedUser(user){
+ const uid=user?.uid;
+ if(!uid)return;
+ void get(ref(db,'staffPhotos')).then(snap=>{
+  if(currentUser?.uid!==uid)return;
+  diagnostics.mark("firebase.staffPhotos.auth_get.success",{children:snap.numChildren()});
+  if(!staffPhotosListenerHasData||!Object.keys(staffPhotos).length)applyStaffPhotosSnapshot(snap,'auth-get');
+ }).catch(error=>{
+  if(currentUser?.uid!==uid)return;
+  diagnostics.mark("firebase.staffPhotos.auth_get.error",{code:error?.code||"",name:error?.name||"Error"});
+  console.warn('No se pudieron recuperar las fotos después de autenticar:',error);
+ });
+}
 let staffPhotosFirstSnapshot=true;
 let staffPhotosListenerHasData=false;
 function applyStaffPhotosSnapshot(snap,source){
