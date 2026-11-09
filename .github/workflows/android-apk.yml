@@ -107,7 +107,7 @@ jobs:
           sed -n '1,42p' node_modules/@capacitor/local-notifications/android/build.gradle
 
 
-      - name: Configure verified Gradle Wrapper download and retries
+      - name: Configure verified Gradle Wrapper properties
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -118,13 +118,10 @@ jobs:
           if not path.is_file():
               raise SystemExit(f"Generated Gradle Wrapper properties file was not found: {path}")
           text = path.read_text(encoding="utf-8")
-          url = r"distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip"
+          url = r"distributionUrl=https\\://services.gradle.org/distributions/gradle-8.14.3-bin.zip"
           text = re.sub(r"(?m)^distributionUrl=.*$", url, text)
-
           properties = {
               "networkTimeout": "120000",
-              "retries": "3",
-              "retryBackOffMs": "2000",
               "distributionSha256Sum": "bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531",
           }
           for key, value in properties.items():
@@ -133,9 +130,11 @@ jobs:
               if re.search(pattern, text):
                   text = re.sub(pattern, lambda _: line, text)
               else:
-                  text = text.rstrip() + "\n" + line + "\n"
+                  text = text.rstrip() + "\\n" + line + "\\n"
+          text = re.sub(r"(?m)^retries=.*\\n?", "", text)
+          text = re.sub(r"(?m)^retryBackOffMs=.*\\n?", "", text)
           path.write_text(text, encoding="utf-8")
-          print("Configured Gradle 8.14.3 binary distribution, SHA-256 verification, 120s timeout and 3 retries.")
+          print("Pinned Gradle 8.14.3 bin distribution, SHA-256 and 120s wrapper timeout.")
           PY
           cat android/gradle/wrapper/gradle-wrapper.properties
 
@@ -144,6 +143,23 @@ jobs:
         with:
           cache-provider: basic
           cache-read-only: ${{ github.ref != 'refs/heads/dante-test' }}
+
+      - name: Download and install verified Gradle distribution with retries
+        env:
+          GRADLE_VERSION: 8.14.3
+          GRADLE_SHA256: bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/gradle-$GRADLE_VERSION-bin.zip"
+          install_dir="$RUNNER_TEMP/gradle"
+          curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 --retry-max-time 600 --connect-timeout 30 --max-time 600 \\
+            --output "$archive" "https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
+          printf '%s  %s\\n' "$GRADLE_SHA256" "$archive" | sha256sum --check -
+          mkdir -p "$install_dir"
+          unzip -q "$archive" -d "$install_dir"
+          test -x "$install_dir/gradle-$GRADLE_VERSION/bin/gradle"
+          echo "$install_dir/gradle-$GRADLE_VERSION/bin" >> "$GITHUB_PATH"
+          "$install_dir/gradle-$GRADLE_VERSION/bin/gradle" --version
 
       - name: Set monotonically increasing Android version
         env:
@@ -225,8 +241,8 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          gradle --version
+          gradle assembleDebug --no-daemon
 
       - name: Verify APK package and signing certificate
         env:
