@@ -79,7 +79,7 @@ export function createDiagnosticsMonitor({
   const clearTimer = runtime.clearTimeout?.bind(runtime) || clearTimeout;
 
   function schedule(delay = 8000) {
-    if (!endpoint || !getToken || timer !== null) return;
+    if (!endpoint || !getToken || timer !== null || runtime.navigator?.onLine === false) return;
     timer = setTimer(() => {
       timer = null;
       void flush();
