@@ -1,8 +1,11 @@
 const MAX_EVENTS = 80;
 const ALLOWED_TYPES = new Set([
   "app.start", "app.visibility", "auth.state", "auth.role.error",
-  "firebase.cars.listener.attached", "firebase.cars.first_snapshot",
+  "firebase.cars.listener.attached", "firebase.cars.callback.enter", "firebase.cars.first_snapshot",
   "firebase.cars.snapshot", "firebase.cars.error", "firebase.cars.ready",
+  "firebase.staffPhotos.listener.attached", "firebase.staffPhotos.callback.enter",
+  "firebase.staffPhotos.first_snapshot", "firebase.staffPhotos.snapshot", "firebase.staffPhotos.error",
+  "firebase.staffPhotos.write.start", "firebase.staffPhotos.write.success", "firebase.staffPhotos.write.error",
   "firebase.presence.listener.attached", "firebase.presence.snapshot",
   "firebase.presence.error", "firebase.status.write.start",
   "firebase.status.write.success", "firebase.status.write.error",
@@ -11,7 +14,7 @@ const ALLOWED_TYPES = new Set([
 const ALLOWED_DETAILS = new Set([
   "phase", "code", "name", "children", "carId", "status", "online",
   "connected", "role", "elapsedMs", "count", "authenticated",
-  "summary", "networkOnline", "ready", "durationMs"
+  "summary", "networkOnline", "ready", "durationMs", "line", "column", "source", "bytes", "kind"
 ]);
 
 function cleanDetails(value) {
@@ -140,11 +143,31 @@ export function createDiagnosticsMonitor({
     return inFlight;
   }
 
+  function errorLocation(error, fallbackSource = "") {
+    const stack = String(error?.stack || "");
+    const match = stack.match(/(?:^|\\s)([^/\\s?#]+\\.(?:m?js|html)):(\\d+):(\\d+)/m);
+    const source = (match?.[1] || fallbackSource || "unknown").slice(0, 64);
+    return {
+      source: /^[A-Za-z0-9_.-]+$/.test(source) ? source : "unknown",
+      line: Number(match?.[2] || 0),
+      column: Number(match?.[3] || 0)
+    };
+  }
+
   runtime.addEventListener?.("error", event => {
-    mark("js.error", { name: event?.error?.name || "Error" });
+    const filename = String(event?.filename || "").split(/[/?#]/).pop();
+    mark("js.error", {
+      name: event?.error?.name || "Error",
+      source: /^[A-Za-z0-9_.-]+$/.test(filename) ? filename : "unknown",
+      line: Number(event?.lineno || 0),
+      column: Number(event?.colno || 0)
+    });
   });
   runtime.addEventListener?.("unhandledrejection", event => {
-    mark("js.unhandled_rejection", { name: event?.reason?.name || "PromiseRejection" });
+    mark("js.unhandled_rejection", {
+      name: event?.reason?.name || "PromiseRejection",
+      ...errorLocation(event?.reason)
+    });
   });
   runtime.addEventListener?.("pagehide", () => { void flush(); });
   runtime.document?.addEventListener?.("visibilitychange", () => {
