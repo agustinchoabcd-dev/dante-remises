@@ -81,20 +81,19 @@ export function installAppTelemetry({ runtime = globalThis, monitor } = {}) {
     removers.push(() => { runtime.fetch = originalFetch; });
   }
 
-  const originalError = runtime.console?.error?.bind(runtime.console);
-  const originalWarn = runtime.console?.warn?.bind(runtime.console);
-  if (originalError) runtime.console.error = (...args) => {
-    originalError(...args);
-    const error = args.find(value => value instanceof Error);
-    monitor.mark("console.error", { errorType: error?.name || "LoggedError" });
-  };
-  if (originalWarn) runtime.console.warn = (...args) => {
-    originalWarn(...args);
-    const error = args.find(value => value instanceof Error);
-    monitor.mark("console.warn", { errorType: error?.name || "LoggedWarning" });
-  };
-  if (originalError) removers.push(() => { runtime.console.error = originalError; });
-  if (originalWarn) removers.push(() => { runtime.console.warn = originalWarn; });
+  const consoleMethods = ["log", "info", "debug", "error", "warn"];
+  for (const level of consoleMethods) {
+    const original = runtime.console?.[level]?.bind(runtime.console);
+    if (!original) continue;
+    runtime.console[level] = (...args) => {
+      original(...args);
+      const error = args.find(value => value instanceof Error);
+      monitor.mark(`console.${level}`, {
+        errorType: error?.name || (level === "error" ? "LoggedError" : level === "warn" ? "LoggedWarning" : "")
+      });
+    };
+    removers.push(() => { runtime.console[level] = original; });
+  }
 
   let observer = null;
   try {
