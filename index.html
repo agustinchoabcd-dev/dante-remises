@@ -164,7 +164,7 @@ import { installAppTelemetry } from "./app-telemetry.mjs";
 import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.mjs";
 import { ChatApiClient, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
-import { getDatabase, ref, onValue, get, set, update, remove, push, runTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js";
+import { getDatabase, ref, onValue as firebaseOnValue, get as firebaseGet, set as firebaseSet, update as firebaseUpdate, remove as firebaseRemove, push as firebasePush, runTransaction as firebaseRunTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 perf.mark("app.module.start");
 diagnostics.mark("app.start");
@@ -182,6 +182,44 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getDatabase(firebaseApp);
 const auth = getAuth(firebaseApp);
+async function trackedFirebaseOperation(action, operation) {
+ const startedAt=Date.now();
+ diagnostics.mark("firebase.operation",{action:action+".start"});
+ try{
+  const result=await operation();
+  diagnostics.mark("firebase.operation",{action:action+".success",durationMs:Date.now()-startedAt,result:"success"});
+  return result;
+ }catch(error){
+  diagnostics.mark("firebase.operation",{action:action+".error",durationMs:Date.now()-startedAt,code:error?.code||"",errorType:error?.name||"Error"});
+  throw error;
+ }
+}
+const get=(...args)=>trackedFirebaseOperation("get",()=>firebaseGet(...args));
+const set=(...args)=>trackedFirebaseOperation("set",()=>firebaseSet(...args));
+const update=(...args)=>trackedFirebaseOperation("update",()=>firebaseUpdate(...args));
+const remove=(...args)=>trackedFirebaseOperation("remove",()=>firebaseRemove(...args));
+const runTransaction=(...args)=>trackedFirebaseOperation("transaction",()=>firebaseRunTransaction(...args));
+function push(...args){
+ const result=firebasePush(...args);
+ if(args.length>1)return Promise.resolve(result).then(value=>{diagnostics.mark("firebase.operation",{action:"push.success",result:"success"});return value},error=>{diagnostics.mark("firebase.operation",{action:"push.error",code:error?.code||"",errorType:error?.name||"Error"});throw error});
+ diagnostics.mark("firebase.operation",{action:"push.reference"});
+ return result;
+}
+function onValue(query, callback, cancelCallback, options){
+ const startedAt=Date.now();
+ let first=true;
+ const wrappedCallback=snapshot=>{
+  diagnostics.mark("firebase.operation",{action:first?"onValue.first_snapshot":"onValue.snapshot",durationMs:first?Date.now()-startedAt:0,result:"success"});
+  first=false;
+  return callback(snapshot);
+ };
+ const wrappedCancel=typeof cancelCallback==="function"?(error)=>{
+  diagnostics.mark("firebase.operation",{action:"onValue.error",durationMs:Date.now()-startedAt,code:error?.code||"",errorType:error?.name||"Error"});
+  return cancelCallback(error);
+ }:cancelCallback;
+ diagnostics.mark("firebase.operation",{action:"onValue.attach"});
+ return firebaseOnValue(query,wrappedCallback,wrappedCancel,options);
+}
 let currentUser = null;
 let currentRole = null;
 let registrationInProgress = false;
