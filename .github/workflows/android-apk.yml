@@ -72,6 +72,30 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
+      - name: Increase Gradle Wrapper download timeout
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          path = Path("android/gradle/wrapper/gradle-wrapper.properties")
+          if not path.is_file():
+              raise SystemExit("Generated Gradle Wrapper properties file was not found.")
+          text = path.read_text(encoding="utf-8")
+          if re.search(r"(?m)^networkTimeout=", text):
+              text = re.sub(r"(?m)^networkTimeout=.*$", "networkTimeout=120000", text)
+          else:
+              text = text.rstrip() + "\\nnetworkTimeout=120000\\n"
+          path.write_text(text, encoding="utf-8")
+          print("Gradle Wrapper networkTimeout configured: 120000 ms")
+          PY
+
+      - name: Configure Gradle dependency and distribution cache
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          cache-read-only: ${{ github.ref != 'refs/heads/dante-test' }}
+
       - name: Set monotonically increasing Android version
         env:
           ANDROID_VERSION_CODE: ${{ github.run_number }}
