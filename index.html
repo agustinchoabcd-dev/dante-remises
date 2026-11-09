@@ -298,6 +298,7 @@ window.quickSet=(id,status)=>{if(!currentUser||currentRole?.role!=='admin'){noti
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 byId('settingsGearButton').addEventListener('click',()=>showView('configuracion'));
 let selectedPassengerDriver=null,realMap=null,originPoint=null,destinationPoint=null,mapPickMode=null,routeLayer=null,selectedCarMarker=null,liveLocationUnsub=null,passengerTripUnsub=null,driverInboxUnsub=null,driverPresenceUnsub=null,driverConnectionUnsub=null,driverPresenceRef=null,driverWatchId=null,driverLocationWriteAt=0,activeTripId=null,activeTripData=null;
+let driverPresenceGeneration=0;
 const carMarkers={};
 function choosePassengerDriver(id){const c=cars[id];if(!c||!c.online||c.status!=='libre'){notify('Ese chofer ya no está disponible.');render('invalid-driver-selection');return}selectedPassengerDriver=id;byId('passengerDriverScreen').classList.add('hidden');byId('passengerTripScreen').classList.remove('hidden');byId('selectedDriverCard').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${esc(c.driver)}</div><div class="model">Coche ${c.id} · ${esc(c.model)}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;byId('requestResult').classList.add('hidden');byId('requestResult').textContent='';originPoint=null;destinationPoint=null;byId('origin').value='';byId('destination').value='';if(realMap){if(routeLayer){realMap.removeLayer(routeLayer);routeLayer=null}if(window.originMarker){realMap.removeLayer(window.originMarker);window.originMarker=null}if(window.destinationMarker){realMap.removeLayer(window.destinationMarker);window.destinationMarker=null}}initRealMap();watchSelectedDriver(id);}
 byId('passengerCars').addEventListener('click',e=>{if(e.target.closest('.avatar'))return;const btn=e.target.closest('[data-driver-id]');if(btn&&!btn.disabled)choosePassengerDriver(btn.dataset.driverId)});
@@ -555,7 +556,14 @@ async function startDriverGps(){
  }finally{driverGpsStarting=false}
 }
 function stopDriverGps(){if(driverWatchId!==null){clearWatch(driverWatchId);driverWatchId=null}}
-async function clearDriverPresence(){if(!driverPresenceRef)return;const target=driverPresenceRef;driverPresenceRef=null;try{await onDisconnect(target).cancel()}catch(error){console.warn('No se pudo cancelar la limpieza programada de presencia:',error)}try{await remove(target)}catch(error){console.warn('No se pudo limpiar la presencia del chofer:',error)}}
+async function clearDriverPresence(){
+ driverPresenceGeneration++;
+ const target=driverPresenceRef;
+ driverPresenceRef=null;
+ if(!target)return;
+ try{await onDisconnect(target).cancel()}catch(error){console.warn('No se pudo cancelar la limpieza programada de presencia:',error)}
+ try{await remove(target)}catch(error){console.warn('No se pudo limpiar la presencia del chofer:',error)}
+}
 async function ensureConnectedDriverAvailability(carId){
  const config=initial.find(item=>item.id===carId);
  if(!config)throw new Error('No se encontró la configuración del coche.');
@@ -581,7 +589,23 @@ async function ensureConnectedDriverAvailability(carId){
  cars[carId].activeTripId=saved.activeTripId||null;
  diagnostics.mark('firebase.availability.connect',{carId,status:cars[carId].status,decision:result.committed?'defaulted':'preserved',activeTrip:!!saved.activeTripId});
 }
-async function registerDriverPresence(user,role){const carId=role.role==='admin'?'144':String(role.carId||'');if(driverUidForCar(carId)!==user.uid)throw new Error('La cuenta no coincide con el chofer asignado al coche.');const target=ref(db,'driverPresence/'+carId);await onDisconnect(target).remove();await ensureConnectedDriverAvailability(carId);await set(target,{uid:user.uid,connected:true,connectedAt:Date.now()});driverPresenceRef=target}
+async function registerDriverPresence(user,role){
+ const generation=driverPresenceGeneration;
+ const carId=role.role==='admin'?'144':String(role.carId||'');
+ if(driverUidForCar(carId)!==user.uid)throw new Error('La cuenta no coincide con el chofer asignado al coche.');
+ const target=ref(db,'driverPresence/'+carId),connectedAt=Date.now();
+ await onDisconnect(target).remove();
+ if(generation!==driverPresenceGeneration||currentUser?.uid!==user.uid){diagnostics.mark('firebase.presence.registration.stale',{carId,phase:'before-availability'});return}
+ await ensureConnectedDriverAvailability(carId);
+ if(generation!==driverPresenceGeneration||currentUser?.uid!==user.uid){diagnostics.mark('firebase.presence.registration.stale',{carId,phase:'before-write'});return}
+ await set(target,{uid:user.uid,connected:true,connectedAt});
+ if(generation!==driverPresenceGeneration||currentUser?.uid!==user.uid){
+  await runTransaction(target,current=>current?.uid===user.uid&&current?.connectedAt===connectedAt?null:undefined);
+  diagnostics.mark('firebase.presence.registration.stale',{carId,phase:'after-write'});
+  return;
+ }
+ driverPresenceRef=target;
+}
 function renderDriverActiveTrip(trip,id){
  activeTripId=id;activeTripData=trip;
  const startButton=trip.status==='accepted'?'<button class="primary" id="startTripButton">Iniciar viaje</button>':'';
