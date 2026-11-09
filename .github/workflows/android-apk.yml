@@ -107,23 +107,37 @@ jobs:
           sed -n '1,42p' node_modules/@capacitor/local-notifications/android/build.gradle
 
 
-      - name: Increase Gradle Wrapper download timeout
+      - name: Configure verified Gradle Wrapper download and retries
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           import re
           from pathlib import Path
 
           path = Path("android/gradle/wrapper/gradle-wrapper.properties")
           if not path.is_file():
-              raise SystemExit("Generated Gradle Wrapper properties file was not found.")
+              raise SystemExit(f"Generated Gradle Wrapper properties file was not found: {path}")
           text = path.read_text(encoding="utf-8")
-          if re.search(r"(?m)^networkTimeout=", text):
-              text = re.sub(r"(?m)^networkTimeout=.*$", "networkTimeout=120000", text)
-          else:
-              text = text.rstrip() + "\nnetworkTimeout=120000\n"
+          url = r"distributionUrl=https\\://services.gradle.org/distributions/gradle-8.14.3-bin.zip"
+          text = re.sub(r"(?m)^distributionUrl=.*$", url, text)
+
+          properties = {
+              "networkTimeout": "120000",
+              "retries": "3",
+              "retryBackOffMs": "2000",
+              "distributionSha256Sum": "bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531",
+          }
+          for key, value in properties.items():
+              pattern = rf"(?m)^{re.escape(key)}=.*$"
+              line = f"{key}={value}"
+              if re.search(pattern, text):
+                  text = re.sub(pattern, lambda _: line, text)
+              else:
+                  text = text.rstrip() + "\\n" + line + "\\n"
           path.write_text(text, encoding="utf-8")
-          print("Gradle Wrapper networkTimeout configured: 120000 ms")
+          print("Configured Gradle 8.14.3 binary distribution, SHA-256 verification, 120s timeout and 3 retries.")
           PY
+          cat android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Configure Gradle dependency and distribution cache
         uses: gradle/actions/setup-gradle@v6
