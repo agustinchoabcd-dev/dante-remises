@@ -14,7 +14,7 @@ const ALLOWED_TYPES = new Set([
   "js.error", "js.unhandled_rejection",
   "ui.click", "ui.change", "ui.submit", "ui.view", "ui.render", "ui.action",
   "network.fetch.start", "network.fetch.end", "network.fetch.error", "network.online", "network.offline",
-  "performance.longtask", "console.error", "console.warn", "app.lifecycle", "firebase.operation"
+  "performance.longtask", "console.log", "console.info", "console.debug", "console.error", "console.warn", "app.lifecycle", "firebase.operation"
 ]);
 const ALLOWED_DETAILS = new Set([
   "phase", "code", "name", "children", "carId", "status", "online",
