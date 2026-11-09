@@ -293,7 +293,30 @@ const availabilityRefresh=createAvailabilityRefreshScheduler({
  onRefresh:()=>render("availability-clock")
 });
 function notify(msg){const t=byId('toast');t.textContent=msg;t.style.display='block';clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.style.display='none',2800)}
-async function setStatus(id,status,minutes=null,indefinite=false){if(cars[id]?.activeTripId&&status!=='ocupado'){notify('No podés cambiar la disponibilidad mientras hay un viaje activo.');return}if(!currentUser||!currentRole||!(currentRole.role==='admin'||(currentRole.role==='driver'&&currentRole.carId===id))){notify('No tenés permiso para modificar ese coche.');return}const c=cars[id];c.status=status;c.until=minutes?Date.now()+minutes*60000:null;c.indefinite=indefinite;render('optimistic-status');const writeStartedAt=Date.now();diagnostics.mark('firebase.status.write.start',{carId:id,status});try{await update(ref(db,'cars/'+id),{driver:c.driver,model:c.model,status:c.status,until:c.until,indefinite:c.indefinite,updatedAt:Date.now()});diagnostics.mark('firebase.status.write.success',{carId:id,status,durationMs:Date.now()-writeStartedAt});if(status!=='libre')await remove(ref(db,'driverLocations/'+id));else if((currentRole?.role==='driver'||currentRole?.role==='admin')&&(currentRole.carId===id||currentUser.uid===ADMIN_UID))startDriverGps();notify('Estado sincronizado: '+c.driver)}catch(err){diagnostics.mark('firebase.status.write.error',{carId:id,code:err?.code||'',name:err?.name||'Error',durationMs:Date.now()-writeStartedAt});notify('No se pudo guardar. Revisá el acceso y las reglas de Firebase.');console.error(err)}}
+const statusWriteVersions={};
+async function setStatus(id,status,minutes=null,indefinite=false){
+ if(cars[id]?.activeTripId&&status!=='ocupado'){notify('No podés cambiar la disponibilidad mientras hay un viaje activo.');return}
+ if(!currentUser||!currentRole||!(currentRole.role==='admin'||(currentRole.role==='driver'&&currentRole.carId===id))){notify('No tenés permiso para modificar ese coche.');return}
+ const c=cars[id],previous={status:c.status,until:c.until,indefinite:c.indefinite};
+ const version=(statusWriteVersions[id]||0)+1;statusWriteVersions[id]=version;
+ const next={status,until:minutes?Date.now()+minutes*60000:null,indefinite:!!indefinite};
+ c.status=next.status;c.until=next.until;c.indefinite=next.indefinite;render('optimistic-status');
+ const writeStartedAt=Date.now();diagnostics.mark('firebase.status.write.start',{carId:id,status,version});
+ try{
+  await update(ref(db,'cars/'+id),{driver:c.driver,model:c.model,status:next.status,until:next.until,indefinite:next.indefinite,updatedAt:Date.now()});
+  diagnostics.mark('firebase.status.write.success',{carId:id,status,durationMs:Date.now()-writeStartedAt,version});
+  if(statusWriteVersions[id]===version){
+   if(status!=='libre')await remove(ref(db,'driverLocations/'+id));
+   else if((currentRole?.role==='driver'||currentRole?.role==='admin')&&(currentRole.carId===id||currentUser.uid===ADMIN_UID))startDriverGps();
+  }
+  notify('Estado sincronizado: '+c.driver);
+ }catch(err){
+  diagnostics.mark('firebase.status.write.error',{carId:id,code:err?.code||'',name:err?.name||'Error',durationMs:Date.now()-writeStartedAt,version});
+  if(statusWriteVersions[id]===version){c.status=previous.status;c.until=previous.until;c.indefinite=previous.indefinite;render('status-write-rollback')}
+  notify('No se pudo guardar. Se restauró el último estado confirmado. Revisá la conexión y las reglas de Firebase.');
+  console.error(err);
+ }
+}
 window.quickSet=(id,status)=>{if(!currentUser||currentRole?.role!=='admin'){notify('Solo Agustín, administrador, puede gestionar todos los coches.');return}if(status==='libre')setStatus(id,'libre');else if(status==='ocupado')setStatus(id,'ocupado',30);else setStatus(id,'fuera',null,true)}
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 byId('settingsGearButton').addEventListener('click',()=>showView('configuracion'));
@@ -1441,11 +1464,9 @@ byId('savePersonalization').addEventListener('click',async()=>{
  }
 });
 let staffPhotosFirstSnapshot=true;
-let staffPhotosListenerHasData=false;
 let staffPhotosListenerUnsub=null;
 function stopStaffPhotosSync(){
  if(staffPhotosListenerUnsub){staffPhotosListenerUnsub();staffPhotosListenerUnsub=null}
- staffPhotosListenerHasData=false;
  Object.keys(staffPhotos).forEach(key=>delete staffPhotos[key]);
 }
 function startStaffPhotosSync(user){
@@ -1468,23 +1489,10 @@ function startStaffPhotosSync(user){
   diagnostics.mark("firebase.staffPhotos.error",{code:error?.code||"",name:error?.name||"Error"});
   console.error('No se pudieron leer las fotos compartidas:',error);
  });
- void get(ref(db,'staffPhotos')).then(snap=>{
-  if(currentUser?.uid!==uid)return;
-  const children=snapshotChildCount(snap);
-  try{
-   if(!staffPhotosListenerHasData||(!Object.keys(staffPhotos).length&&children>0))applyStaffPhotosSnapshot(snap,'initial-get');
-   diagnostics.mark("firebase.staffPhotos.initial_get.success",{children});
-  }catch(error){diagnostics.mark("firebase.staffPhotos.error",{code:error?.code||"",name:error?.name||"Error",phase:"snapshot-process-initial-get"});console.error('No se pudo procesar la lectura inicial de fotografías:',error)}
- }).catch(error=>{
-  if(currentUser?.uid!==uid)return;
-  diagnostics.mark("firebase.staffPhotos.initial_get.error",{code:error?.code||"",name:error?.name||"Error"});
-  console.error('No se pudo recuperar la carga inicial de fotos:',error);
- });
 }
 function applyStaffPhotosSnapshot(snap,source){
  const data=snap.val()||{},childCount=Object.keys(data).length;
  if(staffPhotosFirstSnapshot){perf.mark('firebase.staffPhotos.first-snapshot',{children:childCount});diagnostics.mark("firebase.staffPhotos.first_snapshot",{children:childCount,kind:source});staffPhotosFirstSnapshot=false}
- if(source==='listener')staffPhotosListenerHasData=childCount>0;
  if(childCount===0&&Object.keys(staffPhotos).length>0){diagnostics.mark("firebase.staffPhotos.snapshot.empty_ignored",{children:0,kind:source});return}
  Object.keys(staffPhotos).forEach(k=>delete staffPhotos[k]);Object.assign(staffPhotos,data);diagnostics.mark("firebase.staffPhotos.snapshot",{children:Object.keys(staffPhotos).length,kind:source});if(currentUser){paintPersonalizationPreviews();render('staff-photos-'+source)}
 }
