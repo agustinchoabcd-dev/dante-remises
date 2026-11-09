@@ -29,4 +29,9 @@ export function clearWatch(id) {
 }
 
 // Los permisos nativos se solicitan únicamente dentro de la APK.
+export async function requestLocationPermission() {
+  // En navegador el permiso se solicita al ejecutar getCurrentPosition/watchPosition.
+  return !!geolocation();
+}
+
 export async function requestStartupPermissions() {}
