@@ -3,17 +3,6 @@ run-name: Android APK · ${{ github.ref_name }} · ${{ github.sha }}
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - android-capacitor
-      - android-photo-test
-      - fix/passenger-onboarding-trip-diagnostics
-      - fix/passenger-onboarding-camera-flow
-      - feature/driver-presence
-      - dante-test
-    paths-ignore:
-      - 'chat-worker/**'
-      - '.github/workflows/chat-candidate-tests.yml'
 
 permissions:
   contents: read
