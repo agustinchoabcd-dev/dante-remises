@@ -85,7 +85,7 @@ jobs:
           if re.search(r"(?m)^networkTimeout=", text):
               text = re.sub(r"(?m)^networkTimeout=.*$", "networkTimeout=120000", text)
           else:
-              text = text.rstrip() + "\\nnetworkTimeout=120000\\n"
+              text = text.rstrip() + "\nnetworkTimeout=120000\n"
           path.write_text(text, encoding="utf-8")
           print("Gradle Wrapper networkTimeout configured: 120000 ms")
           PY
