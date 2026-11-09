@@ -1297,7 +1297,7 @@ byId('savePersonalization').addEventListener('click',async()=>{
    console.error(err);byId('personalizationStatus').textContent='Firebase rechazó el guardado. Revisá las Rules actualizadas.';notify('No se pudo guardar. Verificá las reglas de Firebase.');
   }
  }
-});;
+});
 let staffPhotosFirstSnapshot=true;
 let staffPhotosListenerHasData=false;
 function applyStaffPhotosSnapshot(snap,source){
