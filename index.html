@@ -1288,16 +1288,19 @@ async function resolveAuthenticatedRole(user){
  return resolveRoleFromProfile({uid:user.uid,profile,legacyStaff,adminUid:ADMIN_UID,userEmail:user.email});
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&currentRole?.role==='operator')void sendOperatorPresence()});
+let authStateGeneration=0;
 onAuthStateChanged(auth,async user=>{
+ const authGeneration=++authStateGeneration;
  perf.mark("auth.callback.start");
  stopStaffPhotosSync();
  await stopOperatorPresence();
+ if(authGeneration!==authStateGeneration)return;
  perf.mark("auth.chat-cleanup.done");
  stopChatPolling();chatApiClient=null;activeChatConversation=null;chatConversations=[];chatResolvedTitles.clear();chatAttachmentUrls.clear();chatEventUnavailable=false;operatorPresenceUnavailable=false;chatOperatorServiceUnavailable=false;chatMessagesCursor=null;chatMessages=[];chatMessagesHasMore=false;chatMessagesLoadingOlder=false;chatMessagesConversationId=null;chatRefreshing=false;chatOperators=[];chatSelectedOperatorUid='';
  byId('messages').replaceChildren();byId('chatConversationList').replaceChildren();updateChatHistoryControls();
- if(driverConnectionUnsub){driverConnectionUnsub();driverConnectionUnsub=null}await clearDriverPresence();perf.mark('auth.presence-cleanup.done');if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
+ if(driverConnectionUnsub){driverConnectionUnsub();driverConnectionUnsub=null}await clearDriverPresence();if(authGeneration!==authStateGeneration)return;perf.mark('auth.presence-cleanup.done');if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
  currentUser=user;currentRole=null;activeTripRestoreVersion++;if(!user){activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden')}
- if(user){try{currentRole=await resolveAuthenticatedRole(user);perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';await signOut(auth);notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
+ if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';await signOut(auth);notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
  byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress)return;
  if(user&&!currentRole){byId('authStatus').textContent='Cuenta sin rol asignado. Contactá a Agustín.';await signOut(auth);notify('Esta cuenta no está habilitada en Dante Remises.');return}
@@ -1306,7 +1309,7 @@ onAuthStateChanged(auth,async user=>{
  const roleText=!user?'Sesión cerrada.':currentRole.role==='admin'?'Administrador total y chofer · '+currentRole.name:currentRole.role==='driver'?'Chofer · Coche '+currentRole.carId+' · '+currentRole.name:currentRole.role==='operator'?'Operador · '+currentRole.name:'Pasajero · '+currentRole.name;
  if(user){const pendingWelcome=sessionStorage.getItem('danteWelcomeName');if(pendingWelcome){sessionStorage.removeItem('danteWelcomeName')}}
  byId('staffAccess').classList.toggle('hidden',!!user);byId('staffEntryButton').classList.toggle('hidden',!!user);byId('settingsGearButton').classList.toggle('hidden',!user);
- byId('authStatus').textContent=roleText;byId('centralAuthStatus').textContent=roleText;byId('versionNote').classList.toggle('hidden',!user);byId('appFooter').classList.toggle('hidden',!user);if(user)await welcomeUser(user);else byId('postLoginGreeting').classList.add('hidden');perf.mark('auth.welcome.done');
+ byId('authStatus').textContent=roleText;byId('centralAuthStatus').textContent=roleText;byId('versionNote').classList.toggle('hidden',!user);byId('appFooter').classList.toggle('hidden',!user);if(user)await welcomeUser(user);else byId('postLoginGreeting').classList.add('hidden');if(authGeneration!==authStateGeneration)return;perf.mark('auth.welcome.done');
  byId('driverControls').classList.toggle('hidden',!user||!['driver','admin'].includes(currentRole.role));
  byId('roleSummary').textContent=roleText;
  byId('central').classList.toggle('hidden',!user||!['admin','operator'].includes(currentRole.role));
