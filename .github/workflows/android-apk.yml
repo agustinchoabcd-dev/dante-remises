@@ -118,7 +118,7 @@ jobs:
           if not path.is_file():
               raise SystemExit(f"Generated Gradle Wrapper properties file was not found: {path}")
           text = path.read_text(encoding="utf-8")
-          url = r"distributionUrl=https\\://services.gradle.org/distributions/gradle-8.14.3-bin.zip"
+          url = r"distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip"
           text = re.sub(r"(?m)^distributionUrl=.*$", url, text)
 
           properties = {
@@ -133,7 +133,7 @@ jobs:
               if re.search(pattern, text):
                   text = re.sub(pattern, lambda _: line, text)
               else:
-                  text = text.rstrip() + "\\n" + line + "\\n"
+                  text = text.rstrip() + "\n" + line + "\n"
           path.write_text(text, encoding="utf-8")
           print("Configured Gradle 8.14.3 binary distribution, SHA-256 verification, 120s timeout and 3 retries.")
           PY
