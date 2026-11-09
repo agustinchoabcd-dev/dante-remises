@@ -46,9 +46,9 @@ test("diagnostics monitor captures only allowlisted events and scalar details", 
 test("diagnostics monitor bounds its in-memory event buffer", () => {
   const runtime = fakeRuntime();
   const monitor = createDiagnosticsMonitor({ runtime, now: () => 1_800_000_000_000 });
-  for (let i = 0; i < 90; i++) monitor.mark("app.start", { count: i });
-  assert.equal(monitor.snapshot().length, 80);
-  assert.equal(monitor.snapshot()[0].details.count, 10);
+  for (let i = 0; i < 600; i++) monitor.mark("app.start", { count: i });
+  assert.equal(monitor.snapshot().length, 500);
+  assert.equal(monitor.snapshot()[0].details.count, 100);
 });
 
 test("diagnostics upload uses Firebase bearer token and excludes identity fields", async () => {
@@ -72,6 +72,7 @@ test("diagnostics upload uses Firebase bearer token and excludes identity fields
   assert.equal(sent.url, "https://worker.example.test/v1/chat/diagnostics");
   assert.equal(sent.options.headers.Authorization, "Bearer firebase-id-token");
   assert.equal(sent.body.client.platform, "android");
+  assert.equal(sent.body.events[0].seq, 1);
   assert.equal("uid" in sent.body.context, false);
   assert.equal(JSON.stringify(sent.body).includes("private-uid"), false);
   assert.equal(monitor.pendingCount, 0);
@@ -84,4 +85,32 @@ test("diagnostics upload remains pending when no authenticated user is available
   monitor.configure({ endpoint: "https://worker.example.test/v1/chat/diagnostics", getToken: async () => null });
   assert.equal(await monitor.flush(), false);
   assert.equal(monitor.pendingCount, 1);
+});
+
+test("diagnostics sends ordered event batches and preserves the next sequence", async () => {
+  const runtime = fakeRuntime();
+  const sent = [];
+  const monitor = createDiagnosticsMonitor({
+    runtime,
+    now: (() => { let n = 1_800_000_000_000; return () => n++; })(),
+    fetchImpl: async (_url, options) => {
+      sent.push(JSON.parse(options.body));
+      return { ok: true, status: 202 };
+    }
+  });
+  monitor.configure({
+    endpoint: "https://worker.example.test/v1/chat/diagnostics",
+    getToken: async () => "firebase-id-token"
+  });
+  for (let i = 0; i < 125; i++) monitor.mark("ui.click", { target: "button" });
+  assert.equal(await monitor.flush(), true);
+  assert.equal(sent[0].events.length, 120);
+  assert.equal(sent[0].events[0].seq, 1);
+  assert.equal(sent[0].events.at(-1).seq, 120);
+  assert.equal(monitor.pendingCount, 5);
+  assert.equal(await monitor.flush(), true);
+  assert.equal(sent[1].events.length, 5);
+  assert.equal(sent[1].events[0].seq, 121);
+  assert.equal(sent[1].events.at(-1).seq, 125);
+  assert.equal(monitor.pendingCount, 0);
 });
