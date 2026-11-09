@@ -2,7 +2,7 @@ const MAX_EVENTS = 500;
 const MAX_BATCH_EVENTS = 120;
 const ALLOWED_TYPES = new Set([
   "app.start", "app.visibility", "auth.state", "auth.role.error",
-  "firebase.cars.listener.attached", "firebase.cars.callback.enter", "firebase.cars.first_snapshot",
+  "firebase.cars.listener.attached", "firebase.cars.callback.enter", "firebase.cars.first_snapshot", "firebase.availability.connect",
   "firebase.cars.snapshot", "firebase.cars.error", "firebase.cars.ready",
   "firebase.staffPhotos.listener.attached", "firebase.staffPhotos.callback.enter",
   "firebase.staffPhotos.first_snapshot", "firebase.staffPhotos.snapshot", "firebase.staffPhotos.snapshot.empty_ignored", "firebase.staffPhotos.error",
@@ -43,7 +43,7 @@ function makeClientInfo(runtime) {
   const platform = /Android/i.test(ua) ? "android"
     : /iPhone|iPad|iPod/i.test(ua) ? "ios"
       : ua ? "web" : "unknown";
-  const browser = ua.match(/(?:Chrome|CriOS|Firefox|Version)\/(\d+)/i);
+  const browser = ua.match(/(?:Chrome|CriOS|Firefox|Edg|OPR)\/(\d+)/i);
   return {
     appVersion: "0.6.0",
     build: String(runtime.__DANTE_BUILD__ || "unreported").slice(0, 24),
