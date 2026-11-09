@@ -306,14 +306,21 @@ async function setStatus(id,status,minutes=null,indefinite=false){
   await update(ref(db,'cars/'+id),{driver:c.driver,model:c.model,status:next.status,until:next.until,indefinite:next.indefinite,updatedAt:Date.now()});
   diagnostics.mark('firebase.status.write.success',{carId:id,status,durationMs:Date.now()-writeStartedAt,version});
   if(statusWriteVersions[id]===version){
-   if(status!=='libre')await remove(ref(db,'driverLocations/'+id));
+   if(status!=='libre'){try{await remove(ref(db,'driverLocations/'+id))}catch(cleanupError){diagnostics.mark('firebase.status.location_cleanup.error',{carId:id,code:cleanupError?.code||'',name:cleanupError?.name||'Error'});console.warn('El estado se guardó, pero no se pudo limpiar la ubicación anterior:',cleanupError)}}
    else if((currentRole?.role==='driver'||currentRole?.role==='admin')&&(currentRole.carId===id||currentUser.uid===ADMIN_UID))startDriverGps();
   }
   notify('Estado sincronizado: '+c.driver);
  }catch(err){
   diagnostics.mark('firebase.status.write.error',{carId:id,code:err?.code||'',name:err?.name||'Error',durationMs:Date.now()-writeStartedAt,version});
-  if(statusWriteVersions[id]===version){c.status=previous.status;c.until=previous.until;c.indefinite=previous.indefinite;render('status-write-rollback')}
-  notify('No se pudo guardar. Se restauró el último estado confirmado. Revisá la conexión y las reglas de Firebase.');
+  if(statusWriteVersions[id]===version){
+   try{
+    const snapshot=await get(ref(db,'cars/'+id)),saved=snapshot.val();
+    if(saved){c.status=saved.status||'desconectado';c.until=saved.until||null;c.indefinite=!!saved.indefinite;c.activeTripId=saved.activeTripId||null}
+    else{c.status=previous.status;c.until=previous.until;c.indefinite=previous.indefinite}
+   }catch(readError){c.status=previous.status;c.until=previous.until;c.indefinite=previous.indefinite;diagnostics.mark('firebase.status.rollback_read.error',{carId:id,code:readError?.code||'',name:readError?.name||'Error'})}
+   render('status-write-rollback');
+  }
+  notify('No se pudo guardar. Se recuperó el último estado disponible en Firebase.');
   console.error(err);
  }
 }
