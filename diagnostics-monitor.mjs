@@ -1,4 +1,5 @@
-const MAX_EVENTS = 80;
+const MAX_EVENTS = 500;
+const MAX_BATCH_EVENTS = 120;
 const ALLOWED_TYPES = new Set([
   "app.start", "app.visibility", "auth.state", "auth.role.error",
   "firebase.cars.listener.attached", "firebase.cars.callback.enter", "firebase.cars.first_snapshot",
@@ -10,12 +11,16 @@ const ALLOWED_TYPES = new Set([
   "firebase.presence.listener.attached", "firebase.presence.snapshot",
   "firebase.presence.error", "firebase.presence.registered", "firebase.cars.initial_get.success", "firebase.cars.initial_get.error", "firebase.staffPhotos.initial_get.success", "firebase.staffPhotos.initial_get.error", "firebase.status.write.start",
   "firebase.status.write.success", "firebase.status.write.error",
-  "js.error", "js.unhandled_rejection"
+  "js.error", "js.unhandled_rejection",
+  "ui.click", "ui.change", "ui.submit", "ui.view", "ui.action",
+  "network.fetch.start", "network.fetch.end", "network.fetch.error", "network.online", "network.offline",
+  "performance.longtask", "console.error", "console.warn", "app.lifecycle", "firebase.operation"
 ]);
 const ALLOWED_DETAILS = new Set([
   "phase", "code", "name", "children", "carId", "status", "online",
   "connected", "role", "elapsedMs", "count", "authenticated",
-  "summary", "networkOnline", "ready", "durationMs", "line", "column", "source", "bytes", "kind", "profilePresent", "vehiclePresent"
+  "summary", "networkOnline", "ready", "durationMs", "line", "column", "source", "bytes", "kind", "profilePresent", "vehiclePresent",
+  "seq", "target", "tag", "view", "action", "service", "method", "statusCode", "ok", "errorType", "component", "event", "state", "result"
 ]);
 
 function cleanDetails(value) {
@@ -62,6 +67,7 @@ export function createDiagnosticsMonitor({
   const events = [];
   let revision = 0;
   let uploadedRevision = 0;
+  let nextSequence = 1;
   let endpoint = "";
   let getToken = null;
   let getContext = null;
@@ -82,10 +88,13 @@ export function createDiagnosticsMonitor({
 
   function mark(type, details = {}) {
     if (!ALLOWED_TYPES.has(type)) return false;
-    events.push({ at: now(), type, details: cleanDetails(details) });
+    const safeDetails = cleanDetails(details);
+    const seq = nextSequence++;
+    events.push({ seq, at: now(), type, details: safeDetails });
     if (events.length > MAX_EVENTS) events.splice(0, events.length - MAX_EVENTS);
     revision++;
-    schedule(revision - uploadedRevision >= 8 ? 500 : 8000);
+    const urgent = type === "js.error" || type === "js.unhandled_rejection" || type === "network.fetch.error";
+    schedule(urgent ? 0 : revision - uploadedRevision >= 8 ? 500 : 1500);
     return true;
   }
 
@@ -118,8 +127,9 @@ export function createDiagnosticsMonitor({
             role: typeof context.role === "string" ? context.role : "unknown",
             carId: typeof context.carId === "string" ? context.carId : ""
           },
-          events: events.slice(-MAX_EVENTS)
+          events: events.filter(event => event.seq > uploadedRevision).slice(0, MAX_BATCH_EVENTS)
         };
+        if (!payload.events.length) return true;
         const response = await fetchImpl(endpoint, {
           method: "POST",
           headers: {
@@ -132,13 +142,13 @@ export function createDiagnosticsMonitor({
           keepalive: true
         });
         if (!response?.ok) return false;
-        uploadedRevision = revisionAtSend;
+        uploadedRevision = payload.events[payload.events.length - 1].seq;
         return true;
       } catch {
         return false;
       } finally {
         inFlight = null;
-        if (authenticated && revision > uploadedRevision) schedule(5000);
+        if (authenticated && revision > uploadedRevision) schedule(1500);
       }
     })();
     return inFlight;
