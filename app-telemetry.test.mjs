@@ -71,3 +71,16 @@ test("captures console errors without serializing their messages", () => {
   assert.equal(JSON.stringify(events).includes("private passenger"), false);
   stop();
 });
+
+
+test("does not instrument its own diagnostics upload endpoint", async () => {
+  const runtime = fakeRuntime();
+  let fetches = 0;
+  runtime.fetch = async () => { fetches++; return { ok: true, status: 202 }; };
+  const events = [];
+  const stop = installAppTelemetry({ runtime, monitor: { mark: (type, details) => events.push({ type, details }) } });
+  await runtime.fetch("https://worker.example.test/v1/chat/diagnostics", { method: "POST" });
+  assert.equal(fetches, 1);
+  assert.equal(events.length, 0);
+  stop();
+});
