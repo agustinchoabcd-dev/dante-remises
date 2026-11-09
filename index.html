@@ -487,7 +487,32 @@ function showView(v){
 function startDriverGps(){if(!isGeolocationAvailable()||driverWatchId!==null)return;byId('driverGpsStatus').textContent='Solicitando permiso de ubicación…';driverWatchId=watchPosition(async pos=>{const carId=currentRole?.carId||'144',c=cars[carId],now=Date.now();if(now-driverLocationWriteAt<4000)return;driverLocationWriteAt=now;const loc={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),updatedAt:now};try{if(activeTripId&&activeTripData&&['accepted','in_progress'].includes(activeTripData.status)){const tripLocRef=ref(db,`trips/${activeTripId}/driverLocation`);await onDisconnect(tripLocRef).remove();await set(tripLocRef,loc)}else if(c?.status==='libre'){const publicLocRef=ref(db,`driverLocations/${carId}`);await onDisconnect(publicLocRef).remove();await set(publicLocRef,loc)}byId('driverGpsStatus').textContent='GPS activo · última actualización '+new Date(loc.updatedAt).toLocaleTimeString('es-AR')}catch(err){console.error(err);byId('driverGpsStatus').textContent='No se pudo compartir la ubicación. Revisá las reglas de Firebase.'}},err=>{driverWatchId=null;byId('driverGpsStatus').textContent=err.code===1?'Permiso de ubicación denegado. Activá el GPS para compartir tu posición.':'No se pudo obtener GPS. Revisá la señal y los permisos.'},{enableHighAccuracy:true,maximumAge:5000,timeout:20000});}
 function stopDriverGps(){if(driverWatchId!==null){clearWatch(driverWatchId);driverWatchId=null}}
 async function clearDriverPresence(){if(!driverPresenceRef)return;const target=driverPresenceRef;driverPresenceRef=null;try{await onDisconnect(target).cancel()}catch(error){console.warn('No se pudo cancelar la limpieza programada de presencia:',error)}try{await remove(target)}catch(error){console.warn('No se pudo limpiar la presencia del chofer:',error)}}
-async function registerDriverPresence(user,role){const carId=role.role==='admin'?'144':String(role.carId||'');if(driverUidForCar(carId)!==user.uid)throw new Error('La cuenta no coincide con el chofer asignado al coche.');const target=ref(db,'driverPresence/'+carId);await onDisconnect(target).remove();await set(target,{uid:user.uid,connected:true,connectedAt:Date.now()});driverPresenceRef=target}
+async function ensureConnectedDriverAvailability(carId){
+ const config=initial.find(item=>item.id===carId);
+ if(!config)throw new Error('No se encontró la configuración del coche.');
+ const carRef=ref(db,'cars/'+carId);
+ const result=await runTransaction(carRef,current=>{
+  const next=current||{driver:config.driver,model:config.model};
+  if(next.activeTripId)return;
+  const until=Number(next.until);
+  const expired=Number.isFinite(until)&&until>0&&until<=Date.now();
+  if(!next.status||next.status==='desconectado'||expired){
+   return {...next,status:'libre',until:null,indefinite:false,updatedAt:Date.now()};
+  }
+  return;
+ });
+ const saved=result.snapshot.val();
+ if(!saved)throw new Error('No se pudo recuperar el estado operativo del coche.');
+ const until=Number(saved.until);
+ const stillNeedsDefault=!saved.status||saved.status==='desconectado'||(until>0&&until<=Date.now());
+ if(!result.committed&&!saved.activeTripId&&stillNeedsDefault)throw new Error('No se pudo inicializar la disponibilidad del coche.');
+ cars[carId].status=saved.status||'desconectado';
+ cars[carId].until=saved.until||null;
+ cars[carId].indefinite=!!saved.indefinite;
+ cars[carId].activeTripId=saved.activeTripId||null;
+ diagnostics.mark('firebase.availability.connect',{carId,status:cars[carId].status,decision:result.committed?'defaulted':'preserved',activeTrip:!!saved.activeTripId});
+}
+async function registerDriverPresence(user,role){const carId=role.role==='admin'?'144':String(role.carId||'');if(driverUidForCar(carId)!==user.uid)throw new Error('La cuenta no coincide con el chofer asignado al coche.');const target=ref(db,'driverPresence/'+carId);await onDisconnect(target).remove();await ensureConnectedDriverAvailability(carId);await set(target,{uid:user.uid,connected:true,connectedAt:Date.now()});driverPresenceRef=target}
 function renderDriverActiveTrip(trip,id){
  activeTripId=id;activeTripData=trip;
  const startButton=trip.status==='accepted'?'<button class="primary" id="startTripButton">Iniciar viaje</button>':'';
