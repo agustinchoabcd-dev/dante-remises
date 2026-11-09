@@ -7,7 +7,9 @@ const webAssets = [
   "role-resolver.mjs",
   "chat-client.mjs",
   "perf-monitor.mjs",
-  "diagnostics-monitor.mjs"
+  "diagnostics-monitor.mjs",
+  "availability-refresh.mjs",
+  "app-telemetry.mjs"
 ];
 
 await mkdir(destinationDirectory, { recursive: true });
