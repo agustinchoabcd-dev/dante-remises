@@ -160,6 +160,7 @@ import { getCurrentPosition, watchPosition, clearWatch, requestStartupPermission
 import { performanceMonitor as perf } from "./perf-monitor.mjs";
 import { createAvailabilityRefreshScheduler } from "./availability-refresh.mjs";
 import { diagnostics } from "./diagnostics-monitor.mjs";
+import { installAppTelemetry } from "./app-telemetry.mjs";
 import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.mjs";
 import { ChatApiClient, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -192,6 +193,7 @@ const PROFILE_PHOTO_WORKER='https://dante-remises-b2-test.agustinchoabcd.workers
 // Empty until a separately reviewed chat Worker is deployed and its URL is approved.
 const CHAT_API_BASE_URL='https://dante-remises-b2-test.agustinchoabcd.workers.dev'; // Shared B2 + chat Worker; Firebase ID tokens are sent per request.
 diagnostics.configure({endpoint:CHAT_API_BASE_URL+"/v1/chat/diagnostics",getToken:()=>auth.currentUser?.getIdToken(),getContext:()=>({role:currentRole?.role||"unknown",carId:currentRole?.carId||(currentRole?.role==="admin"?"144":"")}),client:{appVersion:"0.6.1",build:"dante-test-presence-photo-fix"}});
+installAppTelemetry({monitor:diagnostics});
 const HOME_CENTER=[-32.0717,-64.5363];
 const DRIVER_UID_BY_CAR={'144':ADMIN_UID,'109':'7mrtHvQWCDRElEQcGQP6uLSJGTl2','137':'epd3DZKQ7LRLTO2EmJrTUKu2sf32','104':'jDrJ32nAn6hMAqghkMvpMSeVeCy1'};
 const USER_ROLES={
@@ -242,6 +244,7 @@ function renderContent(){refreshExpired();initial.forEach(x=>{cars[x.id].driverP
 const c=cars[activeDriver];byId('driverStatus').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${c.driver}</div><div class="model">${c.id} · ${c.model}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;
 }
 function render(reason="unspecified"){
+ diagnostics.mark("ui.render",{action:reason});
  const result=perf.measure(`ui.render.${reason}`,renderContent);
  availabilityRefresh.schedule();
  return result;
@@ -477,6 +480,7 @@ function showPassengerOnboarding(){
  byId('appFooter').classList.add('hidden');
 }
 function showView(v){
+ diagnostics.mark("ui.view",{view:v});
  if(v==='pasajero'&&currentRole?.role==='passenger'&&!passengerPhotoReady){showPassengerOnboarding();return}
  if(v==='configuracion'&&!currentUser){notify('Iniciá sesión para acceder a Configuración.');return}
  if(v==='chofer'&&(!currentRole||!['admin','driver'].includes(currentRole.role))){notify('Esta sección es exclusiva del personal.');return}
