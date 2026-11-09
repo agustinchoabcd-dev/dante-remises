@@ -56,7 +56,7 @@ jobs:
           node --check /tmp/dante-remises-inline.mjs
 
       - name: Install JavaScript dependencies
-        run: npm install
+        run: npm install --include=optional
 
       - name: Copy web application into Capacitor assets
         run: npm run copy:web
