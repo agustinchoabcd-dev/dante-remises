@@ -6,7 +6,8 @@ const webAssets = [
   "index.html",
   "role-resolver.mjs",
   "chat-client.mjs",
-  "perf-monitor.mjs"
+  "perf-monitor.mjs",
+  "diagnostics-monitor.mjs"
 ];
 
 await mkdir(destinationDirectory, { recursive: true });
