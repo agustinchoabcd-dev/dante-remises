@@ -58,16 +58,24 @@ export function clearWatch(id) {
   if (entry.nativeId) Geolocation.clearWatch({ id: entry.nativeId }).catch(console.warn);
 }
 
-export async function requestStartupPermissions() {
-  if (!native) return;
+export async function requestLocationPermission() {
+  if (!native) return !!navigator.geolocation;
   try {
-    const location = await Geolocation.checkPermissions();
-    if (location.location !== "granted") {
-      await Geolocation.requestPermissions({ permissions: ["location"] });
-    }
+    const current = await Geolocation.checkPermissions();
+    if (current.location === "granted" || current.coarseLocation === "granted") return true;
+    const requested = await Geolocation.requestPermissions({
+      permissions: ["location", "coarseLocation"]
+    });
+    return requested.location === "granted" || requested.coarseLocation === "granted";
   } catch (error) {
     console.warn("Permiso de ubicación no concedido o servicio GPS desactivado:", error);
+    return false;
   }
+}
+
+export async function requestStartupPermissions() {
+  if (!native) return;
+  await requestLocationPermission();
   try {
     const notifications = await LocalNotifications.checkPermissions();
     if (notifications.display !== "granted") {
