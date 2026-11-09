@@ -158,6 +158,7 @@ button,select,input,textarea{font:inherit}button{cursor:pointer;border:0;border-
 <script type="module">
 import { getCurrentPosition, watchPosition, clearWatch, requestStartupPermissions, isGeolocationAvailable } from "./native-bridge.js";
 import { performanceMonitor as perf } from "./perf-monitor.mjs";
+import { createAvailabilityRefreshScheduler } from "./availability-refresh.mjs";
 import { diagnostics } from "./diagnostics-monitor.mjs";
 import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.mjs";
 import { ChatApiClient, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";
@@ -240,7 +241,15 @@ function fillSelects(){}
 function renderContent(){refreshExpired();initial.forEach(x=>{cars[x.id].driverPhoto=photoForCar(x.id,'profilePhoto');cars[x.id].vehiclePhoto=photoForCar(x.id,'vehiclePhoto');cars[x.id].driverPhotoTransform=transformForCar(x.id,'profilePhoto');cars[x.id].vehiclePhotoTransform=transformForCar(x.id,'vehiclePhoto')});byId('passengerCars').innerHTML=initial.map(x=>passengerDriverCard(cars[x.id])).join('');byId('centralCars').innerHTML=initial.map(x=>carCard(cars[x.id],currentRole?.role==='admin')).join('');if(selectedPassengerDriver&& !byId('passengerTripScreen').classList.contains('hidden')){const chosen=cars[selectedPassengerDriver];if(chosen)byId('selectedDriverCard').innerHTML=`<div class="carhead"><div class="photos">${avatar(chosen.driverPhoto,'driver',chosen.driverPhotoTransform)}${avatar(chosen.vehiclePhoto,'vehicle',chosen.vehiclePhotoTransform)}</div><div><div class="carname">${esc(chosen.driver)}</div><div class="model">Coche ${chosen.id} · ${esc(chosen.model)}</div><span class="status ${cls(!chosen.online?'desconectado':chosen.status)}">${statusText(chosen)}</span></div></div>`}
 const c=cars[activeDriver];byId('driverStatus').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${c.driver}</div><div class="model">${c.id} · ${c.model}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;
 }
-function render(reason="unspecified"){return perf.measure(`ui.render.${reason}`,renderContent)}
+function render(reason="unspecified"){
+ const result=perf.measure(`ui.render.${reason}`,renderContent);
+ availabilityRefresh.schedule();
+ return result;
+}
+const availabilityRefresh=createAvailabilityRefreshScheduler({
+ getDeadlines:()=>Object.values(cars).map(car=>car.until),
+ onRefresh:()=>render("availability-clock")
+});
 function notify(msg){const t=byId('toast');t.textContent=msg;t.style.display='block';clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.style.display='none',2800)}
 async function setStatus(id,status,minutes=null,indefinite=false){if(cars[id]?.activeTripId&&status!=='ocupado'){notify('No podés cambiar la disponibilidad mientras hay un viaje activo.');return}if(!currentUser||!currentRole||!(currentRole.role==='admin'||(currentRole.role==='driver'&&currentRole.carId===id))){notify('No tenés permiso para modificar ese coche.');return}const c=cars[id];c.status=status;c.until=minutes?Date.now()+minutes*60000:null;c.indefinite=indefinite;render('optimistic-status');const writeStartedAt=Date.now();diagnostics.mark('firebase.status.write.start',{carId:id,status});try{await update(ref(db,'cars/'+id),{driver:c.driver,model:c.model,status:c.status,until:c.until,indefinite:c.indefinite,updatedAt:Date.now()});diagnostics.mark('firebase.status.write.success',{carId:id,status,durationMs:Date.now()-writeStartedAt});if(status!=='libre')await remove(ref(db,'driverLocations/'+id));else if((currentRole?.role==='driver'||currentRole?.role==='admin')&&(currentRole.carId===id||currentUser.uid===ADMIN_UID))startDriverGps();notify('Estado sincronizado: '+c.driver)}catch(err){diagnostics.mark('firebase.status.write.error',{carId:id,code:err?.code||'',name:err?.name||'Error',durationMs:Date.now()-writeStartedAt});notify('No se pudo guardar. Revisá el acceso y las reglas de Firebase.');console.error(err)}}
 window.quickSet=(id,status)=>{if(!currentUser||currentRole?.role!=='admin'){notify('Solo Agustín, administrador, puede gestionar todos los coches.');return}if(status==='libre')setStatus(id,'libre');else if(status==='ocupado')setStatus(id,'ocupado',30);else setStatus(id,'fuera',null,true)}
@@ -1372,6 +1381,6 @@ function applyStaffPhotosSnapshot(snap,source){
 }
 
 
-fillSelects();render('initial');perf.mark('app.initial.render.done');setInterval(()=>{const before=Object.values(cars).map(c=>c.until).join(',');refreshExpired();render('expiry-tick')},10000);
+fillSelects();render('initial');perf.mark('app.initial.render.done');
 </script>
 </body></html>
