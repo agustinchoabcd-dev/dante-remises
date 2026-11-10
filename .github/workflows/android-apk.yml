@@ -52,7 +52,7 @@ jobs:
           import re
           from pathlib import Path
           html = Path("index.html").read_text(encoding="utf-8")
-          matches = re.findall(r'<script id="dante-visual-effects-runtime">\\s*(.*?)\\s*</script>', html, re.DOTALL)
+          matches = re.findall(r'<script id="dante-visual-effects-runtime">\s*(.*?)\s*</script>', html, re.DOTALL)
           if len(matches) != 1:
               raise SystemExit(f"Expected one visual-effects runtime, found {len(matches)}")
           Path("/tmp/dante-visual-effects.mjs").write_text(matches[0], encoding="utf-8")
