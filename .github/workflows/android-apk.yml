@@ -49,6 +49,7 @@ jobs:
           PY
           node --check /tmp/dante-remises-inline.mjs
 
+      # Rebuild after the Electric Green theme and header/session UI refinements.
       - name: Validate visual layer structure
         run: |
           python3 - <<'PY'
