@@ -1,14 +1,13 @@
 name: Build Android APK
+run-name: Android APK · ${{ github.ref_name }} · ${{ github.sha }}
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - android-capacitor
-      - android-photo-test
-      - fix/passenger-onboarding-trip-diagnostics
-      - fix/passenger-onboarding-camera-flow
-      - feature/driver-presence
+      - dante-test
+    paths:
+      - '.github/workflows/android-apk.yml'
 
 permissions:
   contents: read
@@ -50,15 +49,293 @@ jobs:
           PY
           node --check /tmp/dante-remises-inline.mjs
 
+      # Rebuild after the Electric Green theme and header/session UI refinements.
+      # Build de QA para pantalla animada de inicio y corrección circular del logo.
+      # Disparo de compilación para sincronizar logo del splash e Info técnica.
+      # QA del encuadre responsive del logo en splash (sin cambios de producción).
+      # QA: reutilizar el mismo marco circular de Home en el splash desde el primer frame.
+      - name: Validate visual layer structure
+        run: |
+          python3 - <<'PY'
+          import re
+          from collections import Counter
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          source = Path("index.html").read_text(encoding="utf-8")
+
+          class IdCollector(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.ids = []
+              def handle_starttag(self, tag, attrs):
+                  self.ids.extend(value for key, value in attrs if key == "id" and value)
+              def handle_startendtag(self, tag, attrs):
+                  self.handle_starttag(tag, attrs)
+
+          parser = IdCollector()
+          parser.feed(source)
+          duplicates = sorted(key for key, count in Counter(parser.ids).items() if count > 1)
+          if duplicates:
+              raise SystemExit("Duplicate HTML IDs: " + ", ".join(duplicates))
+
+          styles = re.findall(r"<style\b[^>]*>(.*?)</style\s*>", source, re.I | re.S)
+          if len(styles) < 8:
+              raise SystemExit(f"Expected at least 8 style blocks, found {len(styles)}")
+
+          def check_css_blocks(css):
+              depth = 0
+              quote = None
+              escaped = False
+              comment = False
+              index = 0
+              while index < len(css):
+                  char = css[index]
+                  nxt = css[index + 1] if index + 1 < len(css) else ""
+                  if comment:
+                      if char == "*" and nxt == "/":
+                          comment = False
+                          index += 2
+                          continue
+                  elif quote:
+                      if escaped:
+                          escaped = False
+                      elif char == "\\":
+                          escaped = True
+                      elif char == quote:
+                          quote = None
+                  elif char == "/" and nxt == "*":
+                      comment = True
+                      index += 2
+                      continue
+                  elif char in ("'", '"'):
+                      quote = char
+                  elif char == "{":
+                      depth += 1
+                  elif char == "}":
+                      depth -= 1
+                      if depth < 0:
+                          raise SystemExit("CSS contains a closing brace without an opening brace.")
+                  index += 1
+              if comment or quote or depth:
+                  raise SystemExit(f"CSS block is incomplete (comment={comment}, quote={quote}, brace_depth={depth}).")
+
+          for number, css in enumerate(styles, 1):
+              check_css_blocks(css)
+
+          required = [
+              "dante-visual-system",
+              "dante-chat-map-polish",
+              "dante-screen-polish",
+              "dante-staff-console-polish",
+              "dante-navigation-polish",
+              "dante-motion-system",
+          ]
+          missing = [name for name in required if f'id="{name}"' not in source]
+          if missing:
+              raise SystemExit("Missing visual style layers: " + ", ".join(missing))
+          if "prefers-reduced-motion" not in source:
+              raise SystemExit("Reduced-motion support is missing.")
+
+          for element_id in ("chatForm", "realMap", "centralCars", "driverControls", "setFree", "setBusy", "setOut"):
+              if parser.ids.count(element_id) != 1:
+                  raise SystemExit(f"Expected exactly one functional anchor #{element_id}, found {parser.ids.count(element_id)}")
+
+          print(f"Visual structure OK: {len(styles)} CSS blocks, {len(parser.ids)} HTML IDs, no duplicates, required app anchors present.")
+          PY
+
       - name: Install JavaScript dependencies
-        run: npm install
+        run: npm install --include=optional
 
       - name: Copy web application into Capacitor assets
         run: npm run copy:web
 
+      - name: Upload web test bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: dante-remises-test-web
+          path: www/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Embed Android build metadata in the web bundle
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_RUN_ID: ${{ github.run_id }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_TYPE: debug
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          package = json.loads(Path("package.json").read_text(encoding="utf-8"))
+          version = package["version"]
+          number = int(os.environ["BUILD_NUMBER"])
+          info = {
+              "htmlVersion": version,
+              "apkVersionName": f"{version}+{number}",
+              "apkVersionCode": number,
+              "buildNumber": number,
+              "runId": os.environ["BUILD_RUN_ID"],
+              "branch": os.environ["BUILD_BRANCH"],
+              "commit": os.environ["BUILD_COMMIT"][:12],
+              "buildDateUtc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+              "androidPackage": "com.danteremises.test",
+              "buildType": os.environ["BUILD_TYPE"].upper() + " · pruebas"
+          }
+          path = Path("www/index.html")
+          html = path.read_text(encoding="utf-8")
+          marker = "</head>"
+          if html.count(marker) != 1:
+              raise SystemExit("Expected exactly one closing head tag in www/index.html")
+          script = "<script>window.DANTE_BUILD_INFO = " + json.dumps(info, ensure_ascii=False) + ";</script>\n"
+          path.write_text(html.replace(marker, script + marker, 1), encoding="utf-8")
+          print("Embedded Android build metadata:", json.dumps(info, ensure_ascii=False))
+          PY
+
       - name: Generate Android project
         run: npx cap add android
 
+      - name: Use Maven Central mirror for Kotlin compiler artifacts
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("node_modules/@capacitor/local-notifications/android/build.gradle")
+          if not path.is_file():
+              raise SystemExit(f"Local Notifications Gradle file not found: {path}")
+          text = path.read_text(encoding="utf-8")
+          marker = "buildscript {"
+          repository_block = """        maven {
+                    url = "https://maven.wso2.org/nexus/content/repositories/central/"
+                    content {
+                        includeGroup("org.jetbrains.kotlin")
+                    }
+                }
+                mavenCentral()"""
+          if "maven.wso2.org/nexus/content/repositories/central" in text:
+              print("Kotlin Maven Central mirror already configured.")
+          else:
+              if text.count(marker) != 1:
+                  raise SystemExit("Unexpected Local Notifications Gradle file: buildscript block count differs.")
+              start = text.index(marker)
+              repo_start = text.index("    repositories {", start)
+              central = text.index("        mavenCentral()", repo_start)
+              if text.index("    }", repo_start) < central:
+                  raise SystemExit("Unexpected buildscript repositories structure.")
+              text = text[:central] + repository_block + text[central + len("        mavenCentral()"):]
+              path.write_text(text, encoding="utf-8")
+              print("Added group-restricted Maven Central mirror for org.jetbrains.kotlin.")
+          PY
+          sed -n '1,42p' node_modules/@capacitor/local-notifications/android/build.gradle
+
+
+      - name: Configure verified Gradle Wrapper properties
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          path = Path("android/gradle/wrapper/gradle-wrapper.properties")
+          if not path.is_file():
+              raise SystemExit(f"Generated Gradle Wrapper properties file was not found: {path}")
+          text = path.read_text(encoding="utf-8")
+          url = r"distributionUrl=https\://mirrors.huaweicloud.com/gradle/gradle-8.14.3-bin.zip"
+          text = re.sub(r"(?m)^distributionUrl=.*$", url, text)
+          properties = {
+              "networkTimeout": "120000",
+              "distributionSha256Sum": "bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531",
+          }
+          for key, value in properties.items():
+              pattern = rf"(?m)^{re.escape(key)}=.*$"
+              line = f"{key}={value}"
+              if re.search(pattern, text):
+                  text = re.sub(pattern, lambda _: line, text)
+              else:
+                  text = text.rstrip() + "\n" + line + "\n"
+          path.write_text(text, encoding="utf-8")
+          print("Pinned Huawei Gradle mirror, Gradle 8.14.3 bin and official SHA-256.")
+          PY
+          cat android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Configure Gradle dependency and distribution cache
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          cache-read-only: ${{ github.ref != 'refs/heads/dante-test' }}
+
+      - name: Download and install verified Gradle distribution
+        env:
+          GRADLE_VERSION: 8.14.3
+          GRADLE_SHA256: bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/gradle-$GRADLE_VERSION-bin.zip"
+          temporary="$archive.part"
+          install_dir="$RUNNER_TEMP/gradle"
+          url1="https://mirrors.huaweicloud.com/gradle/gradle-$GRADLE_VERSION-bin.zip"
+          url2="https://repo.huaweicloud.com/gradle/gradle-$GRADLE_VERSION-bin.zip"
+          url3="https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
+          downloaded=false
+          for url in "$url1" "$url2" "$url3"; do
+            echo "Trying Gradle distribution source: $url"
+            rm -f "$temporary"
+            if curl --fail --location --retry 2 --retry-all-errors --retry-delay 3 --retry-max-time 300 --connect-timeout 30 --max-time 600 --output "$temporary" "$url"; then
+              if printf '%s  %s\n' "$GRADLE_SHA256" "$temporary" | sha256sum --check --status; then
+                mv "$temporary" "$archive"
+                echo "Verified Gradle distribution SHA-256 from: $url"
+                downloaded=true
+                break
+              fi
+              echo "::warning::Checksum mismatch from $url; refusing this copy."
+            fi
+          done
+          if [ "$downloaded" != true ]; then
+            echo "::error::Could not download a Gradle 8.14.3 distribution matching the official SHA-256."
+            exit 1
+          fi
+          mkdir -p "$install_dir"
+          unzip -q "$archive" -d "$install_dir"
+          test -x "$install_dir/gradle-$GRADLE_VERSION/bin/gradle"
+          echo "$install_dir/gradle-$GRADLE_VERSION/bin" >> "$GITHUB_PATH"
+          "$install_dir/gradle-$GRADLE_VERSION/bin/gradle" --version
+
+      - name: Set monotonically increasing Android version
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          gradle = Path("android/app/build.gradle")
+          text = gradle.read_text(encoding="utf-8")
+          version_code = int(os.environ["ANDROID_VERSION_CODE"])
+          if version_code < 1 or version_code > 2100000000:
+              raise SystemExit(f"Android versionCode out of range: {version_code}")
+          package_version = json.loads(Path("package.json").read_text(encoding="utf-8"))["version"]
+          version_name = f"{package_version}+{version_code}"
+          code_pattern = re.compile(r"(?m)^(\s*versionCode\s+)\d+(\s*)$")
+          name_pattern = re.compile(r"(?m)^(\s*versionName\s+)[\"\'][^\"\']*[\"\'](\s*)$")
+          if len(code_pattern.findall(text)) != 1:
+              raise SystemExit("Expected exactly one generated Android versionCode declaration.")
+          if len(name_pattern.findall(text)) != 1:
+              raise SystemExit("Expected exactly one generated Android versionName declaration.")
+          text = code_pattern.sub(lambda m: f"{m.group(1)}{version_code}{m.group(2)}", text)
+          text = name_pattern.sub(lambda m: f'{m.group(1)}"{version_name}"{m.group(2)}', text)
+          gradle.write_text(text, encoding="utf-8")
+          print(f"Android version configured: versionCode={version_code}, versionName={version_name}")
+          PY
+          grep -n -E 'versionCode|versionName' android/app/build.gradle
       - name: Declare Android location permissions
         run: node scripts/patch-android-manifest.mjs
 
@@ -68,11 +345,107 @@ jobs:
       - name: Synchronize Capacitor
         run: npx cap sync android
 
+      - name: Configure persistent Android debug signing key
+        env:
+          DANTE_DEBUG_KEYSTORE_BASE64: ${{ secrets.DANTE_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DANTE_DEBUG_KEYSTORE_BASE64:-}" ]; then
+            echo "::error::Missing DANTE_DEBUG_KEYSTORE_BASE64. Add the persistent debug keystore as a repository Actions secret before building an install-over update APK."
+            exit 1
+          fi
+          mkdir -p "$HOME/.android"
+          printf '%s' "$DANTE_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
+          fingerprint="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | awk '/SHA256:/{print $2; exit}')"
+          echo "Persistent debug signing key loaded. Certificate SHA-256: $fingerprint"
+          echo "### Android debug signing certificate" >> "$GITHUB_STEP_SUMMARY"
+          echo "$fingerprint" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Pin debug variant to persistent signing key
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("android/app/build.gradle")
+          text = path.read_text(encoding="utf-8")
+          marker = "    signingConfigs {\n        debug {\n            storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n    }\n"
+          debug_type = "        debug {\n            signingConfig signingConfigs.debug\n        }\n"
+          if "storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')" in text:
+              raise SystemExit("Explicit debug signing configuration already exists; refusing to duplicate it.")
+          if text.count("    buildTypes {") != 1:
+              raise SystemExit("Unexpected Capacitor Gradle template: expected one buildTypes block.")
+          if text.count("        release {") != 1:
+              raise SystemExit("Unexpected Capacitor Gradle template: expected one release build type.")
+          text = text.replace("    buildTypes {\n", marker + "    buildTypes {\n" + debug_type, 1)
+          path.write_text(text, encoding="utf-8")
+          print("Configured debug variant to use $HOME/.android/debug.keystore.")
+          PY
+          grep -n -A16 -B2 "signingConfigs" android/app/build.gradle
+
       - name: Build debug APK
         working-directory: android
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          gradle --version
+          gradle assembleDebug --no-daemon
+
+      - name: Verify APK package and signing certificate
+        env:
+          EXPECTED_APPLICATION_ID: com.danteremises.test
+          EXPECTED_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          BUILD_TOOLS_DIR="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+          AAPT="$BUILD_TOOLS_DIR/aapt"
+          test -x "$APKSIGNER"
+          test -x "$AAPT"
+          KEYSTORE_FP="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | awk '/SHA256:/{print toupper($2); exit}' | tr -d ':')"
+          APKSIGNER_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$APK" 2>&1)" || {
+            echo "::error::apksigner could not verify the generated APK."
+            printf '%s\n' "$APKSIGNER_OUTPUT"
+            exit 1
+          }
+          printf '%s\n' "$APKSIGNER_OUTPUT"
+          APK_FP="$(printf '%s\n' "$APKSIGNER_OUTPUT" | python3 -c 'import re,sys; s=sys.stdin.read(); lines="\n".join(x for x in s.splitlines() if "sha-256" in x.lower()); m=re.search(r"(?i)(?:[0-9a-f]{2}:){31}[0-9a-f]{2}|[0-9a-f]{64}", lines); print(m.group(0).replace(":","").upper() if m else "")')"
+          BADGING="$("$AAPT" dump badging "$APK")"
+          APK_APP_ID="$(printf '%s\n' "$BADGING" | sed -n "s/^package: name='\([^\']*\)'.*/\1/p" | head -n 1)"
+          APK_VERSION_CODE="$(printf '%s\n' "$BADGING" | sed -n "s/^package:.*versionCode='\([^\']*\)'.*/\1/p" | head -n 1)"
+          APK_VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/^package:.*versionName='\([^\']*\)'.*/\1/p" | head -n 1)"
+          APK_SHA256="$(sha256sum "$APK" | awk '{print $1}')"
+          if [ -z "$APK_FP" ]; then
+            echo "::error::Could not extract the APK SHA-256 signing certificate from apksigner output."
+            exit 1
+          fi
+          if [ "$APK_FP" != "$KEYSTORE_FP" ]; then
+            echo "::error::APK signing certificate does not match DANTE_DEBUG_KEYSTORE_BASE64."
+            echo "Keystore SHA-256: $KEYSTORE_FP"
+            echo "APK SHA-256: $APK_FP"
+            exit 1
+          fi
+          if [ "$APK_APP_ID" != "$EXPECTED_APPLICATION_ID" ]; then
+            echo "::error::Unexpected APK applicationId: ${APK_APP_ID:-not detected}"
+            exit 1
+          fi
+          if [ "$APK_VERSION_CODE" != "$EXPECTED_VERSION_CODE" ]; then
+            echo "::error::Unexpected APK versionCode: ${APK_VERSION_CODE:-not detected}; expected $EXPECTED_VERSION_CODE"
+            exit 1
+          fi
+          echo "APK certificate verified: $APK_FP"
+          echo "APK applicationId verified: $APK_APP_ID"
+          echo "APK versionCode verified: $APK_VERSION_CODE"
+          echo "APK versionName: $APK_VERSION_NAME"
+          echo "APK SHA-256: $APK_SHA256"
+          {
+            echo "### Verified Android APK"
+            echo "- applicationId: $APK_APP_ID"
+            echo "- versionCode: $APK_VERSION_CODE"
+            echo "- versionName: $APK_VERSION_NAME"
+            echo "- signing certificate SHA-256: $APK_FP"
+            echo "- APK SHA-256: $APK_SHA256"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4

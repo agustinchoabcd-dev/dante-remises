@@ -1,0 +1,47 @@
+name: Deploy dante-test web to Cloudflare Pages staging
+
+on:
+  push:
+    branches:
+      - dante-test
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dante-remises-pages-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging:
+    name: Publish isolated web staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dante-test
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Prepare static site
+        run: |
+          mkdir -p site
+          cp index.html site/index.html
+
+      - name: Create Pages project if needed
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@4 pages project create dante-remises-staging --production-branch dante-test
+
+      - name: Deploy staging site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@4 pages deploy site --project-name=dante-remises-staging --branch=dante-test --commit-dirty=true
