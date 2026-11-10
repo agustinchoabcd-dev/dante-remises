@@ -241,7 +241,7 @@ html[data-theme="light"] .msg.mine{background:linear-gradient(135deg,#087b3e,#00
 </style>
 </head>
 <body>
-<header><div class="brand-wrap"><div class="brand-logo" id="brandLogoBubble" aria-label="Espacio para el logo de Dante Remises">LOGO</div><div class="brand">Dante Remises</div><small>Santa Rosa de Calamuchita</small></div><button class="staff-entry" id="staffEntryButton" type="button" aria-label="Acceso de personal" title="Acceso de personal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></button><button class="settings-gear hidden" id="settingsGearButton" type="button" aria-label="Configuración" title="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M 9.95 3.13 L 10.70 1.38 L 13.30 1.38 L 14.05 3.13 L 16.82 4.28 L 18.59 3.57 L 20.43 5.41 L 19.72 7.18 L 20.87 9.95 L 22.62 10.70 L 22.62 13.30 L 20.87 14.05 L 19.72 16.82 L 20.43 18.59 L 18.59 20.43 L 16.82 19.72 L 14.05 20.87 L 13.30 22.62 L 10.70 22.62 L 9.95 20.87 L 7.18 19.72 L 5.41 20.43 L 3.57 18.59 L 4.28 16.82 L 3.13 14.05 L 1.38 13.30 L 1.38 10.70 L 3.13 9.95 L 4.28 7.18 L 3.57 5.41 L 5.41 3.57 L 7.18 4.28 Z" fill="currentColor"/><circle cx="12" cy="12" r="3.15" fill="#147342"/></svg></button><button class="secondary logout-top hidden" id="logoutButton" type="button">Cerrar sesión</button></header>
+<header><div class="brand-wrap"><div class="brand-logo" id="brandLogoBubble" aria-label="Espacio para el logo de Dante Remises">LOGO</div><div class="brand">Dante Remises</div><small>Santa Rosa de Calamuchita</small></div><button class="staff-entry" id="staffEntryButton" type="button" aria-label="Acceso de personal" title="Acceso de personal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></button><button class="settings-gear hidden" id="settingsGearButton" type="button" aria-label="Configuración" title="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M 9.95 3.13 L 10.70 1.38 L 13.30 1.38 L 14.05 3.13 L 16.82 4.28 L 18.59 3.57 L 20.43 5.41 L 19.72 7.18 L 20.87 9.95 L 22.62 10.70 L 22.62 13.30 L 20.87 14.05 L 19.72 16.82 L 20.43 18.59 L 18.59 20.43 L 16.82 19.72 L 14.05 20.87 L 13.30 22.62 L 10.70 22.62 L 9.95 20.87 L 7.18 19.72 L 5.41 20.43 L 3.57 18.59 L 4.28 16.82 L 3.13 14.05 L 1.38 13.30 L 1.38 10.70 L 3.13 9.95 L 4.28 7.18 L 3.57 5.41 L 5.41 3.57 L 7.18 4.28 Z" fill="currentColor"/><circle cx="12" cy="12" r="3.15" fill="#147342"/></svg></button></header>
 <main>
 <div class="note hidden" id="versionNote"><strong>Versión 0.6.0:</strong> mapa real, solicitudes de viaje y seguimiento GPS en primer plano. El GPS requiere permisos y que la aplicación permanezca abierta.</div>
 <nav class="tabs hidden" aria-label="Vistas">
@@ -332,7 +332,8 @@ html[data-theme="light"] .msg.mine{background:linear-gradient(135deg,#087b3e,#00
  </div>
 </section>
 <section id="configuracion" class="hidden">
-<div class="card panel" id="appearanceSettingsCard" style="margin-top:12px"><h3>✨ Apariencia</h3><p class="muted">Personalizá el aspecto de Dante Remises sin modificar sus funciones.</p><div class="field"><label for="themePreference">Tema de la aplicación</label><select id="themePreference"><option value="system">Automático · según el dispositivo</option><option value="light">Claro</option><option value="dark">Oscuro</option></select></div><p class="hint">El cambio se aplica al instante y queda guardado en este dispositivo.</p></div>
+<div class="card panel" id="appearanceSettingsCard" style="margin-top:12px"><h3>✨ Apariencia</h3><p class="muted">Personalizá el aspecto de Dante Remises sin modificar sus funciones.</p><div class="field"><label for="themePreference">Tema de la aplicación</label><select id="themePreference"><option value="system">Automático · según el dispositivo</option><option value="light">Claro</option><option value="dark">Oscuro</option><option value="electric">Verde Eléctrico · Dante</option></select></div><p class="hint">El cambio se aplica al instante y queda guardado en este dispositivo.</p></div>
+<div class="card panel" id="sessionSettingsCard" style="margin-top:12px"><h3>🔐 Sesión</h3><p class="muted">Cuando termines de usar Dante Remises, podés cerrar tu sesión desde acá.</p><button class="danger hidden" id="logoutButton" type="button">Cerrar sesión</button></div>
 
 <h2>⚙️ Configuración</h2><p class="muted">Administrá tus datos visuales y preferencias de perfil.</p>
 <div class="card panel" style="margin-top:12px"><h3>Perfil y personalización</h3><p class="muted" id="profileSettingsDescription">Tus opciones de personalización aparecerán acá.</p>
@@ -1718,9 +1719,9 @@ fillSelects();render('initial');perf.mark('app.initial.render.done');
 (function(){
  const control=byId('themePreference');
  let preference='system';
- try{const saved=localStorage.getItem('dante-theme-preference');if(['system','light','dark'].includes(saved))preference=saved}catch(error){console.warn('No se pudo recuperar la preferencia visual.',error)}
+ try{const saved=localStorage.getItem('dante-theme-preference');if(['system','light','dark','electric'].includes(saved))preference=saved}catch(error){console.warn('No se pudo recuperar la preferencia visual.',error)}
  function applyTheme(value){
-  const mode=['system','light','dark'].includes(value)?value:'system';
+  const mode=['system','light','dark','electric'].includes(value)?value:'system';
   if(mode==='system')document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme',mode);
   if(control)control.value=mode;
@@ -1929,6 +1930,37 @@ select option{background:var(--surface);color:var(--ink)}
 </style>
 
 
+<style id="dante-theme-and-header-corrections">
+/* Ajustes solicitados: acceso de personal a la derecha y logo circular */
+header .staff-entry{left:auto!important;right:18px!important}
+header .brand-logo{width:100px;height:100px;border-radius:50%!important;flex:0 0 100px}
+header .logout-top{display:none!important}
+#sessionSettingsCard #logoutButton{display:inline-flex;align-items:center;justify-content:center;min-width:170px;min-height:46px;margin-top:5px}
+@media(max-width:600px){
+ header .brand-logo{width:86px;height:86px;flex-basis:86px}
+ header .staff-entry{right:10px!important}
+}
+/* Tema seleccionable: Verde Eléctrico · Dante */
+html[data-theme="electric"]{
+ color-scheme:dark;
+ --bg:#080d0a;--ink:#f0fff6;--muted:#9aafa2;--line:#214a35;
+ --card:rgba(13,25,18,.94);--surface:#101c14;--surface-2:#14291c;
+ --nav:#06170e;--green:#00e676;--greenbg:#073c24;--amber:#ffc247;--amberbg:#38280a;
+ --red:#ff5368;--redbg:#421923;--blue:#00e676;--bluebg:#073c24;
+ --accent:#00ed79;--accent-bright:#8bffbd;
+ --shadow:0 16px 42px rgba(0,0,0,.34),0 0 0 1px rgba(0,238,120,.035);
+ --shadow-hover:0 20px 54px rgba(0,0,0,.48),0 0 28px rgba(0,238,120,.12);
+ --focus:rgba(0,238,120,.32);
+}
+html[data-theme="electric"] body{background:radial-gradient(ellipse at 50% -15%,rgba(0,238,112,.17),transparent 43%),radial-gradient(ellipse at 100% 35%,rgba(0,190,85,.09),transparent 32%),var(--bg)}
+html[data-theme="electric"] header{background:linear-gradient(118deg,#03150b 0%,#064323 48%,#087a3c 100%)}
+html[data-theme="electric"] .brand-logo{border-color:#00f47b;box-shadow:0 0 0 5px rgba(0,255,120,.12),0 0 28px rgba(0,255,120,.24),0 12px 32px #001d1266}
+html[data-theme="electric"] .tab.active,html[data-theme="electric"] .primary{background:linear-gradient(130deg,#008b43 0%,#00d96a 58%,#00f58a 100%);color:#03150b;box-shadow:0 0 0 1px rgba(0,255,130,.45),0 7px 24px rgba(0,238,112,.28)}
+html[data-theme="electric"] .card,html[data-theme="electric"] .choice-card,html[data-theme="electric"] .driver-choice,html[data-theme="electric"] .chatbox,html[data-theme="electric"] .post-login-greeting{border-color:rgba(0,230,112,.16)}
+html[data-theme="electric"] .staff-entry,html[data-theme="electric"] .settings-gear{border-color:rgba(0,255,125,.55);background:rgba(0,75,37,.82);box-shadow:0 0 18px rgba(0,238,112,.15)}
+html[data-theme="electric"] .chathead{background:linear-gradient(110deg,#031b0d,#087c3d 70%,#00a94f)}
+html[data-theme="electric"] .msg.mine{background:linear-gradient(135deg,#087b3e,#00b85b);color:#f3fff7;border-color:rgba(0,255,130,.42)}
+</style>
 <style id="dante-navigation-polish">
 /* Identidad de marca y navegación global */
 header{position:relative;display:flex;align-items:center;justify-content:center;text-align:center;padding:25px 72px 27px;min-height:190px}
