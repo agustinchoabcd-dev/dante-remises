@@ -51,7 +51,7 @@ jobs:
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
-      # Disparo de compilación para logo dinámico en splash y ficha Info técnica.
+      # Disparo de compilación para sincronizar logo del splash e Info técnica.
       - name: Validate visual layer structure
         run: |
           python3 - <<'PY'
