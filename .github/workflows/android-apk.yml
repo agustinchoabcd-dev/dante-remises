@@ -156,6 +156,9 @@ jobs:
           for marker in ("perspective:1200px", "rotateX(var(--dante-rotate-x", "rotateY(var(--dante-rotate-y", "body>header", "body>main", "body>#appFooter"):
               if marker not in source:
                   raise SystemExit(f"Missing global 3D parallax layer: {marker}")
+          for marker in ("--dante-background-x", "--dante-background-y", "--dante-depth-main", "--dante-depth-item"):
+              if marker not in source:
+                  raise SystemExit(f"Missing precomputed 3D offset: {marker}")
           if "Parallax 3D táctil" not in source:
               raise SystemExit("The touch-driven 3D parallax setting label is missing.")
           if "html.dante-transitions-off main>section:not(.hidden)" not in source:
