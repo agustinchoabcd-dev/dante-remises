@@ -1967,4 +1967,33 @@ main>section:not(.hidden){transform-origin:top center}
 }
 </style>
 
+
+<style id="dante-motion-system">
+/* Microinteracciones y transiciones de vistas: exclusivamente presentación */
+@keyframes dante-view-enter{
+ from{opacity:0;transform:translateY(12px) scale(.992);filter:blur(2px)}
+ to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+@keyframes dante-glow-breathe{
+ 0%,100%{box-shadow:0 0 0 1px rgba(0,238,112,.25),0 0 12px rgba(0,238,112,.08)}
+ 50%{box-shadow:0 0 0 1px rgba(0,238,112,.5),0 0 22px rgba(0,238,112,.17)}
+}
+main>section:not(.hidden){animation:dante-view-enter .34s cubic-bezier(.2,.75,.25,1) both}
+main>.tabs .tab{position:relative;transition:background .22s,color .22s,box-shadow .22s,transform .22s}
+main>.tabs .tab:not(.active):hover{background:rgba(0,238,112,.1);color:var(--accent);transform:translateY(-1px)}
+button:not(:disabled){transition:background .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s}
+button:not(:disabled):active{transform:translateY(1px) scale(.985)}
+button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px solid var(--accent);outline-offset:3px;box-shadow:0 0 0 5px rgba(0,238,112,.12)}
+.card,.panel,.driver-choice{transition:border-color .24s,box-shadow .24s,background .24s,transform .24s}
+#appFooter{border-top:1px solid rgba(0,238,112,.17);background:linear-gradient(180deg,transparent,rgba(0,238,112,.035));padding:22px 14px 28px}
+#appFooter a{color:var(--accent);text-decoration-color:rgba(0,238,112,.45);text-underline-offset:3px}
+#appFooter a:hover{color:var(--accent-bright);text-shadow:0 0 12px rgba(0,238,112,.35)}
+.note{border-color:rgba(0,238,112,.25);background:linear-gradient(110deg,rgba(0,238,112,.1),var(--surface-2));box-shadow:inset 3px 0 var(--accent)}
+@media(prefers-reduced-motion:reduce){
+ main>section:not(.hidden){animation:none!important}
+ main>.tabs .tab,button:not(:disabled),.card,.panel,.driver-choice{transition:none!important}
+ button:not(:disabled):active{transform:none}
+}
+</style>
+
 </body></html>
