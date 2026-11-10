@@ -280,11 +280,19 @@ html.dante-transitions-off *,html.dante-transitions-off *::before,html.dante-tra
 html.dante-transitions-off main>section:not(.hidden){animation:none!important}
 html.dante-micro-off button:not(:disabled),html.dante-micro-off .card,html.dante-micro-off .panel,html.dante-micro-off .driver-choice{transition:none!important}
 html.dante-micro-off button:not(:disabled):active{transform:none!important}
-body::after{content:"";position:fixed;inset:-7%;z-index:0;pointer-events:none;opacity:.22;background:radial-gradient(ellipse at 18% 18%,rgba(0,237,121,.10),transparent 42%),radial-gradient(ellipse at 84% 76%,rgba(0,237,121,.075),transparent 44%);transform:translate3d(var(--dante-parallax-x,0px),var(--dante-parallax-y,0px),0);will-change:transform}
+body::after{content:"";position:fixed;inset:-8%;z-index:0;pointer-events:none;opacity:.22;background:radial-gradient(ellipse at 18% 18%,rgba(0,237,121,.10),transparent 42%),radial-gradient(ellipse at 84% 76%,rgba(0,237,121,.075),transparent 44%);transform:translate3d(calc(var(--dante-touch-x,0) * -16px),calc(var(--dante-touch-y,0) * -16px),0) scale(1.08);will-change:transform}
 body>header,body>main,body>#appFooter{position:relative;z-index:1}
-header .brand-logo.dante-parallax-target,#postLoginGreeting.dante-parallax-target{transition:transform .16s ease-out;transform:translate3d(var(--dante-parallax-x,0px),var(--dante-parallax-y,0px),0)}
-html.dante-effects-off body::after,html.dante-effects-off header .brand-logo.dante-parallax-target,html.dante-effects-off #postLoginGreeting.dante-parallax-target{transform:none!important}
-@media(prefers-reduced-motion:reduce){body::after{display:none!important}header .brand-logo.dante-parallax-target,#postLoginGreeting.dante-parallax-target{transform:none!important;transition:none!important}}
+html.dante-parallax-active body{perspective:1200px;transform-style:preserve-3d}
+html.dante-parallax-active body>header,html.dante-parallax-active body>main,html.dante-parallax-active body>#appFooter,html.dante-parallax-active body>#startupScreen{transform:rotateX(var(--dante-rotate-x,0deg)) rotateY(var(--dante-rotate-y,0deg));transform-style:preserve-3d;transform-origin:50% 50%;backface-visibility:hidden;transition:transform .22s cubic-bezier(.2,.7,.25,1);will-change:transform}
+html.dante-parallax-active body>header .brand-wrap,html.dante-parallax-active body>main>.tabs,html.dante-parallax-active body>main>.post-login-greeting,html.dante-parallax-active body>main>section:not(.hidden),html.dante-parallax-active body>#startupScreen .startup-emblem,html.dante-parallax-active body>#startupScreen .startup-brand{translate:calc(var(--dante-touch-x,0) * -3px) calc(var(--dante-touch-y,0) * -3px) calc(var(--dante-touch-depth,0px) * .3);transform-style:preserve-3d}
+html.dante-parallax-active body>main .card,html.dante-parallax-active body>main .panel,html.dante-parallax-active body>main .driver-choice,html.dante-parallax-active body>main .tab,html.dante-parallax-active body>main button,html.dante-parallax-active body>main input,html.dante-parallax-active body>main select,html.dante-parallax-active body>main textarea,html.dante-parallax-active body>main .upload-box,html.dante-parallax-active body>main .request,html.dante-parallax-active body>main .note,html.dante-parallax-active body>header .brand-logo,html.dante-parallax-active body>#appFooter a{translate:0 0 calc(var(--dante-touch-depth,0px) * .55);transform-style:preserve-3d;backface-visibility:hidden}
+html.dante-parallax-active body::after{transition:transform .22s cubic-bezier(.2,.7,.25,1)}
+html.dante-touching body>header,html.dante-touching body>main,html.dante-touching body>#appFooter,html.dante-touching body>#startupScreen{transition-duration:.08s}
+html.dante-effects-off body::after{transform:none!important}
+html.dante-effects-off body>header,html.dante-effects-off body>main,html.dante-effects-off body>#appFooter,html.dante-effects-off body>#startupScreen{transform:none!important;translate:none!important}
+html.dante-effects-off body>main *,html.dante-effects-off body>header *,html.dante-effects-off body>#appFooter *{translate:none!important}
+html.dante-parallax-active.dante-transitions-off body>header,html.dante-parallax-active.dante-transitions-off body>main,html.dante-parallax-active.dante-transitions-off body>#appFooter,html.dante-parallax-active.dante-transitions-off body>#startupScreen,html.dante-transitions-off body::after{transition:none!important}
+@media(prefers-reduced-motion:reduce){body::after{display:none!important}html.dante-parallax-active body>header,html.dante-parallax-active body>main,html.dante-parallax-active body>#appFooter,html.dante-parallax-active body>#startupScreen{transform:none!important;transition:none!important}html.dante-parallax-active body>main *,html.dante-parallax-active body>header *,html.dante-parallax-active body>#appFooter *{translate:none!important}}
 </style>
 </head>
 <body>
@@ -386,7 +394,7 @@ html.dante-effects-off body::after,html.dante-effects-off header .brand-logo.dan
  </div>
 </section>
 <section id="configuracion" class="hidden">
-<div class="card panel" id="appearanceSettingsCard" style="margin-top:12px"><h3>✨ Apariencia</h3><p class="muted">Personalizá el aspecto de Dante Remises sin modificar sus funciones.</p><div class="field"><label for="themePreference">Tema de la aplicación</label><select id="themePreference"><option value="system">Automático · según el dispositivo</option><option value="light">Claro</option><option value="dark">Oscuro</option><option value="electric">Verde Eléctrico · Dante</option></select></div><p class="hint">El cambio se aplica al instante y queda guardado en este dispositivo.</p><div class="visual-effects-settings"><h4>✨ Efectos y movimiento</h4><label class="visual-effect-option"><span><strong>Efectos visuales</strong><small>Activa o desactiva todos los movimientos y animaciones.</small></span><input id="visualEffectsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Parallax por movimiento</strong><small>La interfaz acompaña suavemente la inclinación del teléfono.</small></span><input id="parallaxEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Transiciones suaves</strong><small>Animaciones al cambiar de pantalla y abrir secciones.</small></span><input id="transitionsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Microanimaciones</strong><small>Pequeños efectos en botones y tarjetas.</small></span><input id="microAnimationsEnabled" type="checkbox" checked></label><p class="hint" id="visualEffectsStatus" role="status" aria-live="polite">Los efectos se guardan en este dispositivo. El Parallax requiere sensores de orientación compatibles.</p></div></div>
+<div class="card panel" id="appearanceSettingsCard" style="margin-top:12px"><h3>✨ Apariencia</h3><p class="muted">Personalizá el aspecto de Dante Remises sin modificar sus funciones.</p><div class="field"><label for="themePreference">Tema de la aplicación</label><select id="themePreference"><option value="system">Automático · según el dispositivo</option><option value="light">Claro</option><option value="dark">Oscuro</option><option value="electric">Verde Eléctrico · Dante</option></select></div><p class="hint">El cambio se aplica al instante y queda guardado en este dispositivo.</p><div class="visual-effects-settings"><h4>✨ Efectos y movimiento</h4><label class="visual-effect-option"><span><strong>Efectos visuales</strong><small>Activa o desactiva todos los movimientos y animaciones.</small></span><input id="visualEffectsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Parallax 3D táctil</strong><small>Toda la app responde al movimiento de tu dedo con profundidad tridimensional.</small></span><input id="parallaxEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Transiciones suaves</strong><small>Animaciones al cambiar de pantalla y abrir secciones.</small></span><input id="transitionsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Microanimaciones</strong><small>Pequeños efectos en botones y tarjetas.</small></span><input id="microAnimationsEnabled" type="checkbox" checked></label><p class="hint" id="visualEffectsStatus" role="status" aria-live="polite">Deslizá el dedo por la pantalla para activar la perspectiva 3D en toda la app.</p></div></div>
 <div class="card panel" id="sessionSettingsCard" style="margin-top:12px"><h3>🔐 Sesión</h3><p class="muted">Cuando termines de usar Dante Remises, podés cerrar tu sesión desde acá.</p><button class="danger hidden" id="logoutButton" type="button">Cerrar sesión</button></div>
 
 <h2>⚙️ Configuración</h2><p class="muted">Administrá tus datos visuales y preferencias de perfil.</p>
@@ -2092,7 +2100,7 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
 </style>
 
 <script id="dante-visual-effects-runtime">
-/* Preferencias locales de movimiento y Parallax por DeviceOrientation. */
+/* Parallax 3D táctil global: la posición del dedo controla la profundidad de toda la interfaz. */
 (function(){
  const root=document.documentElement;
  const $=id=>document.getElementById(id);
@@ -2103,65 +2111,84 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
  const read=(key,fallback)=>{try{const value=localStorage.getItem(key);return value===null?fallback:value==='true'}catch(_){return fallback}};
  const save=(key,value)=>{try{localStorage.setItem(key,String(value))}catch(error){console.warn('[Dante] No se pudo guardar una preferencia visual.',error)}};
  const state={master:read(keys.master,defaults.master),parallax:read(keys.parallax,defaults.parallax),transitions:read(keys.transitions,defaults.transitions),micro:read(keys.micro,defaults.micro)};
- let baseline={beta:null,gamma:null},orientationActive=false,permissionDenied=false;
+ const reducedMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)');
+ let touchIdentifier=null;
  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+ const parallaxAvailable=()=>state.master&&state.parallax&&!(reducedMotion&&reducedMotion.matches);
+ function setNeutralPosition(){
+  root.style.setProperty('--dante-touch-x','0');
+  root.style.setProperty('--dante-touch-y','0');
+  root.style.setProperty('--dante-touch-depth','0px');
+  root.style.setProperty('--dante-rotate-x','0deg');
+  root.style.setProperty('--dante-rotate-y','0deg');
+  root.classList.remove('dante-touching');
+ }
+ function resetTouch(){
+  touchIdentifier=null;
+  setNeutralPosition();
+ }
+ function updateFromTouch(touch){
+  if(!parallaxAvailable()||document.hidden)return;
+  const width=Math.max(1,window.innerWidth);
+  const height=Math.max(1,window.innerHeight);
+  const x=clamp((touch.clientX/width-.5)*2,-1,1);
+  const y=clamp((touch.clientY/height-.5)*2,-1,1);
+  const depth=Math.min(12,Math.hypot(x,y)*12);
+  root.style.setProperty('--dante-touch-x',x.toFixed(3));
+  root.style.setProperty('--dante-touch-y',y.toFixed(3));
+  root.style.setProperty('--dante-touch-depth',depth.toFixed(2)+'px');
+  root.style.setProperty('--dante-rotate-x',(-y*3.2).toFixed(2)+'deg');
+  root.style.setProperty('--dante-rotate-y',(x*3.2).toFixed(2)+'deg');
+  root.classList.add('dante-touching');
+ }
+ function findTouch(list){
+  for(let i=0;i<list.length;i++)if(list[i].identifier===touchIdentifier)return list[i];
+  return null;
+ }
+ function onTouchStart(event){
+  if(!parallaxAvailable()||document.hidden||touchIdentifier!==null||!event.changedTouches.length)return;
+  const touch=event.changedTouches[0];
+  touchIdentifier=touch.identifier;
+  updateFromTouch(touch);
+ }
+ function onTouchMove(event){
+  if(touchIdentifier===null||!parallaxAvailable())return;
+  const touch=findTouch(event.touches);
+  if(touch)updateFromTouch(touch);
+ }
+ function onTouchEnd(event){
+  if(touchIdentifier===null)return;
+  if(findTouch(event.changedTouches))resetTouch();
+ }
  function render(){
-  controls.master.checked=state.master;controls.parallax.checked=state.parallax;controls.transitions.checked=state.transitions;controls.micro.checked=state.micro;
-  controls.parallax.disabled=!state.master;controls.transitions.disabled=!state.master;controls.micro.disabled=!state.master;
+  controls.master.checked=state.master;
+  controls.parallax.checked=state.parallax;
+  controls.transitions.checked=state.transitions;
+  controls.micro.checked=state.micro;
+  controls.parallax.disabled=!state.master;
+  controls.transitions.disabled=!state.master;
+  controls.micro.disabled=!state.master;
   root.classList.toggle('dante-effects-off',!state.master);
   root.classList.toggle('dante-transitions-off',state.master&&!state.transitions);
   root.classList.toggle('dante-micro-off',state.master&&!state.micro);
-  if(!state.master||!state.parallax){stopParallax();root.style.setProperty('--dante-parallax-x','0px');root.style.setProperty('--dante-parallax-y','0px')}
-  else startParallax();
+  root.classList.toggle('dante-parallax-active',!!parallaxAvailable());
+  if(!parallaxAvailable())resetTouch();
   if(!state.master)controls.status.textContent='Todos los efectos están desactivados.';
-  else if(permissionDenied)controls.status.textContent='El teléfono no autorizó el sensor. Podés seguir usando las demás animaciones.';
-  else controls.status.textContent='Preferencias guardadas en este dispositivo. El Parallax funciona en equipos con sensor de orientación compatible.';
- }
- function onOrientation(event){
-  if(!state.master||!state.parallax||document.hidden)return;
-  if(!Number.isFinite(event.beta)||!Number.isFinite(event.gamma))return;
-  if(baseline.beta===null){baseline={beta:event.beta,gamma:event.gamma};return}
-  const dx=clamp((event.gamma-baseline.gamma)/12,-1,1)*3.2;
-  const dy=clamp((event.beta-baseline.beta)/18,-1,1)*2.8;
-  root.style.setProperty('--dante-parallax-x',dx.toFixed(2)+'px');
-  root.style.setProperty('--dante-parallax-y',dy.toFixed(2)+'px');
-  document.querySelectorAll('header .brand-logo,#postLoginGreeting').forEach((el,index)=>{
-   el.classList.add('dante-parallax-target');
-   const factor=index===0?1.35:.75;
-   el.style.setProperty('--dante-parallax-x',(dx*factor).toFixed(2)+'px');
-   el.style.setProperty('--dante-parallax-y',(dy*factor).toFixed(2)+'px');
-  });
- }
- function startParallax(){
-  if(orientationActive||!('DeviceOrientationEvent'in window))return;
-  if(typeof DeviceOrientationEvent.requestPermission==='function')return;
-  window.addEventListener('deviceorientation',onOrientation,{passive:true});
-  orientationActive=true;
- }
- function stopParallax(){
-  if(orientationActive){window.removeEventListener('deviceorientation',onOrientation);orientationActive=false}
-  baseline={beta:null,gamma:null};
-  document.querySelectorAll('.dante-parallax-target').forEach(el=>{el.style.removeProperty('--dante-parallax-x');el.style.removeProperty('--dante-parallax-y')});
- }
- async function requestParallaxPermission(){
-  if(!('DeviceOrientationEvent'in window)){permissionDenied=true;render();return}
-  if(typeof window.DeviceOrientationEvent.requestPermission==='function'){
-   try{const result=await window.DeviceOrientationEvent.requestPermission();if(result!=='granted'){permissionDenied=true;render();return}}
-   catch(error){permissionDenied=true;render();return}
-  }
-  permissionDenied=false;startParallax();
+  else if(reducedMotion&&reducedMotion.matches)controls.status.textContent='El dispositivo tiene activada la reducción de movimiento; el Parallax 3D está pausado.';
+  else if(!state.parallax)controls.status.textContent='Parallax 3D táctil desactivado.';
+  else controls.status.textContent='Parallax 3D activo en toda la app. Deslizá el dedo por la pantalla para mover la perspectiva.';
  }
  controls.master.addEventListener('change',()=>{state.master=controls.master.checked;save(keys.master,state.master);render()});
- controls.parallax.addEventListener('change',async()=>{state.parallax=controls.parallax.checked;save(keys.parallax,state.parallax);render();if(state.master&&state.parallax)await requestParallaxPermission()});
+ controls.parallax.addEventListener('change',()=>{state.parallax=controls.parallax.checked;save(keys.parallax,state.parallax);render()});
  controls.transitions.addEventListener('change',()=>{state.transitions=controls.transitions.checked;save(keys.transitions,state.transitions);render()});
  controls.micro.addEventListener('change',()=>{state.micro=controls.micro.checked;save(keys.micro,state.micro);render()});
- document.addEventListener('visibilitychange',()=>{if(document.hidden){stopParallax()}else if(state.master&&state.parallax){baseline={beta:null,gamma:null};startParallax()}});
- window.addEventListener('orientationchange',()=>{baseline={beta:null,gamma:null}});
- document.querySelectorAll('header .brand-logo,#postLoginGreeting').forEach(el=>el.classList.add('dante-parallax-target'));
+ document.addEventListener('touchstart',onTouchStart,{passive:true,capture:true});
+ document.addEventListener('touchmove',onTouchMove,{passive:true,capture:true});
+ document.addEventListener('touchend',onTouchEnd,{passive:true,capture:true});
+ document.addEventListener('touchcancel',resetTouch,{passive:true,capture:true});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)resetTouch()});
+ if(reducedMotion&&typeof reducedMotion.addEventListener==='function')reducedMotion.addEventListener('change',render);
  render();
- if(state.master&&state.parallax&&typeof window.DeviceOrientationEvent!=='undefined'&&typeof window.DeviceOrientationEvent.requestPermission==='function'){
-  controls.status.textContent='Para habilitar el Parallax, apagá y volvé a encender su interruptor para autorizar el sensor.';
- }
 })();
 </script>
 </body></html>
