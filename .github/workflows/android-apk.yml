@@ -49,6 +49,96 @@ jobs:
           PY
           node --check /tmp/dante-remises-inline.mjs
 
+      - name: Validate visual layer structure
+        run: |
+          python3 - <<'PY'
+          import re
+          from collections import Counter
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          source = Path("index.html").read_text(encoding="utf-8")
+
+          class IdCollector(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.ids = []
+              def handle_starttag(self, tag, attrs):
+                  self.ids.extend(value for key, value in attrs if key == "id" and value)
+              def handle_startendtag(self, tag, attrs):
+                  self.handle_starttag(tag, attrs)
+
+          parser = IdCollector()
+          parser.feed(source)
+          duplicates = sorted(key for key, count in Counter(parser.ids).items() if count > 1)
+          if duplicates:
+              raise SystemExit("Duplicate HTML IDs: " + ", ".join(duplicates))
+
+          styles = re.findall(r"<style\\b[^>]*>(.*?)</style\\s*>", source, re.I | re.S)
+          if len(styles) < 8:
+              raise SystemExit(f"Expected at least 8 style blocks, found {len(styles)}")
+
+          def check_css_blocks(css):
+              depth = 0
+              quote = None
+              escaped = False
+              comment = False
+              index = 0
+              while index < len(css):
+                  char = css[index]
+                  nxt = css[index + 1] if index + 1 < len(css) else ""
+                  if comment:
+                      if char == "*" and nxt == "/":
+                          comment = False
+                          index += 2
+                          continue
+                  elif quote:
+                      if escaped:
+                          escaped = False
+                      elif char == "\\\\":
+                          escaped = True
+                      elif char == quote:
+                          quote = None
+                  elif char == "/" and nxt == "*":
+                      comment = True
+                      index += 2
+                      continue
+                  elif char in ("'", '"'):
+                      quote = char
+                  elif char == "{":
+                      depth += 1
+                  elif char == "}":
+                      depth -= 1
+                      if depth < 0:
+                          raise SystemExit("CSS contains a closing brace without an opening brace.")
+                  index += 1
+              if comment or quote or depth:
+                  raise SystemExit(f"CSS block is incomplete (comment={comment}, quote={quote}, brace_depth={depth}).")
+
+          for number, css in enumerate(styles, 1):
+              check_css_blocks(css)
+
+          required = [
+              "dante-visual-system",
+              "dante-chat-map-polish",
+              "dante-screen-polish",
+              "dante-staff-console-polish",
+              "dante-navigation-polish",
+              "dante-motion-system",
+          ]
+          missing = [name for name in required if f'id="{name}"' not in source]
+          if missing:
+              raise SystemExit("Missing visual style layers: " + ", ".join(missing))
+          if "prefers-reduced-motion" not in source:
+              raise SystemExit("Reduced-motion support is missing.")
+
+          for element_id in ("chatForm", "realMap", "centralCars", "driverControls", "setFree", "setBusy", "setOut"):
+              if parser.ids.count(element_id) != 1:
+                  raise SystemExit(f"Expected exactly one functional anchor #{element_id}, found {parser.ids.count(element_id)}")
+
+          print(f"Visual structure OK: {len(styles)} CSS blocks, {len(parser.ids)} HTML IDs, no duplicates, required app anchors present.")
+          PY
+
       - name: Install JavaScript dependencies
         run: npm install --include=optional
 
