@@ -2155,22 +2155,25 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  const surfaceSelector='.card,.panel,.choice-card,.driver-choice,.request,.trip-request,.note,.upload-box,.chatbox,.chat-conversation,.map-meta,.real-map,.demo-map,.post-login-greeting,.onboarding-shell,.visual-effects-settings';
  const driverCardSelector='#passengerCars>.driver-choice,#centralCars>.card';
  let surfaces=[];
+ let surfaceRects=[];
  let touchIdentifier=null;
  let activeDriverCard=null;
+ let pendingTouch=null;
+ let pendingFrame=0;
  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
  const parallaxAvailable=()=>state.master&&state.parallax&&!(reducedMotion&&reducedMotion.matches);
  function refreshSurfaces(){
   surfaces=Array.from(document.querySelectorAll(surfaceSelector));
+  surfaceRects.length=surfaces.length;
   for(const surface of surfaces)surface.classList.add('dante-parallax-surface');
  }
- function setActiveDriverCard(card,touch){
+ function setActiveDriverCard(card,touch,rect){
   if(activeDriverCard!==card){
    if(activeDriverCard)activeDriverCard.classList.remove('dante-driver-touch-active');
    activeDriverCard=card;
    if(activeDriverCard)activeDriverCard.classList.add('dante-driver-touch-active');
   }
-  if(activeDriverCard&&touch){
-   const rect=activeDriverCard.getBoundingClientRect();
+  if(activeDriverCard&&touch&&rect){
    const x=clamp((touch.clientX-rect.left)/Math.max(1,rect.width)*100,0,100);
    const y=clamp((touch.clientY-rect.top)/Math.max(1,rect.height)*100,0,100);
    activeDriverCard.style.setProperty('--dante-touch-x',x.toFixed(1)+'%');
@@ -2193,19 +2196,32 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
   }
   root.classList.remove('dante-touching');
  }
- function resetTouch(){touchIdentifier=null;setNeutralPosition()}
- function updateFromTouch(touch){
+ function resetTouch(){
+  touchIdentifier=null;
+  pendingTouch=null;
+  if(pendingFrame){window.cancelAnimationFrame(pendingFrame);pendingFrame=0}
+  setNeutralPosition();
+ }
+ function applyTouchFrame(touch){
   if(!parallaxAvailable()||document.hidden)return;
   const hit=document.elementFromPoint(touch.clientX,touch.clientY);
   const driverCard=hit&&hit.closest?hit.closest(driverCardSelector):null;
-  setActiveDriverCard(driverCard,touch);
   const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
-  for(const surface of surfaces){
-   const rect=surface.getBoundingClientRect();
-   if(!rect.width||!rect.height)continue;
+  let driverRect=null;
+  /* Fase de lectura: obtener toda la geometría antes de modificar estilos. */
+  for(let i=0;i<surfaces.length;i++){
+   const rect=surfaces[i].getBoundingClientRect();
+   surfaceRects[i]=rect;
+   if(surfaces[i]===driverCard)driverRect=rect;
+  }
+  /* Fase de escritura: el realce y las variables se aplican después de las lecturas. */
+  setActiveDriverCard(driverCard,touch,driverRect);
+  for(let i=0;i<surfaces.length;i++){
+   const surface=surfaces[i],rect=surfaceRects[i];
+   if(!rect||!rect.width||!rect.height)continue;
    const dx=clamp((rect.left+rect.width/2-touch.clientX)/width,-.5,.5);
    const dy=clamp((rect.top+rect.height/2-touch.clientY)/height,-.5,.5);
-   const boost=surface===activeDriverCard?2:1;
+   const boost=surface===driverCard?2:1;
    const rx=clamp(-dy*4.2*boost,-4.2,4.2),ry=clamp(dx*4.2*boost,-4.2,4.2);
    const z=clamp((5.2-Math.hypot(dx,dy)*7)*boost,0,10.4);
    surface.style.setProperty('--dante-card-x',(dx*3.2*boost).toFixed(2)+'px');
@@ -2216,15 +2232,24 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
   }
   root.classList.add('dante-touching');
  }
+ function queueTouchFrame(touch){
+  pendingTouch={clientX:touch.clientX,clientY:touch.clientY};
+  if(pendingFrame)return;
+  pendingFrame=window.requestAnimationFrame(()=>{
+   pendingFrame=0;
+   const latest=pendingTouch;pendingTouch=null;
+   if(latest)applyTouchFrame(latest);
+  });
+ }
  function findTouch(list){for(let i=0;i<list.length;i++)if(list[i].identifier===touchIdentifier)return list[i];return null}
  function onTouchStart(event){
   if(!parallaxAvailable()||document.hidden||touchIdentifier!==null||!event.changedTouches.length)return;
   refreshSurfaces();
-  const touch=event.changedTouches[0];touchIdentifier=touch.identifier;updateFromTouch(touch);
+  const touch=event.changedTouches[0];touchIdentifier=touch.identifier;applyTouchFrame(touch);
  }
  function onTouchMove(event){
   if(touchIdentifier===null||!parallaxAvailable())return;
-  const touch=findTouch(event.touches);if(touch)updateFromTouch(touch);
+  const touch=findTouch(event.touches);if(touch)queueTouchFrame(touch);
  }
  function onTouchEnd(event){if(touchIdentifier!==null&&findTouch(event.changedTouches))resetTouch()}
  function render(){
