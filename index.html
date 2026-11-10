@@ -1928,4 +1928,43 @@ select option{background:var(--surface);color:var(--ink)}
 }
 </style>
 
+
+<style id="dante-navigation-polish">
+/* Identidad de marca y navegación global */
+header{position:relative;display:flex;align-items:center;justify-content:center;text-align:center;padding:25px 72px 27px;min-height:190px}
+header .brand-wrap{display:flex;flex-direction:column;align-items:center;gap:7px}
+header .brand-logo{display:grid;place-items:center;border-radius:27px;overflow:hidden;font-size:11px;font-weight:850;letter-spacing:.1em;color:#087b43}
+header .brand{font-size:clamp(27px,4.5vw,36px);line-height:1.05}
+header small{font-size:10px;letter-spacing:.19em}
+header .staff-entry,header .settings-gear,header .logout-top{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;display:grid;place-items:center;border-radius:15px}
+header .staff-entry{left:18px}
+header .settings-gear{right:18px}
+header .logout-top{right:72px;width:auto;height:40px;padding:8px 13px;border-radius:12px}
+header .staff-entry svg,header .settings-gear svg{width:21px;height:21px}
+header .staff-entry:hover,header .settings-gear:hover{transform:translateY(calc(-50% - 2px));box-shadow:0 0 0 4px rgba(0,238,112,.1),0 0 23px rgba(0,238,112,.2)}
+main{width:min(100%,1120px);margin:0 auto}
+main>.tabs{position:sticky;top:8px;z-index:500;display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:max-content;max-width:calc(100vw - 24px);margin:0 auto 23px;padding:6px;border:1px solid rgba(0,238,112,.32);border-radius:17px;background:rgba(5,19,10,.91);box-shadow:0 12px 35px rgba(0,0,0,.32),0 0 22px rgba(0,238,112,.07);backdrop-filter:blur(18px)}
+main>.tabs::-webkit-scrollbar{display:none}
+main>.tabs .tab{white-space:nowrap;min-height:42px;padding:10px 16px;border-radius:12px;font-size:12px;letter-spacing:.005em}
+main>.tabs .tab.active{background:linear-gradient(120deg,#008b43,#00d96a 70%,#00f58a);color:#03170b;box-shadow:0 0 19px rgba(0,238,112,.2)}
+#postLoginGreeting{max-width:850px;margin:0 auto 20px;padding:16px 19px;border:1px solid rgba(0,238,112,.35);border-radius:16px;background:linear-gradient(110deg,rgba(0,238,112,.12),var(--card));box-shadow:inset 3px 0 var(--accent),0 8px 25px rgba(0,0,0,.12);line-height:1.5}
+#toast{z-index:2000;max-width:min(92vw,520px);width:max-content;padding:13px 18px;border-radius:14px;border:1px solid rgba(0,255,125,.42);background:rgba(3,20,10,.96);color:#f0fff6;box-shadow:0 14px 42px #0008,0 0 22px rgba(0,238,112,.15);backdrop-filter:blur(15px);font-weight:650;line-height:1.4}
+main>section:not(.hidden){transform-origin:top center}
+@media(max-width:600px){
+ header{min-height:165px;padding:20px 58px}
+ header .brand-logo{width:76px;height:76px;border-radius:22px}
+ header .brand{font-size:26px}
+ header .staff-entry,header .settings-gear{width:40px;height:40px;border-radius:13px}
+ header .staff-entry{left:10px}
+ header .settings-gear{right:10px}
+ header .logout-top{right:58px;height:36px;padding:7px 9px;font-size:11px}
+ main>.tabs{top:5px;max-width:calc(100vw - 18px);margin-bottom:17px}
+ main>.tabs .tab{min-height:39px;padding:9px 12px;font-size:11px}
+ #postLoginGreeting{margin-bottom:15px;padding:13px 15px}
+}
+@media(prefers-reduced-motion:reduce){
+ header .staff-entry,header .settings-gear{transition:none}
+}
+</style>
+
 </body></html>
