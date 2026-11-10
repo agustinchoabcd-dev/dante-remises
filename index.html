@@ -1735,4 +1735,76 @@ fillSelects();render('initial');perf.mark('app.initial.render.done');
 })();
 
 </script>
+
+<style id="dante-chat-map-polish">
+/* CHAT — experiencia inmersiva, sin alterar IDs, eventos ni flujo de mensajes */
+#chat>h2{display:flex;align-items:center;gap:12px}
+#chat>h2:before{content:"";width:9px;height:28px;border-radius:8px;background:var(--accent);box-shadow:0 0 18px var(--accent),0 0 34px rgba(0,238,112,.42)}
+#chat .card.panel{max-width:900px;margin-inline:auto;padding:clamp(13px,2.5vw,22px);border-color:rgba(0,238,112,.2);background:linear-gradient(145deg,rgba(12,27,17,.98),rgba(7,17,11,.97));box-shadow:0 18px 55px rgba(0,0,0,.38),0 0 32px rgba(0,238,112,.055)}
+html[data-theme="light"] #chat .card.panel{background:linear-gradient(145deg,#fff,#eaf8ef)}
+#chat .chat-conversation-list{display:flex;gap:9px;overflow-x:auto;padding:3px 2px 10px;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:var(--accent) transparent}
+#chat .chat-conversation{flex:0 0 min(245px,75vw);min-height:66px;scroll-snap-align:start;border-radius:14px;border-color:rgba(0,238,112,.18);background:linear-gradient(145deg,var(--surface-2),var(--surface));box-shadow:inset 0 1px rgba(255,255,255,.035);white-space:normal}
+#chat .chat-conversation.active{border-color:var(--accent);background:linear-gradient(125deg,rgba(0,238,112,.16),var(--surface));box-shadow:inset 3px 0 var(--accent),0 0 18px rgba(0,238,112,.1)}
+#chat .chatbox{border-radius:20px;border:1px solid rgba(0,238,112,.3);background:var(--surface);box-shadow:0 0 0 1px rgba(0,238,112,.045),0 15px 40px rgba(0,0,0,.2);overflow:hidden}
+#chat .chathead{min-height:78px;padding:15px 17px;background:radial-gradient(ellipse at 100% 0,rgba(0,255,130,.2),transparent 48%),linear-gradient(115deg,#03180c,#07512a 62%,#087e3e);border-bottom:1px solid rgba(0,255,130,.42)}
+#chat .chat-peer-avatar{width:46px;height:46px;flex-basis:46px;border:2px solid #00f47b;background:#071c10;color:#00ed79;box-shadow:0 0 0 4px rgba(0,255,120,.1),0 0 20px rgba(0,255,120,.2)}
+#chat .chathead-copy strong{font-size:16px;letter-spacing:-.02em;color:#f1fff6}
+#chat .chathead-copy .muted{font-size:11px;letter-spacing:.035em;opacity:.9}
+#chat .chat-peer-menu{background:var(--surface);border-color:rgba(0,238,112,.3);box-shadow:0 14px 35px #0008}
+#chat .chat-peer-menu button{color:var(--ink);border-radius:9px}
+#chat .chat-peer-menu button:hover{background:var(--surface-2)}
+#chat .chat-history-toolbar{padding:12px 12px 0}
+#chat .chat-history-toolbar button{border-radius:999px;font-size:11px;padding:8px 14px}
+#chat .messages{height:clamp(290px,48vh,520px);padding:18px clamp(12px,3vw,22px);gap:12px;background:
+ radial-gradient(ellipse at 0 0,rgba(0,238,112,.065),transparent 42%),
+ radial-gradient(ellipse at 100% 100%,rgba(0,190,85,.045),transparent 42%),var(--surface);
+ scroll-behavior:smooth;overscroll-behavior:contain}
+#chat .msg{position:relative;max-width:min(82%,520px);padding:11px 15px;border-radius:17px 17px 17px 5px;border:1px solid rgba(0,238,112,.16);background:linear-gradient(145deg,#17271c,#101b14);color:#eafff1;line-height:1.48;box-shadow:0 5px 16px rgba(0,0,0,.16);animation:dante-message-in .28s cubic-bezier(.2,.8,.2,1) both;transform-origin:bottom left}
+#chat .msg.mine{align-self:flex-end;border-radius:17px 17px 5px 17px;border-color:rgba(0,255,130,.5);background:linear-gradient(135deg,#087b3d 0%,#00a94f 65%,#00c967 100%);color:#f4fff8;box-shadow:0 5px 18px rgba(0,190,80,.18),inset 0 1px rgba(255,255,255,.14);transform-origin:bottom right}
+html[data-theme="light"] #chat .msg:not(.mine){background:linear-gradient(145deg,#f2faf4,#e4f4e9);color:#10271d;border-color:#c5e6d0}
+#chat .chat-recording-status{color:var(--accent);font-weight:650;letter-spacing:.01em}
+#chat .chatcompose{gap:10px;padding:12px;border-top:1px solid rgba(0,238,112,.18);background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+#chat .chat-input-shell{min-height:49px;border-radius:999px;border:1px solid rgba(0,238,112,.3);background:var(--bg);padding-left:17px;box-shadow:inset 0 2px 8px rgba(0,0,0,.12);transition:border-color .2s,box-shadow .2s}
+#chat .chat-input-shell:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--focus),0 0 22px rgba(0,238,112,.13)}
+#chat .chatcompose input{color:var(--ink);font-size:14px}
+#chat .chat-camera-button{color:var(--accent);border-radius:50%;transition:background .2s,transform .2s}
+#chat .chat-camera-button:hover{background:rgba(0,238,112,.14);transform:translateY(-50%) scale(1.08)}
+#chat .chat-mic-button{background:linear-gradient(135deg,#008b43,#00ed79);color:#03170b;border:1px solid rgba(0,255,130,.6);box-shadow:0 0 0 3px rgba(0,238,112,.09),0 0 22px rgba(0,238,112,.24)}
+#chat .chat-mic-button.recording{background:linear-gradient(135deg,#9e142b,#f22f4f);color:white;box-shadow:0 0 0 5px rgba(242,47,79,.17),0 0 24px rgba(242,47,79,.32);animation:dante-record-pulse 1.15s ease-in-out infinite}
+#chat #chatSendButton{min-height:46px;border-radius:999px;padding-inline:18px}
+@keyframes dante-message-in{from{opacity:0;transform:translateY(9px) scale(.975)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes dante-record-pulse{0%,100%{box-shadow:0 0 0 4px rgba(242,47,79,.13),0 0 16px rgba(242,47,79,.2)}50%{box-shadow:0 0 0 8px rgba(242,47,79,.08),0 0 27px rgba(242,47,79,.4)}}
+/* MAPA — contenedor inmersivo y paneles tipo HUD; se conserva Leaflet y sus controles */
+#realMap.real-map{height:clamp(330px,58vh,570px);min-height:300px;margin:15px 0 13px;border:1px solid rgba(0,238,112,.45);border-radius:20px;background:#07130c;box-shadow:0 0 0 1px rgba(0,238,112,.1),0 0 30px rgba(0,238,112,.09),0 18px 45px rgba(0,0,0,.28);isolation:isolate}
+#realMap .leaflet-tile-pane{filter:brightness(.66) saturate(.8) contrast(1.12)}
+html[data-theme="light"] #realMap .leaflet-tile-pane{filter:brightness(.9) saturate(.95) contrast(1.04)}
+#realMap .leaflet-control-zoom{border:1px solid rgba(0,238,112,.4)!important;border-radius:13px!important;overflow:hidden;box-shadow:0 5px 18px #0007!important}
+#realMap .leaflet-control-zoom a{width:38px!important;height:38px!important;line-height:38px!important;background:#071b0e!important;color:#00ed79!important;border-color:rgba(0,238,112,.24)!important;font-size:22px!important;transition:background .2s,color .2s}
+#realMap .leaflet-control-zoom a:hover{background:#0c3b20!important;color:#b5ffd0!important}
+#realMap .leaflet-control-attribution{background:rgba(3,15,8,.78)!important;color:#c0d7c7!important;border:1px solid rgba(0,238,112,.15);border-radius:7px 0 0 0;padding:2px 5px!important}
+#realMap .leaflet-control-attribution a{color:#62f6a5!important}
+#realMap .leaflet-popup-content-wrapper,#realMap .leaflet-popup-tip{background:#0b1b10;color:#effff4;border:1px solid rgba(0,238,112,.38);box-shadow:0 8px 25px #0009}
+#realMap .leaflet-popup-content{margin:12px 15px;line-height:1.45}
+#realMap .leaflet-popup-close-button{color:#00ed79!important}
+#realMap .leaflet-marker-icon{filter:drop-shadow(0 2px 5px rgba(0,0,0,.65))}
+#realMap .leaflet-marker-shadow{opacity:.4}
+#realMap .leaflet-interactive{transition:opacity .2s,filter .2s}
+#realMap:focus-within{box-shadow:0 0 0 2px rgba(0,238,112,.22),0 0 34px rgba(0,238,112,.14),0 18px 45px rgba(0,0,0,.28)}
+#requestSelectedDriver{min-height:50px;padding-inline:23px;border-radius:14px;letter-spacing:.01em}
+#routeSummary.map-meta{padding:14px 16px;border-radius:15px;border-color:rgba(0,238,112,.24);background:linear-gradient(120deg,rgba(0,238,112,.1),var(--surface-2) 58%);box-shadow:inset 3px 0 var(--accent);line-height:1.5}
+#driverLocationNote{padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+#pickDestination{border-color:rgba(0,238,112,.34);border-radius:12px}
+@media(max-width:600px){
+ #chat .messages{height:clamp(270px,44vh,430px);padding:14px 11px}
+ #chat .msg{max-width:88%;font-size:14px}
+ #chat .chatcompose{padding:9px;gap:7px}
+ #chat .chat-mic-button{width:45px;height:45px;flex-basis:45px}
+ #chat #chatSendButton{padding-inline:13px}
+ #realMap.real-map{height:52vh;min-height:320px;border-radius:16px}
+}
+@media(prefers-reduced-motion:reduce){
+ #chat .msg,#chat .chat-mic-button.recording{animation:none!important}
+}
+</style>
+
 </body></html>
