@@ -2255,6 +2255,15 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
 })();;
 </script>
 
+<style id="dante-audio-styles">
+.sound-settings{margin-top:17px;padding-top:14px;border-top:1px solid var(--line)}
+.sound-settings h4{margin:0 0 8px;font-size:15px}
+.sound-volume-option{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,.65fr) 42px;gap:10px;align-items:center}
+.sound-volume-option input[type="range"]{width:100%;min-width:0;accent-color:var(--accent)}
+.sound-volume-option output{font-size:12px;font-weight:750;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+@media(max-width:520px){.sound-volume-option{grid-template-columns:minmax(0,1fr) minmax(80px,.7fr) 38px;gap:7px}}
+@media(prefers-reduced-motion:reduce){.sound-settings *{scroll-behavior:auto}}
+</style>
 <script id="dante-audio-system">
 /* Audio propio de Dante Remises: síntesis Web Audio, sin dependencias ni archivos externos. */
 (function(){
