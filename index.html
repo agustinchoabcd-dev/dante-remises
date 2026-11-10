@@ -1868,4 +1868,64 @@ select option{background:var(--surface);color:var(--ink)}
 }
 </style>
 
+
+<style id="dante-staff-console-polish">
+/* ESPACIO DEL CHOFER — estado y acciones con jerarquía inmediata */
+#chofer>h2,#central>h2{font-size:clamp(26px,4.5vw,35px);margin:7px 0 10px}
+#chofer>p.muted,#central>p.muted{max-width:720px;line-height:1.65;margin-bottom:20px}
+#driverControls{max-width:850px;margin:18px auto 0!important;padding:clamp(17px,3vw,26px);border:1px solid rgba(0,238,112,.32);background:radial-gradient(ellipse at 100% 0,rgba(0,238,112,.11),transparent 45%),linear-gradient(145deg,var(--card),var(--surface));box-shadow:var(--shadow),inset 3px 0 var(--accent)}
+#roleSummary{padding:10px 13px;border:1px solid rgba(0,238,112,.2);border-radius:12px;background:var(--surface-2);margin-bottom:14px}
+#driverStatus{padding:18px;border:1px solid rgba(0,238,112,.27);border-radius:17px;background:linear-gradient(120deg,rgba(0,238,112,.1),var(--surface-2) 58%);box-shadow:inset 0 1px rgba(255,255,255,.04)}
+#driverStatus .carhead{align-items:center;gap:17px}
+#driverStatus .photos{gap:8px}
+#driverStatus .avatar{width:65px;height:65px;border:2px solid var(--accent);box-shadow:0 0 0 4px rgba(0,238,112,.08),0 0 20px rgba(0,238,112,.12)}
+#driverStatus .carname{font-size:clamp(19px,3vw,24px);font-weight:850}
+#driverStatus .model{margin:4px 0 8px}
+#driverStatus .status{display:inline-flex;margin-top:4px;padding:7px 13px;font-size:11px;font-weight:850;letter-spacing:.08em}
+#driverControls>h3{font-size:18px;display:flex;align-items:center;gap:10px;margin:20px 0 12px}
+#driverControls>h3:before{content:"";width:5px;height:19px;border-radius:5px;background:var(--accent);box-shadow:0 0 13px var(--accent)}
+#driverTripInbox{padding:14px;border:1px dashed rgba(0,238,112,.24);border-radius:14px;background:var(--surface-2);line-height:1.55}
+#driverActiveTrip{margin:12px 0;padding:17px;border:1px solid rgba(0,238,112,.42);border-radius:16px;background:linear-gradient(135deg,rgba(0,238,112,.14),var(--surface-2));box-shadow:0 0 22px rgba(0,238,112,.07)}
+#driverGpsStatus{margin-top:13px;padding:12px 14px;border:1px solid var(--line);border-radius:13px;background:var(--surface-2);font-size:12px;line-height:1.5}
+#driverControls .divider{margin:22px 0;background:linear-gradient(90deg,rgba(0,238,112,.28),var(--line),transparent)}
+#driverControls .field{padding:14px;border:1px solid rgba(0,238,112,.14);border-radius:14px;background:var(--surface-2);margin:14px 0 9px}
+#driverControls .field label{color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+#busyDuration,#outDuration{min-height:47px;border-radius:12px}
+#setBusy,#setOut,#setFree{min-height:49px}
+#setBusy{width:100%;background:linear-gradient(110deg,#008a43,#00d96a 65%,#00f58a);color:#03170b;box-shadow:0 0 22px rgba(0,238,112,.17)}
+#setOut{width:100%}
+#driverControls .actions{display:grid;grid-template-columns:1fr}
+#driverControls #setFree{width:100%;border-color:rgba(0,238,112,.38)}
+/* CENTRAL — grilla de coches y administración */
+#central>.card.panel{max-width:850px;margin:0 auto 17px;padding:15px 18px;border-color:rgba(0,238,112,.23);background:linear-gradient(120deg,var(--surface-2),var(--card))}
+#centralAuthStatus{margin-top:7px}
+#centralCars{grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:15px;align-items:stretch;margin-top:17px}
+#centralCars>.card{position:relative;display:flex;flex-direction:column;gap:12px;min-width:0;padding:17px;border:1px solid rgba(0,238,112,.24);border-radius:19px;background:radial-gradient(ellipse at 100% 0,rgba(0,238,112,.09),transparent 48%),linear-gradient(145deg,var(--card),var(--surface));box-shadow:var(--shadow);overflow:hidden;animation:card-in .4s cubic-bezier(.2,.75,.25,1) both}
+#centralCars>.card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--accent),transparent);opacity:.8}
+#centralCars>.card:hover{border-color:rgba(0,238,112,.5);box-shadow:var(--shadow-hover),0 0 20px rgba(0,238,112,.08);transform:translateY(-2px)}
+#centralCars .carhead{align-items:center;gap:13px}
+#centralCars .photos{gap:7px}
+#centralCars .avatar{width:55px;height:55px;border:2px solid rgba(0,238,112,.48);box-shadow:0 0 14px rgba(0,238,112,.1)}
+#centralCars .carname{font-size:17px;font-weight:850}
+#centralCars .model{margin-top:4px}
+#centralCars .status{align-self:flex-start;margin-top:2px}
+#centralCars .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:auto}
+#centralCars .actions button{min-height:42px;padding:9px 8px;font-size:12px;border-color:rgba(0,238,112,.2)}
+#centralCars .actions button:last-child{grid-column:1/-1}
+#centralCars .actions button:hover{border-color:var(--accent);box-shadow:0 0 14px rgba(0,238,112,.1)}
+#passengerAdmin{max-width:850px;margin:18px auto 0!important;border-color:rgba(0,238,112,.25)}
+#passengerList{line-height:1.6}
+@media(max-width:600px){
+ #driverControls{padding:15px 13px}
+ #driverStatus{padding:14px}
+ #driverStatus .avatar{width:54px;height:54px}
+ #centralCars{grid-template-columns:1fr}
+ #centralCars>.card{padding:15px}
+ #centralCars .actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){
+ #centralCars>.card{animation:none}
+}
+</style>
+
 </body></html>
