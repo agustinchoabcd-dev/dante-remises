@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#198754">
-<title>Dante Remises · Santa Rosa de Calamuchita · v0.6.0</title>
+<title>Dante Remises · Santa Rosa de Calamuchita · v0.6.1</title>
 <style>
 :root{--bg:#f3f5f8;--ink:#182230;--muted:#667085;--line:#e3e8ef;--card:#fff;--nav:#198754;--green:#15803d;--greenbg:#dcfce7;--amber:#a16207;--amberbg:#fef3c7;--red:#b91c1c;--redbg:#fee2e2;--blue:#198754;--bluebg:#dff3e6}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -250,12 +250,14 @@ header .brand-wrap .brand-logo{width:100px!important;height:100px!important;min-
 .startup-emblem{position:relative;width:104px;height:104px;display:grid;place-items:center;border:2px solid #00ed79;border-radius:50%;background:linear-gradient(145deg,#0d2919,#06130b);box-shadow:0 0 0 8px rgba(0,237,121,.07),0 0 35px rgba(0,237,121,.28),inset 0 0 24px rgba(0,237,121,.12);animation:dante-emblem-pulse 2.4s ease-in-out infinite}
 .startup-emblem:before{content:"";position:absolute;inset:-9px;border:1px solid rgba(0,237,121,.28);border-radius:50%;animation:dante-ring 2.4s ease-out infinite}
 .startup-emblem span{font-size:53px;font-weight:950;line-height:1;letter-spacing:-.09em;color:#dffff0;text-shadow:0 0 18px rgba(0,245,138,.55);transform:translateX(-2px)}
+.startup-emblem img{position:relative;z-index:1;width:100%;height:100%;padding:9px;object-fit:contain;transform:translate(var(--logo-x,0%),var(--logo-y,0%)) scale(var(--logo-scale,1));transform-origin:center}.startup-emblem.has-logo{background:rgba(4,18,10,.88)}
 .startup-emblem i{position:absolute;right:17px;bottom:20px;width:10px;height:10px;border-radius:50%;background:#00f58a;box-shadow:0 0 12px #00f58a}
 .startup-brand{position:relative;margin-top:34px;font-size:clamp(23px,5vw,30px);font-weight:500;letter-spacing:.18em}.startup-brand strong{font-weight:900;color:#00ed79}
 .startup-location{position:relative;margin-top:9px;color:#8fa99a;font-size:9px;font-weight:800;letter-spacing:.24em}
 .startup-loader{position:relative;width:132px;height:3px;margin-top:39px;border-radius:9px;background:rgba(0,237,121,.13);overflow:hidden}
 .startup-loader span{display:block;width:42%;height:100%;border-radius:9px;background:linear-gradient(90deg,transparent,#00ed79,#b5ffd0);box-shadow:0 0 13px #00ed79;animation:dante-loader 1.35s ease-in-out infinite}
 .startup-caption{position:relative;margin-top:13px;color:#9bb5a5;font-size:11px;letter-spacing:.07em}
+.build-info-list{display:grid;gap:0;margin-top:14px;border-top:1px solid var(--line)}.build-info-list>div{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}.build-info-list span{color:var(--muted)}.build-info-list strong{text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}@media(max-width:520px){.build-info-list>div{gap:10px;font-size:12px}}
 @keyframes dante-orbit{to{transform:rotate(360deg)}}@keyframes dante-ring{0%{transform:scale(.94);opacity:.8}100%{transform:scale(1.2);opacity:0}}
 @keyframes dante-emblem-pulse{0%,100%{box-shadow:0 0 0 8px rgba(0,237,121,.07),0 0 28px rgba(0,237,121,.2),inset 0 0 20px rgba(0,237,121,.1)}50%{box-shadow:0 0 0 11px rgba(0,237,121,.1),0 0 43px rgba(0,237,121,.38),inset 0 0 28px rgba(0,237,121,.17)}}
 @keyframes dante-loader{0%{transform:translateX(-110%)}100%{transform:translateX(340%)}}
@@ -264,14 +266,14 @@ header .brand-wrap .brand-logo{width:100px!important;height:100px!important;min-
 <body>
 <div id="startupScreen" class="startup-screen" role="status" aria-live="polite" aria-label="Iniciando Dante Remises">
  <div class="startup-orbit startup-orbit-a"></div><div class="startup-orbit startup-orbit-b"></div>
- <div class="startup-emblem"><span>D</span><i></i></div>
+ <div class="startup-emblem" id="startupLogoFrame"><span>D</span><i></i></div>
  <div class="startup-brand">DANTE <strong>REMISES</strong></div>
  <div class="startup-location">SANTA ROSA DE CALAMUCHITA</div>
  <div class="startup-loader"><span></span></div><div class="startup-caption">Preparando tu experiencia</div>
 </div>
 <header><div class="brand-wrap"><div class="brand-logo" id="brandLogoBubble" aria-label="Espacio para el logo de Dante Remises">LOGO</div><div class="brand">Dante Remises</div><small>Santa Rosa de Calamuchita</small></div><button class="staff-entry" id="staffEntryButton" type="button" aria-label="Acceso de personal" title="Acceso de personal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></button><button class="settings-gear hidden" id="settingsGearButton" type="button" aria-label="Configuración" title="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M 9.95 3.13 L 10.70 1.38 L 13.30 1.38 L 14.05 3.13 L 16.82 4.28 L 18.59 3.57 L 20.43 5.41 L 19.72 7.18 L 20.87 9.95 L 22.62 10.70 L 22.62 13.30 L 20.87 14.05 L 19.72 16.82 L 20.43 18.59 L 18.59 20.43 L 16.82 19.72 L 14.05 20.87 L 13.30 22.62 L 10.70 22.62 L 9.95 20.87 L 7.18 19.72 L 5.41 20.43 L 3.57 18.59 L 4.28 16.82 L 3.13 14.05 L 1.38 13.30 L 1.38 10.70 L 3.13 9.95 L 4.28 7.18 L 3.57 5.41 L 5.41 3.57 L 7.18 4.28 Z" fill="currentColor"/><circle cx="12" cy="12" r="3.15" fill="#147342"/></svg></button></header>
 <main>
-<div class="note hidden" id="versionNote"><strong>Versión 0.6.0:</strong> mapa real, solicitudes de viaje y seguimiento GPS en primer plano. El GPS requiere permisos y que la aplicación permanezca abierta.</div>
+
 <nav class="tabs hidden" aria-label="Vistas">
 <button class="tab active" data-view="pasajero">Pasajero</button>
 <button class="tab" data-view="chofer">Personal</button>
@@ -373,6 +375,7 @@ header .brand-wrap .brand-logo{width:100px!important;height:100px!important;min-
 <div id="passengerPhotoSettingsContainer"><p class="muted">Desde acá podés actualizar tu foto de perfil cuando lo necesites.</p></div>
 </div>
 <div class="card panel hidden" id="logoSettingsCard" style="margin-top:16px"><h3>Identidad visual · Logo de Dante Remises</h3><p class="muted">Solo Agustín Lasala (144) puede modificar el logo. El resultado se muestra a todos.</p><div class="logo-editor-preview" id="logoEditorPreview">LOGO</div><div class="field"><label for="logoFile">Elegir imagen desde tu PC</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></div><div class="logo-control"><label for="logoScale">Tamaño</label><input id="logoScale" type="range" min="50" max="180" value="100"></div><div class="logo-control"><label for="logoX">Posición horizontal</label><input id="logoX" type="range" min="-40" max="40" value="0"></div><div class="logo-control"><label for="logoY">Posición vertical</label><input id="logoY" type="range" min="-40" max="40" value="0"></div><div class="actions"><button class="primary" id="saveLogoButton" type="button">Guardar logo para todos</button><button class="secondary" id="resetLogoButton" type="button">Restablecer ajustes</button></div><p class="hint" id="logoStatus">Elegí una imagen para empezar. Los cambios se publican al guardarlos.</p></div>
+<div class="card panel" id="appInfoCard" style="margin-top:16px"><h3>ℹ️ Info</h3><p class="muted">Información técnica de esta instalación de Dante Remises.</p><div class="note hidden" id="versionNote"><strong>Versión 0.6.1:</strong> mapa real, solicitudes de viaje y seguimiento GPS en primer plano. El GPS requiere permisos y que la aplicación permanezca abierta.</div><div class="build-info-list"><div><span>Versión HTML</span><strong id="infoHtmlVersion">0.6.1</strong></div><div><span>Versión de APK</span><strong id="infoApkVersion">No disponible en versión web</strong></div><div><span>Código de versión Android</span><strong id="infoApkVersionCode">—</strong></div><div><span>Compilación</span><strong id="infoBuildNumber">—</strong></div><div><span>Identificador de build</span><strong id="infoBuildRun">—</strong></div><div><span>Rama</span><strong id="infoBuildBranch">—</strong></div><div><span>Commit</span><strong id="infoBuildCommit">—</strong></div><div><span>Fecha de compilación (UTC)</span><strong id="infoBuildDate">—</strong></div><div><span>Paquete Android</span><strong id="infoAndroidPackage">com.danteremises.test</strong></div><div><span>Tipo de compilación</span><strong id="infoBuildType">Debug · pruebas</strong></div></div><p class="hint">Los datos de compilación se incorporan automáticamente al generar cada APK. En la versión web, los campos exclusivos de Android no están disponibles.</p></div>
 </section>
 <section id="chat" class="hidden">
 <h2>Mensajería</h2>
@@ -1540,7 +1543,7 @@ let logoData = null;
 let logoSettings = {scale:100,x:0,y:0};
 let pendingLogoData = null;
 function logoTransformVars(el,settings){el.style.setProperty('--logo-scale',String((settings.scale||100)/100));el.style.setProperty('--logo-x',(settings.x||0)+'%');el.style.setProperty('--logo-y',(settings.y||0)+'%')}
-function paintLogo(data,settings=logoSettings){const bubble=byId('brandLogoBubble'),preview=byId('logoEditorPreview');[bubble,preview].forEach(el=>{if(!el)return;el.innerHTML=data?`<img src="${data}" alt="Logo de Dante Remises">`:'LOGO';logoTransformVars(el,settings)})}
+function paintLogo(data,settings=logoSettings){const bubble=byId('brandLogoBubble'),preview=byId('logoEditorPreview'),startup=byId('startupLogoFrame');[bubble,preview].forEach(el=>{if(!el)return;el.innerHTML=data?`<img src="${data}" alt="Logo de Dante Remises">`:'LOGO';logoTransformVars(el,settings)});if(startup){startup.classList.toggle('has-logo',!!data);startup.innerHTML=data?`<img src="${data}" alt="Logo de Dante Remises"><i></i>`:'<span>D</span><i></i>';logoTransformVars(startup,settings)}}
 function readLogoSettings(){logoSettings={scale:Number(byId('logoScale').value),x:Number(byId('logoX').value),y:Number(byId('logoY').value)};paintLogo(pendingLogoData||logoData,logoSettings)}
 ['logoScale','logoX','logoY'].forEach(id=>byId(id).addEventListener('input',readLogoSettings));
 byId('logoFile').addEventListener('change',async ev=>{const file=ev.target.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){notify('Elegí un archivo de imagen.');return}try{const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)});const img=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=data});const canvas=document.createElement('canvas');const ratio=Math.min(1,700/Math.max(img.width,img.height));canvas.width=Math.round(img.width*ratio);canvas.height=Math.round(img.height*ratio);const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);pendingLogoData=canvas.toDataURL('image/png');if(pendingLogoData.length>850000){pendingLogoData=null;throw new Error('La imagen sigue siendo demasiado pesada. Probá con un PNG o JPG más liviano.')}paintLogo(pendingLogoData,logoSettings);byId('logoStatus').textContent='Vista previa lista. Ajustá tamaño y posición, después guardá.'}catch(err){console.error(err);notify(err.message||'No se pudo abrir esa imagen.')}});
@@ -1556,6 +1559,8 @@ async function resolveAuthenticatedRole(user){
  return resolveRoleFromProfile({uid:user.uid,profile,legacyStaff,adminUid:ADMIN_UID,userEmail:user.email});
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&currentRole?.role==='operator')void sendOperatorPresence()});
+function renderBuildInfo(){const info=window.DANTE_BUILD_INFO||{};byId("infoHtmlVersion").textContent=info.htmlVersion||"0.6.1";byId("infoApkVersion").textContent=info.apkVersionName||"No disponible en versión web";byId("infoApkVersionCode").textContent=info.apkVersionCode??"—";byId("infoBuildNumber").textContent=info.buildNumber??"—";byId("infoBuildRun").textContent=info.runId||"—";byId("infoBuildBranch").textContent=info.branch||"—";byId("infoBuildCommit").textContent=info.commit||"—";byId("infoBuildDate").textContent=info.buildDateUtc||"—";byId("infoAndroidPackage").textContent=info.androidPackage||"com.danteremises.test";byId("infoBuildType").textContent=info.buildType||"Web / no informado"}
+renderBuildInfo();
 let startupScreenFinished=false;
 function finishStartupScreen(){if(startupScreenFinished)return;startupScreenFinished=true;const screen=byId('startupScreen');if(screen){screen.classList.add('is-leaving');window.setTimeout(()=>screen.remove(),550)}}
 const startupSafetyTimer=window.setTimeout(()=>finishStartupScreen(),12000);
