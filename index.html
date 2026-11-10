@@ -2098,6 +2098,13 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
 }
 </style>
 
+<style id="dante-driver-card-parallax">
+/* Refuerzo explícito: tarjetas de choferes en selección y panel central participan del mismo Parallax. */
+html.dante-parallax-active #passengerCars>.driver-choice.dante-parallax-surface,
+html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
+ transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px))!important;
+}
+</style>
 <script id="dante-visual-effects-runtime">
 /* Parallax 3D táctil: únicamente las superficies reciben movimiento; el scroll vertical sigue siendo nativo. */
 (function(){
@@ -2139,10 +2146,10 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
    if(!rect.width||!rect.height)continue;
    const dx=clamp((rect.left+rect.width/2-touch.clientX)/width,-.5,.5);
    const dy=clamp((rect.top+rect.height/2-touch.clientY)/height,-.5,.5);
-   const rx=clamp(-dy*2.3,-1.15,1.15),ry=clamp(dx*2.3,-1.15,1.15);
-   const z=clamp(3.4-Math.hypot(dx,dy)*5,0,3.4);
-   surface.style.setProperty('--dante-card-x',(dx*1.6).toFixed(2)+'px');
-   surface.style.setProperty('--dante-card-y',(dy*1.6).toFixed(2)+'px');
+   const rx=clamp(-dy*4.2,-2.1,2.1),ry=clamp(dx*4.2,-2.1,2.1);
+   const z=clamp(5.2-Math.hypot(dx,dy)*7,0,5.2);
+   surface.style.setProperty('--dante-card-x',(dx*3.2).toFixed(2)+'px');
+   surface.style.setProperty('--dante-card-y',(dy*3.2).toFixed(2)+'px');
    surface.style.setProperty('--dante-card-z',z.toFixed(2)+'px');
    surface.style.setProperty('--dante-card-rx',rx.toFixed(2)+'deg');
    surface.style.setProperty('--dante-card-ry',ry.toFixed(2)+'deg');
