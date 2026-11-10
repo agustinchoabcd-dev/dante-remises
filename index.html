@@ -264,7 +264,36 @@ header .brand-wrap .brand-logo{width:100px!important;height:100px!important;min-
 @keyframes dante-loader{0%{transform:translateX(-110%)}100%{transform:translateX(340%)}}
 @media(max-width:600px){.startup-emblem{width:86px!important;height:86px!important;min-width:86px!important;min-height:86px!important;flex-basis:86px!important}}
 @media(prefers-reduced-motion:reduce){.startup-orbit,.startup-emblem,.startup-emblem:before,.startup-loader span{animation:none!important}.startup-loader span{width:65%}}
-</style></head>
+</style><style id="dante-visual-effects">
+/* Preferencias de movimiento configurables desde Apariencia */
+.visual-effects-settings{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.visual-effects-settings h4{margin:0 0 10px;color:var(--ink);font-size:15px}
+.visual-effect-option{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 2px;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent);cursor:pointer}
+.visual-effect-option:last-of-type{border-bottom:0}
+.visual-effect-option span{display:grid;gap:4px;min-width:0}
+.visual-effect-option strong{font-size:14px;color:var(--ink)}
+.visual-effect-option small{font-size:12px;line-height:1.45;color:var(--muted)}
+.visual-effect-option input{width:22px;height:22px;min-width:22px;accent-color:var(--accent);cursor:pointer}
+.visual-effect-option input:disabled{opacity:.42;cursor:not-allowed}
+html.dante-effects-off *,html.dante-effects-off *::before,html.dante-effects-off *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+html.dante-transitions-off *,html.dante-transitions-off *::before,html.dante-transitions-off *::after{transition:none!important;scroll-behavior:auto!important}
+html.dante-transitions-off main>section:not(.hidden){animation:none!important}
+html.dante-micro-off button:not(:disabled),html.dante-micro-off .card,html.dante-micro-off .panel,html.dante-micro-off .driver-choice{transition:none!important}
+html.dante-micro-off button:not(:disabled):active{transform:none!important}
+/* Scroll de página: solo vertical; el fondo no participa del gesto horizontal. */
+html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
+body{background-attachment:scroll}
+body>header,body>main,body>#appFooter{position:relative;z-index:1}
+/* El efecto 3D existe exclusivamente en las superficies/recuadros, nunca en el fondo ni en los contenedores generales. */
+.dante-parallax-surface{transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px));transform-style:preserve-3d;backface-visibility:hidden;transition:transform .22s cubic-bezier(.2,.7,.25,1)}
+html.dante-touching .dante-parallax-surface{transition-duration:.06s}
+html.dante-parallax-active .driver-choice:not(:disabled):hover{transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px)) translateY(-2px)}
+html.dante-parallax-active .chat-conversation:hover{transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px)) translateX(2px)}
+html.dante-effects-off .dante-parallax-surface{transform:none!important}
+html.dante-transitions-off.dante-parallax-active .dante-parallax-surface{transition:none!important}
+@media(prefers-reduced-motion:reduce){.dante-parallax-surface{transform:none!important;transition:none!important}}
+</style>
+</head>
 <body>
 <div id="startupScreen" class="startup-screen" role="status" aria-live="polite" aria-label="Iniciando Dante Remises">
  <div class="startup-orbit startup-orbit-a"></div><div class="startup-orbit startup-orbit-b"></div>
@@ -364,7 +393,7 @@ header .brand-wrap .brand-logo{width:100px!important;height:100px!important;min-
  </div>
 </section>
 <section id="configuracion" class="hidden">
-<div class="card panel" id="appearanceSettingsCard" style="margin-top:12px"><h3>✨ Apariencia</h3><p class="muted">Personalizá el aspecto de Dante Remises sin modificar sus funciones.</p><div class="field"><label for="themePreference">Tema de la aplicación</label><select id="themePreference"><option value="system">Automático · según el dispositivo</option><option value="light">Claro</option><option value="dark">Oscuro</option><option value="electric">Verde Eléctrico · Dante</option></select></div><p class="hint">El cambio se aplica al instante y queda guardado en este dispositivo.</p></div>
+<div class="card panel" id="appearanceSettingsCard" style="margin-top:12px"><h3>✨ Apariencia</h3><p class="muted">Personalizá el aspecto de Dante Remises sin modificar sus funciones.</p><div class="field"><label for="themePreference">Tema de la aplicación</label><select id="themePreference"><option value="system">Automático · según el dispositivo</option><option value="light">Claro</option><option value="dark">Oscuro</option><option value="electric">Verde Eléctrico · Dante</option></select></div><p class="hint">El cambio se aplica al instante y queda guardado en este dispositivo.</p><div class="visual-effects-settings"><h4>✨ Efectos y movimiento</h4><label class="visual-effect-option"><span><strong>Efectos visuales</strong><small>Activa o desactiva todos los movimientos y animaciones.</small></span><input id="visualEffectsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Parallax 3D táctil</strong><small>Toda la app responde al movimiento de tu dedo con profundidad tridimensional.</small></span><input id="parallaxEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Transiciones suaves</strong><small>Animaciones al cambiar de pantalla y abrir secciones.</small></span><input id="transitionsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Microanimaciones</strong><small>Pequeños efectos en botones y tarjetas.</small></span><input id="microAnimationsEnabled" type="checkbox" checked></label><p class="hint" id="visualEffectsStatus" role="status" aria-live="polite">Deslizá el dedo por la pantalla para activar la perspectiva 3D en toda la app.</p></div><div class="sound-settings" id="danteSoundSettings"><h4>🔊 Sonidos de la aplicación</h4><label class="visual-effect-option"><span><strong>Efectos de sonido</strong><small>Sonidos de botones, navegación, controles, confirmaciones e inicio.</small></span><input id="danteSoundsEnabled" type="checkbox" checked></label><label class="visual-effect-option sound-volume-option"><span><strong>Volumen</strong><small>Ajustá la intensidad de los sonidos.</small></span><input id="danteSoundVolume" type="range" min="0" max="100" step="5" value="65"><output id="danteSoundVolumeValue">65%</output></label><p class="hint" id="danteSoundStatus" role="status" aria-live="polite">Sonidos activos · El primer gesto habilita el audio cuando el navegador lo requiere.</p></div></div>
 <div class="card panel" id="sessionSettingsCard" style="margin-top:12px"><h3>🔐 Sesión</h3><p class="muted">Cuando termines de usar Dante Remises, podés cerrar tu sesión desde acá.</p><button class="danger hidden" id="logoutButton" type="button">Cerrar sesión</button></div>
 
 <h2>⚙️ Configuración</h2><p class="muted">Administrá tus datos visuales y preferencias de perfil.</p>
@@ -535,7 +564,7 @@ const availabilityRefresh=createAvailabilityRefreshScheduler({
  getDeadlines:()=>Object.values(cars).map(car=>car.until),
  onRefresh:()=>render("availability-clock")
 });
-function notify(msg){const t=byId('toast');t.textContent=msg;t.style.display='block';clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.style.display='none',2800)}
+function notify(msg){const feedback=String(msg||'');if(window.DanteAudio){if(/no se pudo|no podés|no tenés|no hay|no puede|no admite|inválid|error|rechaz|deneg|supera|falló|fallo|primero|no se concedió|no está disponible/i.test(feedback))window.DanteAudio.playError();else if(/guardad|enviad|cread|actualizad|confirmad|aprob|finalizad|solicitad|eliminad|restablecid|conectad|sesión iniciada|registrad|asignad/i.test(feedback))window.DanteAudio.playConfirm()}const t=byId('toast');t.textContent=msg;t.style.display='block';clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.style.display='none',2800)}
 const statusWriteVersions={};
 async function setStatus(id,status,minutes=null,indefinite=false){
  if(cars[id]?.activeTripId&&status!=='ocupado'){notify('No podés cambiar la disponibilidad mientras hay un viaje activo.');return}
@@ -2068,5 +2097,334 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
  button:not(:disabled):active{transform:none}
 }
 </style>
+
+<style id="dante-driver-card-parallax">
+/* Tarjetas translúcidas: pincelada original + luz neón localizada en los bordes. */
+#passengerCars>.driver-choice,#centralCars>.card{
+ background:color-mix(in srgb,var(--card) 76%,transparent)!important;
+ -webkit-backdrop-filter:blur(13px) saturate(1.16);
+ backdrop-filter:blur(13px) saturate(1.16);
+}
+html.dante-parallax-active #passengerCars>.driver-choice.dante-parallax-surface,
+html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
+ transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px))!important;
+}
+#passengerCars>.driver-choice.dante-driver-touch-active,
+#centralCars>.card.dante-driver-touch-active{position:relative;isolation:isolate}
+/* La luz sólo aparece en el contorno próximo al dedo; el centro queda transparente. */
+#passengerCars>.driver-choice.dante-driver-touch-active:before,
+#centralCars>.card.dante-driver-touch-active:before{
+ content:"";position:absolute;inset:-5px;z-index:2;pointer-events:none;border-radius:inherit;padding:2px;
+ background:linear-gradient(135deg,rgba(0,255,124,.98) 0%,rgba(0,238,112,.92) 35%,rgba(150,255,204,.98) 52%,rgba(0,238,112,.92) 72%,rgba(0,255,124,.98) 100%);
+ -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+ -webkit-mask-composite:xor;mask-composite:exclude;
+ filter:drop-shadow(0 0 4px rgba(0,255,116,.76)) drop-shadow(0 0 9px rgba(0,255,116,.34));
+ opacity:1;transition:opacity .18s ease-out;
+}
+/* Se conserva la mancha/pincelada verde original que sigue al dedo. */
+#passengerCars>.driver-choice.dante-driver-touch-active:after,
+#centralCars>.card.dante-driver-touch-active:after{
+ content:"";position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;
+ background:radial-gradient(ellipse 92px 76px at var(--dante-touch-x,50%) var(--dante-touch-y,50%),rgba(0,255,112,.58) 0%,rgba(0,238,112,.34) 34%,rgba(0,238,112,.12) 62%,transparent 82%);
+ mix-blend-mode:screen;filter:blur(2px);opacity:1;transition:opacity .16s ease-out;
+}
+#passengerCars>.driver-choice:not(.dante-driver-touch-active):before,
+#centralCars>.card:not(.dante-driver-touch-active):before,
+#passengerCars>.driver-choice:not(.dante-driver-touch-active):after,
+#centralCars>.card:not(.dante-driver-touch-active):after{opacity:0}
+@media(prefers-reduced-motion:reduce){
+ #passengerCars>.driver-choice.dante-driver-touch-active:before,
+ #centralCars>.card.dante-driver-touch-active:before,
+ #passengerCars>.driver-choice.dante-driver-touch-active:after,
+ #centralCars>.card.dante-driver-touch-active:after{transition:none}
+}
+</style>
+<script id="dante-visual-effects-runtime">
+/* Parallax 3D táctil: superficies dinámicas y realce localizado en la tarjeta bajo el dedo. */
+(function(){
+ const root=document.documentElement;
+ const $=id=>document.getElementById(id);
+ const controls={master:$('visualEffectsEnabled'),parallax:$('parallaxEnabled'),transitions:$('transitionsEnabled'),micro:$('microAnimationsEnabled'),status:$('visualEffectsStatus')};
+ if(!controls.master||!controls.parallax||!controls.transitions||!controls.micro)return;
+ const defaults={master:true,parallax:true,transitions:true,micro:true};
+ const keys={master:'dante-visual-effects-enabled',parallax:'dante-parallax-enabled',transitions:'dante-transitions-enabled',micro:'dante-micro-animations-enabled'};
+ const read=(key,fallback)=>{try{const value=localStorage.getItem(key);return value===null?fallback:value==='true'}catch(_){return fallback}};
+ const save=(key,value)=>{try{localStorage.setItem(key,String(value))}catch(error){console.warn('[Dante] No se pudo guardar una preferencia visual.',error)}};
+ const state={master:read(keys.master,defaults.master),parallax:read(keys.parallax,defaults.parallax),transitions:read(keys.transitions,defaults.transitions),micro:read(keys.micro,defaults.micro)};
+ const reducedMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)');
+ const surfaceSelector='.card,.panel,.choice-card,.driver-choice,.request,.trip-request,.note,.upload-box,.chatbox,.chat-conversation,.map-meta,.real-map,.demo-map,.post-login-greeting,.onboarding-shell,.visual-effects-settings';
+ const driverCardSelector='#passengerCars>.driver-choice,#centralCars>.card';
+ let surfaces=[];
+ let touchIdentifier=null;
+ let activeDriverCard=null;
+ const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+ const parallaxAvailable=()=>state.master&&state.parallax&&!(reducedMotion&&reducedMotion.matches);
+ function refreshSurfaces(){
+  surfaces=Array.from(document.querySelectorAll(surfaceSelector));
+  for(const surface of surfaces)surface.classList.add('dante-parallax-surface');
+ }
+ function setActiveDriverCard(card,touch){
+  if(activeDriverCard!==card){
+   if(activeDriverCard)activeDriverCard.classList.remove('dante-driver-touch-active');
+   activeDriverCard=card;
+   if(activeDriverCard)activeDriverCard.classList.add('dante-driver-touch-active');
+  }
+  if(activeDriverCard&&touch){
+   const rect=activeDriverCard.getBoundingClientRect();
+   const x=clamp((touch.clientX-rect.left)/Math.max(1,rect.width)*100,0,100);
+   const y=clamp((touch.clientY-rect.top)/Math.max(1,rect.height)*100,0,100);
+   activeDriverCard.style.setProperty('--dante-touch-x',x.toFixed(1)+'%');
+   activeDriverCard.style.setProperty('--dante-touch-y',y.toFixed(1)+'%');
+  }
+ }
+ function setNeutralPosition(){
+  for(const surface of surfaces){
+   surface.style.setProperty('--dante-card-x','0px');
+   surface.style.setProperty('--dante-card-y','0px');
+   surface.style.setProperty('--dante-card-z','0px');
+   surface.style.setProperty('--dante-card-rx','0deg');
+   surface.style.setProperty('--dante-card-ry','0deg');
+  }
+  if(activeDriverCard){
+   activeDriverCard.classList.remove('dante-driver-touch-active');
+   activeDriverCard.style.removeProperty('--dante-touch-x');
+   activeDriverCard.style.removeProperty('--dante-touch-y');
+   activeDriverCard=null;
+  }
+  root.classList.remove('dante-touching');
+ }
+ function resetTouch(){touchIdentifier=null;setNeutralPosition()}
+ function updateFromTouch(touch){
+  if(!parallaxAvailable()||document.hidden)return;
+  const hit=document.elementFromPoint(touch.clientX,touch.clientY);
+  const driverCard=hit&&hit.closest?hit.closest(driverCardSelector):null;
+  setActiveDriverCard(driverCard,touch);
+  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
+  for(const surface of surfaces){
+   const rect=surface.getBoundingClientRect();
+   if(!rect.width||!rect.height)continue;
+   const dx=clamp((rect.left+rect.width/2-touch.clientX)/width,-.5,.5);
+   const dy=clamp((rect.top+rect.height/2-touch.clientY)/height,-.5,.5);
+   const boost=surface===activeDriverCard?2:1;
+   const rx=clamp(-dy*4.2*boost,-4.2,4.2),ry=clamp(dx*4.2*boost,-4.2,4.2);
+   const z=clamp((5.2-Math.hypot(dx,dy)*7)*boost,0,10.4);
+   surface.style.setProperty('--dante-card-x',(dx*3.2*boost).toFixed(2)+'px');
+   surface.style.setProperty('--dante-card-y',(dy*3.2*boost).toFixed(2)+'px');
+   surface.style.setProperty('--dante-card-z',z.toFixed(2)+'px');
+   surface.style.setProperty('--dante-card-rx',rx.toFixed(2)+'deg');
+   surface.style.setProperty('--dante-card-ry',ry.toFixed(2)+'deg');
+  }
+  root.classList.add('dante-touching');
+ }
+ function findTouch(list){for(let i=0;i<list.length;i++)if(list[i].identifier===touchIdentifier)return list[i];return null}
+ function onTouchStart(event){
+  if(!parallaxAvailable()||document.hidden||touchIdentifier!==null||!event.changedTouches.length)return;
+  refreshSurfaces();
+  const touch=event.changedTouches[0];touchIdentifier=touch.identifier;updateFromTouch(touch);
+ }
+ function onTouchMove(event){
+  if(touchIdentifier===null||!parallaxAvailable())return;
+  const touch=findTouch(event.touches);if(touch)updateFromTouch(touch);
+ }
+ function onTouchEnd(event){if(touchIdentifier!==null&&findTouch(event.changedTouches))resetTouch()}
+ function render(){
+  controls.master.checked=state.master;controls.parallax.checked=state.parallax;controls.transitions.checked=state.transitions;controls.micro.checked=state.micro;
+  controls.parallax.disabled=!state.master;controls.transitions.disabled=!state.master;controls.micro.disabled=!state.master;
+  root.classList.toggle('dante-effects-off',!state.master);
+  root.classList.toggle('dante-transitions-off',state.master&&!state.transitions);
+  root.classList.toggle('dante-micro-off',state.master&&!state.micro);
+  root.classList.toggle('dante-parallax-active',!!parallaxAvailable());
+  if(!parallaxAvailable())resetTouch();
+  if(!state.master)controls.status.textContent='Todos los efectos están desactivados.';
+  else if(reducedMotion&&reducedMotion.matches)controls.status.textContent='El dispositivo tiene activada la reducción de movimiento; el Parallax 3D está pausado.';
+  else if(!state.parallax)controls.status.textContent='Parallax 3D táctil desactivado.';
+  else controls.status.textContent='Las tarjetas reciben un efecto 3D localizado; el fondo mantiene el desplazamiento vertical normal.';
+ }
+ controls.master.addEventListener('change',()=>{state.master=controls.master.checked;save(keys.master,state.master);render()});
+ controls.parallax.addEventListener('change',()=>{state.parallax=controls.parallax.checked;save(keys.parallax,state.parallax);render()});
+ controls.transitions.addEventListener('change',()=>{state.transitions=controls.transitions.checked;save(keys.transitions,state.transitions);render()});
+ controls.micro.addEventListener('change',()=>{state.micro=controls.micro.checked;save(keys.micro,state.micro);render()});
+ document.addEventListener('touchstart',onTouchStart,{passive:true,capture:true});
+ document.addEventListener('touchmove',onTouchMove,{passive:true,capture:true});
+ document.addEventListener('touchend',onTouchEnd,{passive:true,capture:true});
+ document.addEventListener('touchcancel',resetTouch,{passive:true,capture:true});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)resetTouch()});
+ if(reducedMotion&&typeof reducedMotion.addEventListener==='function')reducedMotion.addEventListener('change',render);
+ if(typeof MutationObserver==='function')new MutationObserver(refreshSurfaces).observe(document.body,{childList:true,subtree:true});
+ refreshSurfaces();render();
+})();;
+</script>
+
+<style id="dante-audio-styles">
+.sound-settings{margin-top:17px;padding-top:14px;border-top:1px solid var(--line)}
+.sound-settings h4{margin:0 0 8px;font-size:15px}
+.sound-volume-option{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,.65fr) 42px;gap:10px;align-items:center}
+.sound-volume-option input[type="range"]{width:100%;min-width:0;accent-color:var(--accent)}
+.sound-volume-option output{font-size:12px;font-weight:750;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+@media(max-width:520px){.sound-volume-option{grid-template-columns:minmax(0,1fr) minmax(80px,.7fr) 38px;gap:7px}}
+@media(prefers-reduced-motion:reduce){.sound-settings *{scroll-behavior:auto}}
+</style>
+<script id="dante-audio-system">
+/* Audio propio de Dante Remises: síntesis Web Audio, sin dependencias ni archivos externos. */
+(function(){
+ const enabledControl=document.getElementById('danteSoundsEnabled');
+ const volumeControl=document.getElementById('danteSoundVolume');
+ const volumeLabel=document.getElementById('danteSoundVolumeValue');
+ const status=document.getElementById('danteSoundStatus');
+ const storageKeys={enabled:'dante-sounds-enabled',volume:'dante-sounds-volume'};
+ const read=(key,fallback)=>{try{const value=localStorage.getItem(key);return value===null?fallback:value}catch(_){return fallback}};
+ const save=(key,value)=>{try{localStorage.setItem(key,String(value))}catch(_){}};
+ let enabled=read(storageKeys.enabled,'true')!=='false';
+ let volume=Math.max(0,Math.min(100,Number(read(storageKeys.volume,'65'))||0))/100;
+ let context=null,noiseBuffer=null,startupPlayed=false,firstUnlockAt=0,lastActionAt=0;
+ const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+ function getContext(){
+  if(!AudioContextClass)return null;
+  if(!context){
+   try{context=new AudioContextClass();}catch(_){return null}
+  }
+  return context;
+ }
+ function gainValue(value){return Math.max(0,Math.min(1,value*volume))}
+ function makeNoiseBuffer(ctx){
+  if(noiseBuffer)return noiseBuffer;
+  const length=Math.max(1,Math.floor(ctx.sampleRate*.12));
+  noiseBuffer=ctx.createBuffer(1,length,ctx.sampleRate);
+  const data=noiseBuffer.getChannelData(0);
+  for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/length,2.2);
+  return noiseBuffer;
+ }
+ function envelope(param,now,peak,attack,decay){
+  param.cancelScheduledValues(now);param.setValueAtTime(.0001,now);
+  param.exponentialRampToValueAtTime(Math.max(.0002,peak),now+attack);
+  param.exponentialRampToValueAtTime(.0001,now+attack+decay);
+ }
+ function tone(freqStart,freqEnd,duration,wave='sine',level=.16,delay=0){
+  const ctx=getContext();if(!ctx||ctx.state!=='running'||!enabled||volume<=0)return;
+  const now=ctx.currentTime+delay,osc=ctx.createOscillator(),amp=ctx.createGain();
+  osc.type=wave;osc.frequency.setValueAtTime(Math.max(20,freqStart),now);
+  if(freqEnd!==freqStart)osc.frequency.exponentialRampToValueAtTime(Math.max(20,freqEnd),now+duration);
+  envelope(amp.gain,now,gainValue(level),.008,duration);
+  osc.connect(amp);amp.connect(ctx.destination);osc.start(now);osc.stop(now+duration+.035);
+ }
+ function noiseBurst(duration,level,frequency,type='bandpass',delay=0){
+  const ctx=getContext();if(!ctx||ctx.state!=='running'||!enabled||volume<=0)return;
+  const now=ctx.currentTime+delay,source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),amp=ctx.createGain();
+  source.buffer=makeNoiseBuffer(ctx);filter.type=type;filter.frequency.setValueAtTime(frequency,now);filter.Q.value=.72;
+  envelope(amp.gain,now,gainValue(level),.004,duration);
+  source.connect(filter);filter.connect(amp);amp.connect(ctx.destination);source.start(now);source.stop(now+duration+.025);
+ }
+ function playPop(){
+  tone(245,72,.115,'sine',.27);
+  tone(520,185,.075,'triangle',.075,.008);
+  noiseBurst(.045,.12,1450,'bandpass',.002);
+ }
+ function playNavigation(){
+  noiseBurst(.12,.075,950,'lowpass');
+  tone(420,610,.105,'sine',.055);
+ }
+ function playToggle(){
+  tone(720,980,.075,'sine',.085);
+ }
+ function playConfirm(){
+  tone(540,680,.12,'sine',.10);
+  tone(760,1040,.16,'sine',.095,.105);
+ }
+ function playError(){
+  tone(250,185,.15,'triangle',.11);
+  tone(180,125,.19,'sine',.09,.13);
+ }
+ function playMessage(){
+  tone(330,125,.12,'sine',.18);
+  tone(620,390,.11,'triangle',.07,.07);
+ }
+ function playStartup(){
+  tone(392,392,.25,'sine',.085);
+  tone(523.25,523.25,.28,'sine',.095,.13);
+  tone(783.99,783.99,.42,'sine',.085,.29);
+  tone(1046.5,1046.5,.5,'sine',.045,.42);
+ }
+ function unlock(){
+  if(!enabled)return Promise.resolve(false);
+  const ctx=getContext();if(!ctx)return Promise.resolve(false);
+  return ctx.resume().then(()=>{
+   if(ctx.state!=='running')return false;
+   if(!startupPlayed){
+    startupPlayed=true;firstUnlockAt=performance.now();playStartup();
+   }
+   return true;
+  }).catch(()=>false);
+ }
+ function isFormControl(node){return !!node&&node.matches&&node.matches('input,select,textarea,option')}
+ function playAction(target){
+  if(!enabled||volume<=0)return;
+  const now=performance.now();
+  if(now-firstUnlockAt<420)return;
+  if(now-lastActionAt<115)return;
+  lastActionAt=now;
+  if(target.closest('.tab,a,[role="tab"],.chat-conversation,.map-tools,.map-search-results')){playNavigation();return}
+  if(target.closest('.danger,[data-sound="error"]')){playError();return}
+  if(target.closest('[data-sound="confirm"]')){playConfirm();return}
+  if(target.closest('#chatSendButton,#chatSendRecordingButton')){playMessage();return}
+  if(target.closest('button,[role="button"],.driver-choice,.chat-attachment-image,.avatar img,.profile-photo-preview,.photo-frame img')){playPop();return}
+  if(target.closest('.leaflet-container,.demo-map')){playNavigation();return}
+ }
+ if(enabledControl){
+  enabledControl.checked=enabled;
+  if(status)status.textContent=enabled?'Sonidos activos · El primer gesto habilita el audio cuando el navegador lo requiere.':'Sonidos desactivados.';
+  enabledControl.addEventListener('change',()=>{
+   if(enabled)playToggle();
+   enabled=enabledControl.checked;save(storageKeys.enabled,enabled);
+   if(status)status.textContent=enabled?'Sonidos activos · El primer gesto habilita el audio cuando el navegador lo requiere.':'Sonidos desactivados.';
+  });
+ }
+ if(volumeControl){
+  volumeControl.value=String(Math.round(volume*100));
+  if(volumeLabel)volumeLabel.textContent=Math.round(volume*100)+'%';
+  volumeControl.addEventListener('input',()=>{
+   volume=Math.max(0,Math.min(100,Number(volumeControl.value)||0))/100;
+   if(volumeLabel)volumeLabel.textContent=Math.round(volume*100)+'%';
+   save(storageKeys.volume,Math.round(volume*100));
+  });
+  volumeControl.addEventListener('change',()=>{if(enabled)playToggle()});
+ }
+ let lastMicPointerAt=0;
+ document.addEventListener('pointerdown',event=>{
+  if(!startupPlayed)void unlock();
+  const mic=event.target&&event.target.closest?event.target.closest('#chatRecordButton'):null;
+  if(mic){const wasUnlocked=startupPlayed;if(wasUnlocked){lastMicPointerAt=performance.now();void unlock().then(ok=>{if(ok)playPop()})}}
+ },{capture:true,passive:true});
+ document.addEventListener('keydown',event=>{if(!startupPlayed&&(event.key==='Enter'||event.key===' '))void unlock()},{capture:true});
+ document.addEventListener('click',event=>{
+  const target=event.target&&event.target.closest?event.target.closest('button,a,[role="button"],[role="tab"],.tab,.driver-choice,.chat-conversation,.chat-attachment-image,.avatar img,.profile-photo-preview,.photo-frame img,.leaflet-container,.demo-map'):null;
+  if(!target||target.disabled||target.getAttribute('aria-disabled')==='true'||isFormControl(target))return;
+  if(target.closest('#chatRecordButton')&&performance.now()-lastMicPointerAt<500)return;
+  if(!startupPlayed){void unlock();return}
+  playAction(target);
+ },true);
+ document.addEventListener('change',event=>{
+  const target=event.target;
+  if(!target||!target.matches||!target.matches('input,select,textarea'))return;
+  if(target===enabledControl||target===volumeControl)return;
+  if(!startupPlayed){void unlock();return}
+  if(!enabled||volume<=0)return;
+  const now=performance.now();if(now-firstUnlockAt<420||now-lastActionAt<115)return;lastActionAt=now;
+  if(target.type==='checkbox'||target.type==='radio')playToggle();else playPop();
+ },true);
+ document.addEventListener('submit',event=>{
+  if(!startupPlayed){void unlock();return}
+  const now=performance.now();if(!enabled||volume<=0||now-firstUnlockAt<420||now-lastActionAt<180)return;
+  lastActionAt=now;playMessage();
+ },true);
+ /* Intento de sonido de inicio al cargar; si el navegador bloquea autoplay, queda pendiente hasta el primer gesto. */
+ if(enabled){
+  const ctx=getContext();
+  if(ctx)ctx.resume().then(()=>{
+   if(ctx.state==='running'&&!startupPlayed){startupPlayed=true;playStartup()}
+  }).catch(()=>{});
+ }
+ window.DanteAudio={playPop,playNavigation,playToggle,playConfirm,playError,playMessage,playStartup,unlock};
+})();
+</script>
 
 </body></html>

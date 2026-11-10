@@ -8,6 +8,7 @@ on:
       - dante-test
     paths:
       - '.github/workflows/android-apk.yml'
+      - 'index.html'
 
 permissions:
   contents: read
@@ -48,6 +49,27 @@ jobs:
           Path("/tmp/dante-remises-inline.mjs").write_text(scripts[0], encoding="utf-8")
           PY
           node --check /tmp/dante-remises-inline.mjs
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("index.html").read_text(encoding="utf-8")
+          matches = re.findall(r'<script id="dante-visual-effects-runtime">\s*(.*?)\s*</script>', html, re.DOTALL)
+          if len(matches) != 1:
+              raise SystemExit(f"Expected one visual-effects runtime, found {len(matches)}")
+          Path("/tmp/dante-visual-effects.mjs").write_text(matches[0], encoding="utf-8")
+          PY
+          node --check /tmp/dante-visual-effects.mjs
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r'<script id="dante-audio-system">\s*(.*?)\s*</script>', html, re.DOTALL)
+          if len(scripts) != 1:
+              raise SystemExit(f"Expected one Dante audio runtime, found {len(scripts)}")
+          Path("/tmp/dante-audio-system.mjs").write_text(scripts[0], encoding="utf-8")
+          PY
+          node --check /tmp/dante-audio-system.mjs
+          node --check scripts/patch-android-audio.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
@@ -130,12 +152,39 @@ jobs:
               "dante-staff-console-polish",
               "dante-navigation-polish",
               "dante-motion-system",
+              "dante-visual-effects",
+              "dante-driver-card-parallax",
+              "dante-audio-styles",
           ]
           missing = [name for name in required if f'id="{name}"' not in source]
           if missing:
               raise SystemExit("Missing visual style layers: " + ", ".join(missing))
           if "prefers-reduced-motion" not in source:
               raise SystemExit("Reduced-motion support is missing.")
+          if "DeviceOrientationEvent" in source or "deviceorientation" in source:
+              raise SystemExit("The obsolete device-orientation parallax must be removed.")
+          for touch_event in ("touchstart", "touchmove", "touchend", "touchcancel"):
+              if f'"{touch_event}"' not in source and f"\'{touch_event}\'" not in source:
+                  raise SystemExit(f"Missing global touch parallax event: {touch_event}")
+          for marker in ("perspective(900px)", "rotateX(var(--dante-card-rx", "rotateY(var(--dante-card-ry", ".dante-parallax-surface", "overflow-x:hidden"):
+              if marker not in source:
+                  raise SystemExit(f"Missing global 3D parallax layer: {marker}")
+          for marker in ("--dante-card-x", "--dante-card-y", "--dante-card-z", "--dante-card-rx", "--dante-card-ry"):
+              if marker not in source:
+                  raise SystemExit(f"Missing precomputed 3D offset: {marker}")
+          if "Parallax 3D táctil" not in source:
+              raise SystemExit("The touch-driven 3D parallax setting label is missing.")
+          if "html.dante-transitions-off main>section:not(.hidden)" not in source:
+              raise SystemExit("Screen-entry animations must respect the transitions preference.")
+          for marker in ("linear-gradient(135deg,rgba(0,255,124,.98)", "ellipse 92px 76px", "const boost=surface===activeDriverCard?2:1;"):
+              if marker not in source:
+                  raise SystemExit(f"Missing preserved driver-card touch effect: {marker}")
+          for marker in ('id="dante-audio-system"', 'id="danteSoundsEnabled"', 'id="danteSoundVolume"', "AudioContext", "playStartup", "playPop", "playNavigation", "playToggle", "playConfirm", "playError", "playMessage"):
+              if marker not in source:
+                  raise SystemExit(f"Missing Dante sound system feature: {marker}")
+          for control_id in ("visualEffectsEnabled", "parallaxEnabled", "transitionsEnabled", "microAnimationsEnabled"):
+              if parser.ids.count(control_id) != 1:
+                  raise SystemExit(f"Expected exactly one visual-effects control #{control_id}.")
 
           for element_id in ("chatForm", "realMap", "centralCars", "driverControls", "setFree", "setBusy", "setOut"):
               if parser.ids.count(element_id) != 1:
@@ -199,6 +248,9 @@ jobs:
 
       - name: Generate Android project
         run: npx cap add android
+
+      - name: Enable Android WebView startup audio
+        run: node scripts/patch-android-audio.mjs
 
       - name: Use Maven Central mirror for Kotlin compiler artifacts
         run: |
