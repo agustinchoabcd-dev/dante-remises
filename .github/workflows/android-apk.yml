@@ -48,6 +48,16 @@ jobs:
           Path("/tmp/dante-remises-inline.mjs").write_text(scripts[0], encoding="utf-8")
           PY
           node --check /tmp/dante-remises-inline.mjs
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("index.html").read_text(encoding="utf-8")
+          matches = re.findall(r'<script id="dante-visual-effects-runtime">\\s*(.*?)\\s*</script>', html, re.DOTALL)
+          if len(matches) != 1:
+              raise SystemExit(f"Expected one visual-effects runtime, found {len(matches)}")
+          Path("/tmp/dante-visual-effects.mjs").write_text(matches[0], encoding="utf-8")
+          PY
+          node --check /tmp/dante-visual-effects.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
@@ -130,12 +140,16 @@ jobs:
               "dante-staff-console-polish",
               "dante-navigation-polish",
               "dante-motion-system",
+              "dante-visual-effects",
           ]
           missing = [name for name in required if f'id="{name}"' not in source]
           if missing:
               raise SystemExit("Missing visual style layers: " + ", ".join(missing))
           if "prefers-reduced-motion" not in source:
               raise SystemExit("Reduced-motion support is missing.")
+          for control_id in ("visualEffectsEnabled", "parallaxEnabled", "transitionsEnabled", "microAnimationsEnabled"):
+              if parser.ids.count(control_id) != 1:
+                  raise SystemExit(f"Expected exactly one visual-effects control #{control_id}.")
 
           for element_id in ("chatForm", "realMap", "centralCars", "driverControls", "setFree", "setBusy", "setOut"):
               if parser.ids.count(element_id) != 1:
