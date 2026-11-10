@@ -2221,7 +2221,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
    if(!rect||!rect.width||!rect.height)continue;
    const dx=clamp((rect.left+rect.width/2-touch.clientX)/width,-.5,.5);
    const dy=clamp((rect.top+rect.height/2-touch.clientY)/height,-.5,.5);
-   const boost=surface===driverCard?2:1;
+   const boost=surface===activeDriverCard?2:1;
    const rx=clamp(-dy*4.2*boost,-4.2,4.2),ry=clamp(dx*4.2*boost,-4.2,4.2);
    const z=clamp((5.2-Math.hypot(dx,dy)*7)*boost,0,10.4);
    surface.style.setProperty('--dante-card-x',(dx*3.2*boost).toFixed(2)+'px');
