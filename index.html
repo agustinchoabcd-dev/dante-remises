@@ -2371,6 +2371,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  }
  if(enabledControl){
   enabledControl.checked=enabled;
+  if(status)status.textContent=enabled?'Sonidos activos · El primer gesto habilita el audio cuando el navegador lo requiere.':'Sonidos desactivados.';
   enabledControl.addEventListener('change',()=>{
    if(enabled)playToggle();
    enabled=enabledControl.checked;save(storageKeys.enabled,enabled);
