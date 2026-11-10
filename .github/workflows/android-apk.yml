@@ -190,7 +190,7 @@ jobs:
           marker = "</head>"
           if html.count(marker) != 1:
               raise SystemExit("Expected exactly one closing head tag in www/index.html")
-          script = "<script>window.DANTE_BUILD_INFO = " + json.dumps(info, ensure_ascii=False) + ";</script>\\n"
+          script = "<script>window.DANTE_BUILD_INFO = " + json.dumps(info, ensure_ascii=False) + ";</script>\n"
           path.write_text(html.replace(marker, script + marker, 1), encoding="utf-8")
           print("Embedded Android build metadata:", json.dumps(info, ensure_ascii=False))
           PY
