@@ -74,7 +74,7 @@ jobs:
           if duplicates:
               raise SystemExit("Duplicate HTML IDs: " + ", ".join(duplicates))
 
-          styles = re.findall(r"<style\\b[^>]*>(.*?)</style\\s*>", source, re.I | re.S)
+          styles = re.findall(r"<style\b[^>]*>(.*?)</style\s*>", source, re.I | re.S)
           if len(styles) < 8:
               raise SystemExit(f"Expected at least 8 style blocks, found {len(styles)}")
 
