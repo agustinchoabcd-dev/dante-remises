@@ -5,6 +5,7 @@ on:
     branches:
       - roles-dynamic-integration
       - dante-test
+      - perf-optimization
     paths:
       - 'role-resolver.mjs'
       - 'role-resolver.test.mjs'
