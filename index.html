@@ -1481,7 +1481,6 @@ function startStaffPhotosSync(user){
  if(!uid)return;
  if(staffPhotosListenerUnsub)staffPhotosListenerUnsub();
  staffPhotosListenerUnsub=null;
- staffPhotosListenerHasData=false;
  staffPhotosFirstSnapshot=true;
  perf.mark('firebase.staffPhotos.listener.attached');
  diagnostics.mark("firebase.staffPhotos.listener.attached");
@@ -1492,7 +1491,6 @@ function startStaffPhotosSync(user){
  },error=>{
   if(currentUser?.uid!==uid)return;
   staffPhotosListenerUnsub=null;
-  staffPhotosListenerHasData=false;
   diagnostics.mark("firebase.staffPhotos.error",{code:error?.code||"",name:error?.name||"Error"});
   console.error('No se pudieron leer las fotos compartidas:',error);
  });
