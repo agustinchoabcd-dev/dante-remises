@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - dante-test
+      - perf-optimization
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
