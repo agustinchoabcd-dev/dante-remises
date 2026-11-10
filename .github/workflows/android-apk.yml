@@ -8,6 +8,7 @@ on:
       - dante-test
     paths:
       - '.github/workflows/android-apk.yml'
+      - 'index.html'
 
 permissions:
   contents: read
@@ -147,6 +148,16 @@ jobs:
               raise SystemExit("Missing visual style layers: " + ", ".join(missing))
           if "prefers-reduced-motion" not in source:
               raise SystemExit("Reduced-motion support is missing.")
+          if "DeviceOrientationEvent" in source or "deviceorientation" in source:
+              raise SystemExit("The obsolete device-orientation parallax must be removed.")
+          for touch_event in ("touchstart", "touchmove", "touchend", "touchcancel"):
+              if f'"{touch_event}"' not in source:
+                  raise SystemExit(f"Missing global touch parallax event: {touch_event}")
+          for marker in ("perspective:1200px", "rotateX(var(--dante-rotate-x", "rotateY(var(--dante-rotate-y", "body>header", "body>main", "body>#appFooter"):
+              if marker not in source:
+                  raise SystemExit(f"Missing global 3D parallax layer: {marker}")
+          if "Parallax 3D táctil" not in source:
+              raise SystemExit("The touch-driven 3D parallax setting label is missing.")
           if "html.dante-transitions-off main>section:not(.hidden)" not in source:
               raise SystemExit("Screen-entry animations must respect the transitions preference.")
           for control_id in ("visualEffectsEnabled", "parallaxEnabled", "transitionsEnabled", "microAnimationsEnabled"):
