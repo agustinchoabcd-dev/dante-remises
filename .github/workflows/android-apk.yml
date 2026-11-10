@@ -69,6 +69,7 @@ jobs:
           Path("/tmp/dante-audio-system.mjs").write_text(scripts[0], encoding="utf-8")
           PY
           node --check /tmp/dante-audio-system.mjs
+          node --check scripts/patch-android-audio.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
@@ -247,6 +248,9 @@ jobs:
 
       - name: Generate Android project
         run: npx cap add android
+
+      - name: Enable Android WebView startup audio
+        run: node scripts/patch-android-audio.mjs
 
       - name: Use Maven Central mirror for Kotlin compiler artifacts
         run: |
