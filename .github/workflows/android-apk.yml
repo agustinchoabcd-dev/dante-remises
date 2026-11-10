@@ -3,6 +3,11 @@ run-name: Android APK · ${{ github.ref_name }} · ${{ github.sha }}
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - dante-test
+    paths:
+      - '.github/workflows/android-apk.yml'
 
 permissions:
   contents: read
