@@ -51,7 +51,7 @@ jobs:
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
-      # Disparo de compilación correspondiente a la revisión 7dd602f.
+      # Disparo de compilación para logo dinámico en splash y ficha Info técnica.
       - name: Validate visual layer structure
         run: |
           python3 - <<'PY'
@@ -155,6 +155,45 @@ jobs:
           path: www/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Embed Android build metadata in the web bundle
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_RUN_ID: ${{ github.run_id }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_TYPE: debug
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          package = json.loads(Path("package.json").read_text(encoding="utf-8"))
+          version = package["version"]
+          number = int(os.environ["BUILD_NUMBER"])
+          info = {
+              "htmlVersion": version,
+              "apkVersionName": f"{version}+{number}",
+              "apkVersionCode": number,
+              "buildNumber": number,
+              "runId": os.environ["BUILD_RUN_ID"],
+              "branch": os.environ["BUILD_BRANCH"],
+              "commit": os.environ["BUILD_COMMIT"][:12],
+              "buildDateUtc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+              "androidPackage": "com.danteremises.test",
+              "buildType": os.environ["BUILD_TYPE"].upper() + " · pruebas"
+          }
+          path = Path("www/index.html")
+          html = path.read_text(encoding="utf-8")
+          marker = "</head>"
+          if html.count(marker) != 1:
+              raise SystemExit("Expected exactly one closing head tag in www/index.html")
+          script = "<script>window.DANTE_BUILD_INFO = " + json.dumps(info, ensure_ascii=False) + ";</script>\\n"
+          path.write_text(html.replace(marker, script + marker, 1), encoding="utf-8")
+          print("Embedded Android build metadata:", json.dumps(info, ensure_ascii=False))
+          PY
 
       - name: Generate Android project
         run: npx cap add android
