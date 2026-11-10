@@ -53,6 +53,7 @@ jobs:
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
       # Disparo de compilación para sincronizar logo del splash e Info técnica.
       # QA del encuadre responsive del logo en splash (sin cambios de producción).
+      # QA: reutilizar el mismo marco circular de Home en el splash desde el primer frame.
       - name: Validate visual layer structure
         run: |
           python3 - <<'PY'
