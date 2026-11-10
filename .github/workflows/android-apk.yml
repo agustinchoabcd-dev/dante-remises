@@ -147,6 +147,8 @@ jobs:
               raise SystemExit("Missing visual style layers: " + ", ".join(missing))
           if "prefers-reduced-motion" not in source:
               raise SystemExit("Reduced-motion support is missing.")
+          if "html.dante-transitions-off main>section:not(.hidden)" not in source:
+              raise SystemExit("Screen-entry animations must respect the transitions preference.")
           for control_id in ("visualEffectsEnabled", "parallaxEnabled", "transitionsEnabled", "microAnimationsEnabled"):
               if parser.ids.count(control_id) != 1:
                   raise SystemExit(f"Expected exactly one visual-effects control #{control_id}.")
