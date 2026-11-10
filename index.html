@@ -280,19 +280,18 @@ html.dante-transitions-off *,html.dante-transitions-off *::before,html.dante-tra
 html.dante-transitions-off main>section:not(.hidden){animation:none!important}
 html.dante-micro-off button:not(:disabled),html.dante-micro-off .card,html.dante-micro-off .panel,html.dante-micro-off .driver-choice{transition:none!important}
 html.dante-micro-off button:not(:disabled):active{transform:none!important}
-body::after{content:"";position:fixed;inset:-8%;z-index:0;pointer-events:none;opacity:.22;background:radial-gradient(ellipse at 18% 18%,rgba(0,237,121,.10),transparent 42%),radial-gradient(ellipse at 84% 76%,rgba(0,237,121,.075),transparent 44%);transform:translate3d(var(--dante-background-x,0px),var(--dante-background-y,0px),0) scale(1.08);will-change:transform}
+/* Scroll de página: solo vertical; el fondo no participa del gesto horizontal. */
+html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
+body{background-attachment:scroll}
 body>header,body>main,body>#appFooter{position:relative;z-index:1}
-html.dante-parallax-active body{perspective:1200px;transform-style:preserve-3d}
-html.dante-parallax-active body>header,html.dante-parallax-active body>main,html.dante-parallax-active body>#appFooter,html.dante-parallax-active body>#startupScreen{transform:rotateX(var(--dante-rotate-x,0deg)) rotateY(var(--dante-rotate-y,0deg));transform-style:preserve-3d;transform-origin:50% 50%;backface-visibility:hidden;transition:transform .22s cubic-bezier(.2,.7,.25,1);will-change:transform}
-html.dante-parallax-active body>header .brand-wrap,html.dante-parallax-active body>main>.tabs,html.dante-parallax-active body>main>.post-login-greeting,html.dante-parallax-active body>main>section:not(.hidden),html.dante-parallax-active body>#startupScreen .startup-emblem,html.dante-parallax-active body>#startupScreen .startup-brand{translate:var(--dante-translate-x,0px) var(--dante-translate-y,0px) var(--dante-depth-main,0px);transform-style:preserve-3d}
-html.dante-parallax-active body>main .card,html.dante-parallax-active body>main .panel,html.dante-parallax-active body>main .driver-choice,html.dante-parallax-active body>main .tab,html.dante-parallax-active body>main button,html.dante-parallax-active body>main input,html.dante-parallax-active body>main select,html.dante-parallax-active body>main textarea,html.dante-parallax-active body>main .upload-box,html.dante-parallax-active body>main .request,html.dante-parallax-active body>main .note,html.dante-parallax-active body>header .brand-logo,html.dante-parallax-active body>#appFooter a{translate:0 0 var(--dante-depth-item,0px);transform-style:preserve-3d;backface-visibility:hidden}
-html.dante-parallax-active body::after{transition:transform .22s cubic-bezier(.2,.7,.25,1)}
-html.dante-touching body>header,html.dante-touching body>main,html.dante-touching body>#appFooter,html.dante-touching body>#startupScreen{transition-duration:.08s}
-html.dante-effects-off body::after{transform:none!important}
-html.dante-effects-off body>header,html.dante-effects-off body>main,html.dante-effects-off body>#appFooter,html.dante-effects-off body>#startupScreen{transform:none!important;translate:none!important}
-html.dante-effects-off body>main *,html.dante-effects-off body>header *,html.dante-effects-off body>#appFooter *{translate:none!important}
-html.dante-parallax-active.dante-transitions-off body>header,html.dante-parallax-active.dante-transitions-off body>main,html.dante-parallax-active.dante-transitions-off body>#appFooter,html.dante-parallax-active.dante-transitions-off body>#startupScreen,html.dante-transitions-off body::after{transition:none!important}
-@media(prefers-reduced-motion:reduce){body::after{display:none!important}html.dante-parallax-active body>header,html.dante-parallax-active body>main,html.dante-parallax-active body>#appFooter,html.dante-parallax-active body>#startupScreen{transform:none!important;transition:none!important}html.dante-parallax-active body>main *,html.dante-parallax-active body>header *,html.dante-parallax-active body>#appFooter *{translate:none!important}}
+/* El efecto 3D existe exclusivamente en las superficies/recuadros, nunca en el fondo ni en los contenedores generales. */
+.dante-parallax-surface{transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px));transform-style:preserve-3d;backface-visibility:hidden;transition:transform .22s cubic-bezier(.2,.7,.25,1)}
+html.dante-touching .dante-parallax-surface{transition-duration:.06s}
+html.dante-parallax-active .driver-choice:not(:disabled):hover{transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px)) translateY(-2px)}
+html.dante-parallax-active .chat-conversation:hover{transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px)) translateX(2px)}
+html.dante-effects-off .dante-parallax-surface{transform:none!important}
+html.dante-transitions-off.dante-parallax-active .dante-parallax-surface{transition:none!important}
+@media(prefers-reduced-motion:reduce){.dante-parallax-surface{transform:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -2100,7 +2099,7 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
 </style>
 
 <script id="dante-visual-effects-runtime">
-/* Parallax 3D táctil global: la posición del dedo controla la profundidad de toda la interfaz. */
+/* Parallax 3D táctil: únicamente las superficies reciben movimiento; el scroll vertical sigue siendo nativo. */
 (function(){
  const root=document.documentElement;
  const $=id=>document.getElementById(id);
@@ -2112,74 +2111,58 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
  const save=(key,value)=>{try{localStorage.setItem(key,String(value))}catch(error){console.warn('[Dante] No se pudo guardar una preferencia visual.',error)}};
  const state={master:read(keys.master,defaults.master),parallax:read(keys.parallax,defaults.parallax),transitions:read(keys.transitions,defaults.transitions),micro:read(keys.micro,defaults.micro)};
  const reducedMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)');
+ const surfaceSelector='.card,.panel,.choice-card,.driver-choice,.request,.trip-request,.note,.upload-box,.chatbox,.chat-conversation,.map-meta,.real-map,.demo-map,.post-login-greeting,.onboarding-shell,.visual-effects-settings';
+ let surfaces=[];
  let touchIdentifier=null;
  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
  const parallaxAvailable=()=>state.master&&state.parallax&&!(reducedMotion&&reducedMotion.matches);
+ function refreshSurfaces(){
+  surfaces=Array.from(document.querySelectorAll(surfaceSelector));
+  for(const surface of surfaces)surface.classList.add('dante-parallax-surface');
+ }
  function setNeutralPosition(){
-  root.style.setProperty('--dante-touch-x','0');
-  root.style.setProperty('--dante-touch-y','0');
-  root.style.setProperty('--dante-touch-depth','0px');
-  root.style.setProperty('--dante-background-x','0px');
-  root.style.setProperty('--dante-background-y','0px');
-  root.style.setProperty('--dante-translate-x','0px');
-  root.style.setProperty('--dante-translate-y','0px');
-  root.style.setProperty('--dante-depth-main','0px');
-  root.style.setProperty('--dante-depth-item','0px');
-  root.style.setProperty('--dante-rotate-x','0deg');
-  root.style.setProperty('--dante-rotate-y','0deg');
+  for(const surface of surfaces){
+   surface.style.setProperty('--dante-card-x','0px');
+   surface.style.setProperty('--dante-card-y','0px');
+   surface.style.setProperty('--dante-card-z','0px');
+   surface.style.setProperty('--dante-card-rx','0deg');
+   surface.style.setProperty('--dante-card-ry','0deg');
+  }
   root.classList.remove('dante-touching');
  }
- function resetTouch(){
-  touchIdentifier=null;
-  setNeutralPosition();
- }
+ function resetTouch(){touchIdentifier=null;setNeutralPosition()}
  function updateFromTouch(touch){
   if(!parallaxAvailable()||document.hidden)return;
-  const width=Math.max(1,window.innerWidth);
-  const height=Math.max(1,window.innerHeight);
-  const x=clamp((touch.clientX/width-.5)*2,-1,1);
-  const y=clamp((touch.clientY/height-.5)*2,-1,1);
-  const depth=Math.min(12,Math.hypot(x,y)*12);
-  root.style.setProperty('--dante-touch-x',x.toFixed(3));
-  root.style.setProperty('--dante-touch-y',y.toFixed(3));
-  root.style.setProperty('--dante-touch-depth',depth.toFixed(2)+'px');
-  root.style.setProperty('--dante-background-x',(-x*16).toFixed(2)+'px');
-  root.style.setProperty('--dante-background-y',(-y*16).toFixed(2)+'px');
-  root.style.setProperty('--dante-translate-x',(-x*3).toFixed(2)+'px');
-  root.style.setProperty('--dante-translate-y',(-y*3).toFixed(2)+'px');
-  root.style.setProperty('--dante-depth-main',(depth*.3).toFixed(2)+'px');
-  root.style.setProperty('--dante-depth-item',(depth*.55).toFixed(2)+'px');
-  root.style.setProperty('--dante-rotate-x',(-y*3.2).toFixed(2)+'deg');
-  root.style.setProperty('--dante-rotate-y',(x*3.2).toFixed(2)+'deg');
+  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
+  for(const surface of surfaces){
+   const rect=surface.getBoundingClientRect();
+   if(!rect.width||!rect.height)continue;
+   const dx=clamp((rect.left+rect.width/2-touch.clientX)/width,-.5,.5);
+   const dy=clamp((rect.top+rect.height/2-touch.clientY)/height,-.5,.5);
+   const rx=clamp(-dy*2.3,-1.15,1.15),ry=clamp(dx*2.3,-1.15,1.15);
+   const z=clamp(3.4-Math.hypot(dx,dy)*5,0,3.4);
+   surface.style.setProperty('--dante-card-x',(dx*1.6).toFixed(2)+'px');
+   surface.style.setProperty('--dante-card-y',(dy*1.6).toFixed(2)+'px');
+   surface.style.setProperty('--dante-card-z',z.toFixed(2)+'px');
+   surface.style.setProperty('--dante-card-rx',rx.toFixed(2)+'deg');
+   surface.style.setProperty('--dante-card-ry',ry.toFixed(2)+'deg');
+  }
   root.classList.add('dante-touching');
  }
- function findTouch(list){
-  for(let i=0;i<list.length;i++)if(list[i].identifier===touchIdentifier)return list[i];
-  return null;
- }
+ function findTouch(list){for(let i=0;i<list.length;i++)if(list[i].identifier===touchIdentifier)return list[i];return null}
  function onTouchStart(event){
   if(!parallaxAvailable()||document.hidden||touchIdentifier!==null||!event.changedTouches.length)return;
-  const touch=event.changedTouches[0];
-  touchIdentifier=touch.identifier;
-  updateFromTouch(touch);
+  refreshSurfaces();
+  const touch=event.changedTouches[0];touchIdentifier=touch.identifier;updateFromTouch(touch);
  }
  function onTouchMove(event){
   if(touchIdentifier===null||!parallaxAvailable())return;
-  const touch=findTouch(event.touches);
-  if(touch)updateFromTouch(touch);
+  const touch=findTouch(event.touches);if(touch)updateFromTouch(touch);
  }
- function onTouchEnd(event){
-  if(touchIdentifier===null)return;
-  if(findTouch(event.changedTouches))resetTouch();
- }
+ function onTouchEnd(event){if(touchIdentifier!==null&&findTouch(event.changedTouches))resetTouch()}
  function render(){
-  controls.master.checked=state.master;
-  controls.parallax.checked=state.parallax;
-  controls.transitions.checked=state.transitions;
-  controls.micro.checked=state.micro;
-  controls.parallax.disabled=!state.master;
-  controls.transitions.disabled=!state.master;
-  controls.micro.disabled=!state.master;
+  controls.master.checked=state.master;controls.parallax.checked=state.parallax;controls.transitions.checked=state.transitions;controls.micro.checked=state.micro;
+  controls.parallax.disabled=!state.master;controls.transitions.disabled=!state.master;controls.micro.disabled=!state.master;
   root.classList.toggle('dante-effects-off',!state.master);
   root.classList.toggle('dante-transitions-off',state.master&&!state.transitions);
   root.classList.toggle('dante-micro-off',state.master&&!state.micro);
@@ -2188,7 +2171,7 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
   if(!state.master)controls.status.textContent='Todos los efectos están desactivados.';
   else if(reducedMotion&&reducedMotion.matches)controls.status.textContent='El dispositivo tiene activada la reducción de movimiento; el Parallax 3D está pausado.';
   else if(!state.parallax)controls.status.textContent='Parallax 3D táctil desactivado.';
-  else controls.status.textContent='Parallax 3D activo en toda la app. Deslizá el dedo por la pantalla para mover la perspectiva.';
+  else controls.status.textContent='Solo los recuadros reciben el efecto 3D. El fondo mantiene el desplazamiento vertical normal.';
  }
  controls.master.addEventListener('change',()=>{state.master=controls.master.checked;save(keys.master,state.master);render()});
  controls.parallax.addEventListener('change',()=>{state.parallax=controls.parallax.checked;save(keys.parallax,state.parallax);render()});
@@ -2200,7 +2183,8 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
  document.addEventListener('touchcancel',resetTouch,{passive:true,capture:true});
  document.addEventListener('visibilitychange',()=>{if(document.hidden)resetTouch()});
  if(reducedMotion&&typeof reducedMotion.addEventListener==='function')reducedMotion.addEventListener('change',render);
- render();
-})();
+ if(typeof MutationObserver==='function')new MutationObserver(refreshSurfaces).observe(document.body,{childList:true,subtree:true});
+ refreshSurfaces();render();
+})();;
 </script>
 </body></html>

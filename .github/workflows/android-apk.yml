@@ -153,10 +153,10 @@ jobs:
           for touch_event in ("touchstart", "touchmove", "touchend", "touchcancel"):
               if f'"{touch_event}"' not in source and f"\'{touch_event}\'" not in source:
                   raise SystemExit(f"Missing global touch parallax event: {touch_event}")
-          for marker in ("perspective:1200px", "rotateX(var(--dante-rotate-x", "rotateY(var(--dante-rotate-y", "body>header", "body>main", "body>#appFooter"):
+          for marker in ("perspective(900px)", "rotateX(var(--dante-card-rx", "rotateY(var(--dante-card-ry", ".dante-parallax-surface", "overflow-x:hidden"):
               if marker not in source:
                   raise SystemExit(f"Missing global 3D parallax layer: {marker}")
-          for marker in ("--dante-background-x", "--dante-background-y", "--dante-depth-main", "--dante-depth-item"):
+          for marker in ("--dante-card-x", "--dante-card-y", "--dante-card-z", "--dante-card-rx", "--dante-card-ry"):
               if marker not in source:
                   raise SystemExit(f"Missing precomputed 3D offset: {marker}")
           if "Parallax 3D táctil" not in source:
