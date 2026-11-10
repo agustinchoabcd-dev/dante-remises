@@ -2099,7 +2099,7 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
 </style>
 
 <style id="dante-driver-card-parallax">
-/* Tarjetas translúcidas con retroiluminación neón mientras el dedo descansa sobre ellas. */
+/* Tarjetas translúcidas: pincelada original + luz neón localizada en los bordes. */
 #passengerCars>.driver-choice,#centralCars>.card{
  background:color-mix(in srgb,var(--card) 76%,transparent)!important;
  -webkit-backdrop-filter:blur(13px) saturate(1.16);
@@ -2110,21 +2110,31 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px))!important;
 }
 #passengerCars>.driver-choice.dante-driver-touch-active,
-#centralCars>.card.dante-driver-touch-active{
- position:relative;isolation:isolate;
- border-color:rgba(0,255,116,.96)!important;
- box-shadow:0 0 0 1px rgba(0,255,116,.62),0 8px 22px rgba(0,255,116,.34),0 0 30px rgba(0,255,116,.30),0 0 52px rgba(0,255,116,.16),inset 0 0 18px rgba(0,255,116,.12)!important;
+#centralCars>.card.dante-driver-touch-active{position:relative;isolation:isolate}
+/* La luz sólo aparece en el contorno próximo al dedo; el centro queda transparente. */
+#passengerCars>.driver-choice.dante-driver-touch-active:before,
+#centralCars>.card.dante-driver-touch-active:before{
+ content:"";position:absolute;inset:-5px;z-index:2;pointer-events:none;border-radius:inherit;padding:2px;
+ background:radial-gradient(ellipse 118px 88px at var(--dante-touch-x,50%) var(--dante-touch-y,50%),rgba(0,255,124,.98) 0%,rgba(0,255,124,.64) 27%,rgba(0,238,112,.24) 54%,transparent 78%);
+ -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+ -webkit-mask-composite:xor;mask-composite:exclude;
+ filter:drop-shadow(0 0 4px rgba(0,255,116,.76)) drop-shadow(0 0 9px rgba(0,255,116,.34));
+ opacity:1;transition:opacity .18s ease-out;
 }
+/* Se conserva la mancha/pincelada verde original que sigue al dedo. */
 #passengerCars>.driver-choice.dante-driver-touch-active:after,
 #centralCars>.card.dante-driver-touch-active:after{
- content:"";position:absolute;inset:0;z-index:3;pointer-events:none;border:1.5px solid rgba(91,255,163,.98);
- border-radius:inherit;box-shadow:inset 0 0 7px rgba(0,255,116,.58),inset 0 0 18px rgba(0,255,116,.20);
- background:radial-gradient(ellipse at 50% 112%,rgba(0,255,112,.20),transparent 72%);
- opacity:1;transition:opacity .22s ease-out;
+ content:"";position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;
+ background:radial-gradient(ellipse 92px 76px at var(--dante-touch-x,50%) var(--dante-touch-y,50%),rgba(0,255,112,.58) 0%,rgba(0,238,112,.34) 34%,rgba(0,238,112,.12) 62%,transparent 82%);
+ mix-blend-mode:screen;filter:blur(2px);opacity:1;transition:opacity .16s ease-out;
 }
+#passengerCars>.driver-choice:not(.dante-driver-touch-active):before,
+#centralCars>.card:not(.dante-driver-touch-active):before,
 #passengerCars>.driver-choice:not(.dante-driver-touch-active):after,
 #centralCars>.card:not(.dante-driver-touch-active):after{opacity:0}
 @media(prefers-reduced-motion:reduce){
+ #passengerCars>.driver-choice.dante-driver-touch-active:before,
+ #centralCars>.card.dante-driver-touch-active:before,
  #passengerCars>.driver-choice.dante-driver-touch-active:after,
  #centralCars>.card.dante-driver-touch-active:after{transition:none}
 }
@@ -2153,11 +2163,19 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
   surfaces=Array.from(document.querySelectorAll(surfaceSelector));
   for(const surface of surfaces)surface.classList.add('dante-parallax-surface');
  }
- function setActiveDriverCard(card){
-  if(activeDriverCard===card)return;
-  if(activeDriverCard)activeDriverCard.classList.remove('dante-driver-touch-active');
-  activeDriverCard=card;
-  if(activeDriverCard)activeDriverCard.classList.add('dante-driver-touch-active');
+ function setActiveDriverCard(card,touch){
+  if(activeDriverCard!==card){
+   if(activeDriverCard)activeDriverCard.classList.remove('dante-driver-touch-active');
+   activeDriverCard=card;
+   if(activeDriverCard)activeDriverCard.classList.add('dante-driver-touch-active');
+  }
+  if(activeDriverCard&&touch){
+   const rect=activeDriverCard.getBoundingClientRect();
+   const x=clamp((touch.clientX-rect.left)/Math.max(1,rect.width)*100,0,100);
+   const y=clamp((touch.clientY-rect.top)/Math.max(1,rect.height)*100,0,100);
+   activeDriverCard.style.setProperty('--dante-touch-x',x.toFixed(1)+'%');
+   activeDriverCard.style.setProperty('--dante-touch-y',y.toFixed(1)+'%');
+  }
  }
  function setNeutralPosition(){
   for(const surface of surfaces){
@@ -2169,6 +2187,8 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
   }
   if(activeDriverCard){
    activeDriverCard.classList.remove('dante-driver-touch-active');
+   activeDriverCard.style.removeProperty('--dante-touch-x');
+   activeDriverCard.style.removeProperty('--dante-touch-y');
    activeDriverCard=null;
   }
   root.classList.remove('dante-touching');
@@ -2178,14 +2198,14 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
   if(!parallaxAvailable()||document.hidden)return;
   const hit=document.elementFromPoint(touch.clientX,touch.clientY);
   const driverCard=hit&&hit.closest?hit.closest(driverCardSelector):null;
-  setActiveDriverCard(driverCard);
+  setActiveDriverCard(driverCard,touch);
   const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
   for(const surface of surfaces){
    const rect=surface.getBoundingClientRect();
    if(!rect.width||!rect.height)continue;
    const dx=clamp((rect.left+rect.width/2-touch.clientX)/width,-.5,.5);
    const dy=clamp((rect.top+rect.height/2-touch.clientY)/height,-.5,.5);
-   const boost=1;
+   const boost=surface===activeDriverCard?2:1;
    const rx=clamp(-dy*4.2*boost,-4.2,4.2),ry=clamp(dx*4.2*boost,-4.2,4.2);
    const z=clamp((5.2-Math.hypot(dx,dy)*7)*boost,0,10.4);
    surface.style.setProperty('--dante-card-x',(dx*3.2*boost).toFixed(2)+'px');
