@@ -239,8 +239,36 @@ html[data-theme="light"] .msg.mine{background:linear-gradient(135deg,#087b3e,#00
 .request{border-color:rgba(0,238,112,.32);box-shadow:inset 3px 0 var(--accent)}
 .real-map,.demo-map{border-color:rgba(0,238,112,.3);box-shadow:0 0 0 1px rgba(0,238,112,.08),0 18px 42px rgba(0,0,0,.24)}
 </style>
-</head>
+<style id="dante-startup-screen">
+header .brand-wrap .brand-logo{width:100px!important;height:100px!important;min-width:100px!important;min-height:100px!important;flex:0 0 100px!important;aspect-ratio:1/1!important;border-radius:50%!important;overflow:hidden!important}
+@media(max-width:600px){header .brand-wrap .brand-logo{width:86px!important;height:86px!important;min-width:86px!important;min-height:86px!important;flex-basis:86px!important}}
+.startup-screen{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 42%,rgba(0,237,121,.17),transparent 36%),radial-gradient(ellipse at 50% 100%,rgba(0,130,65,.13),transparent 50%),#050b07;color:#effff5;opacity:1;visibility:visible;transition:opacity .48s ease,visibility .48s ease}
+.startup-screen.is-leaving{opacity:0;visibility:hidden;pointer-events:none}
+.startup-orbit{position:absolute;width:min(72vw,330px);aspect-ratio:1;border:1px solid rgba(0,237,121,.18);border-radius:50%;box-shadow:0 0 45px rgba(0,237,121,.06),inset 0 0 35px rgba(0,237,121,.04);animation:dante-orbit 9s linear infinite}
+.startup-orbit-a:before,.startup-orbit-b:before{content:"";position:absolute;width:7px;height:7px;border-radius:50%;background:#00f58a;box-shadow:0 0 14px #00f58a,0 0 30px #00ed79;top:12%;left:18%}
+.startup-orbit-b{width:min(88vw,410px);border-style:dashed;border-color:rgba(0,237,121,.1);animation:dante-orbit 15s linear infinite reverse}
+.startup-emblem{position:relative;width:104px;height:104px;display:grid;place-items:center;border:2px solid #00ed79;border-radius:50%;background:linear-gradient(145deg,#0d2919,#06130b);box-shadow:0 0 0 8px rgba(0,237,121,.07),0 0 35px rgba(0,237,121,.28),inset 0 0 24px rgba(0,237,121,.12);animation:dante-emblem-pulse 2.4s ease-in-out infinite}
+.startup-emblem:before{content:"";position:absolute;inset:-9px;border:1px solid rgba(0,237,121,.28);border-radius:50%;animation:dante-ring 2.4s ease-out infinite}
+.startup-emblem span{font-size:53px;font-weight:950;line-height:1;letter-spacing:-.09em;color:#dffff0;text-shadow:0 0 18px rgba(0,245,138,.55);transform:translateX(-2px)}
+.startup-emblem i{position:absolute;right:17px;bottom:20px;width:10px;height:10px;border-radius:50%;background:#00f58a;box-shadow:0 0 12px #00f58a}
+.startup-brand{position:relative;margin-top:34px;font-size:clamp(23px,5vw,30px);font-weight:500;letter-spacing:.18em}.startup-brand strong{font-weight:900;color:#00ed79}
+.startup-location{position:relative;margin-top:9px;color:#8fa99a;font-size:9px;font-weight:800;letter-spacing:.24em}
+.startup-loader{position:relative;width:132px;height:3px;margin-top:39px;border-radius:9px;background:rgba(0,237,121,.13);overflow:hidden}
+.startup-loader span{display:block;width:42%;height:100%;border-radius:9px;background:linear-gradient(90deg,transparent,#00ed79,#b5ffd0);box-shadow:0 0 13px #00ed79;animation:dante-loader 1.35s ease-in-out infinite}
+.startup-caption{position:relative;margin-top:13px;color:#9bb5a5;font-size:11px;letter-spacing:.07em}
+@keyframes dante-orbit{to{transform:rotate(360deg)}}@keyframes dante-ring{0%{transform:scale(.94);opacity:.8}100%{transform:scale(1.2);opacity:0}}
+@keyframes dante-emblem-pulse{0%,100%{box-shadow:0 0 0 8px rgba(0,237,121,.07),0 0 28px rgba(0,237,121,.2),inset 0 0 20px rgba(0,237,121,.1)}50%{box-shadow:0 0 0 11px rgba(0,237,121,.1),0 0 43px rgba(0,237,121,.38),inset 0 0 28px rgba(0,237,121,.17)}}
+@keyframes dante-loader{0%{transform:translateX(-110%)}100%{transform:translateX(340%)}}
+@media(prefers-reduced-motion:reduce){.startup-orbit,.startup-emblem,.startup-emblem:before,.startup-loader span{animation:none!important}.startup-loader span{width:65%}}
+</style></head>
 <body>
+<div id="startupScreen" class="startup-screen" role="status" aria-live="polite" aria-label="Iniciando Dante Remises">
+ <div class="startup-orbit startup-orbit-a"></div><div class="startup-orbit startup-orbit-b"></div>
+ <div class="startup-emblem"><span>D</span><i></i></div>
+ <div class="startup-brand">DANTE <strong>REMISES</strong></div>
+ <div class="startup-location">SANTA ROSA DE CALAMUCHITA</div>
+ <div class="startup-loader"><span></span></div><div class="startup-caption">Preparando tu experiencia</div>
+</div>
 <header><div class="brand-wrap"><div class="brand-logo" id="brandLogoBubble" aria-label="Espacio para el logo de Dante Remises">LOGO</div><div class="brand">Dante Remises</div><small>Santa Rosa de Calamuchita</small></div><button class="staff-entry" id="staffEntryButton" type="button" aria-label="Acceso de personal" title="Acceso de personal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></button><button class="settings-gear hidden" id="settingsGearButton" type="button" aria-label="Configuración" title="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M 9.95 3.13 L 10.70 1.38 L 13.30 1.38 L 14.05 3.13 L 16.82 4.28 L 18.59 3.57 L 20.43 5.41 L 19.72 7.18 L 20.87 9.95 L 22.62 10.70 L 22.62 13.30 L 20.87 14.05 L 19.72 16.82 L 20.43 18.59 L 18.59 20.43 L 16.82 19.72 L 14.05 20.87 L 13.30 22.62 L 10.70 22.62 L 9.95 20.87 L 7.18 19.72 L 5.41 20.43 L 3.57 18.59 L 4.28 16.82 L 3.13 14.05 L 1.38 13.30 L 1.38 10.70 L 3.13 9.95 L 4.28 7.18 L 3.57 5.41 L 5.41 3.57 L 7.18 4.28 Z" fill="currentColor"/><circle cx="12" cy="12" r="3.15" fill="#147342"/></svg></button></header>
 <main>
 <div class="note hidden" id="versionNote"><strong>Versión 0.6.0:</strong> mapa real, solicitudes de viaje y seguimiento GPS en primer plano. El GPS requiere permisos y que la aplicación permanezca abierta.</div>
@@ -1528,6 +1556,9 @@ async function resolveAuthenticatedRole(user){
  return resolveRoleFromProfile({uid:user.uid,profile,legacyStaff,adminUid:ADMIN_UID,userEmail:user.email});
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&currentRole?.role==='operator')void sendOperatorPresence()});
+let startupScreenFinished=false;
+function finishStartupScreen(){if(startupScreenFinished)return;startupScreenFinished=true;const screen=byId('startupScreen');if(screen){screen.classList.add('is-leaving');window.setTimeout(()=>screen.remove(),550)}}
+const startupSafetyTimer=window.setTimeout(()=>finishStartupScreen(),12000);
 let authStateGeneration=0;
 onAuthStateChanged(auth,async user=>{
  const authGeneration=++authStateGeneration;
@@ -1576,6 +1607,7 @@ onAuthStateChanged(auth,async user=>{
  perf.mark('auth.trip-restore-stage.done');
  render('auth-complete');
  perf.mark('auth.callback.done');
+window.clearTimeout(startupSafetyTimer);finishStartupScreen();
 });
 let carsFirstSnapshot=true;
 const carsListenerStartedAt=Date.now();
