@@ -280,12 +280,12 @@ html.dante-transitions-off *,html.dante-transitions-off *::before,html.dante-tra
 html.dante-transitions-off main>section:not(.hidden){animation:none!important}
 html.dante-micro-off button:not(:disabled),html.dante-micro-off .card,html.dante-micro-off .panel,html.dante-micro-off .driver-choice{transition:none!important}
 html.dante-micro-off button:not(:disabled):active{transform:none!important}
-body::after{content:"";position:fixed;inset:-8%;z-index:0;pointer-events:none;opacity:.22;background:radial-gradient(ellipse at 18% 18%,rgba(0,237,121,.10),transparent 42%),radial-gradient(ellipse at 84% 76%,rgba(0,237,121,.075),transparent 44%);transform:translate3d(calc(var(--dante-touch-x,0) * -16px),calc(var(--dante-touch-y,0) * -16px),0) scale(1.08);will-change:transform}
+body::after{content:"";position:fixed;inset:-8%;z-index:0;pointer-events:none;opacity:.22;background:radial-gradient(ellipse at 18% 18%,rgba(0,237,121,.10),transparent 42%),radial-gradient(ellipse at 84% 76%,rgba(0,237,121,.075),transparent 44%);transform:translate3d(var(--dante-background-x,0px),var(--dante-background-y,0px),0) scale(1.08);will-change:transform}
 body>header,body>main,body>#appFooter{position:relative;z-index:1}
 html.dante-parallax-active body{perspective:1200px;transform-style:preserve-3d}
 html.dante-parallax-active body>header,html.dante-parallax-active body>main,html.dante-parallax-active body>#appFooter,html.dante-parallax-active body>#startupScreen{transform:rotateX(var(--dante-rotate-x,0deg)) rotateY(var(--dante-rotate-y,0deg));transform-style:preserve-3d;transform-origin:50% 50%;backface-visibility:hidden;transition:transform .22s cubic-bezier(.2,.7,.25,1);will-change:transform}
-html.dante-parallax-active body>header .brand-wrap,html.dante-parallax-active body>main>.tabs,html.dante-parallax-active body>main>.post-login-greeting,html.dante-parallax-active body>main>section:not(.hidden),html.dante-parallax-active body>#startupScreen .startup-emblem,html.dante-parallax-active body>#startupScreen .startup-brand{translate:calc(var(--dante-touch-x,0) * -3px) calc(var(--dante-touch-y,0) * -3px) calc(var(--dante-touch-depth,0px) * .3);transform-style:preserve-3d}
-html.dante-parallax-active body>main .card,html.dante-parallax-active body>main .panel,html.dante-parallax-active body>main .driver-choice,html.dante-parallax-active body>main .tab,html.dante-parallax-active body>main button,html.dante-parallax-active body>main input,html.dante-parallax-active body>main select,html.dante-parallax-active body>main textarea,html.dante-parallax-active body>main .upload-box,html.dante-parallax-active body>main .request,html.dante-parallax-active body>main .note,html.dante-parallax-active body>header .brand-logo,html.dante-parallax-active body>#appFooter a{translate:0 0 calc(var(--dante-touch-depth,0px) * .55);transform-style:preserve-3d;backface-visibility:hidden}
+html.dante-parallax-active body>header .brand-wrap,html.dante-parallax-active body>main>.tabs,html.dante-parallax-active body>main>.post-login-greeting,html.dante-parallax-active body>main>section:not(.hidden),html.dante-parallax-active body>#startupScreen .startup-emblem,html.dante-parallax-active body>#startupScreen .startup-brand{translate:var(--dante-translate-x,0px) var(--dante-translate-y,0px) var(--dante-depth-main,0px);transform-style:preserve-3d}
+html.dante-parallax-active body>main .card,html.dante-parallax-active body>main .panel,html.dante-parallax-active body>main .driver-choice,html.dante-parallax-active body>main .tab,html.dante-parallax-active body>main button,html.dante-parallax-active body>main input,html.dante-parallax-active body>main select,html.dante-parallax-active body>main textarea,html.dante-parallax-active body>main .upload-box,html.dante-parallax-active body>main .request,html.dante-parallax-active body>main .note,html.dante-parallax-active body>header .brand-logo,html.dante-parallax-active body>#appFooter a{translate:0 0 var(--dante-depth-item,0px);transform-style:preserve-3d;backface-visibility:hidden}
 html.dante-parallax-active body::after{transition:transform .22s cubic-bezier(.2,.7,.25,1)}
 html.dante-touching body>header,html.dante-touching body>main,html.dante-touching body>#appFooter,html.dante-touching body>#startupScreen{transition-duration:.08s}
 html.dante-effects-off body::after{transform:none!important}
@@ -2119,6 +2119,12 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
   root.style.setProperty('--dante-touch-x','0');
   root.style.setProperty('--dante-touch-y','0');
   root.style.setProperty('--dante-touch-depth','0px');
+  root.style.setProperty('--dante-background-x','0px');
+  root.style.setProperty('--dante-background-y','0px');
+  root.style.setProperty('--dante-translate-x','0px');
+  root.style.setProperty('--dante-translate-y','0px');
+  root.style.setProperty('--dante-depth-main','0px');
+  root.style.setProperty('--dante-depth-item','0px');
   root.style.setProperty('--dante-rotate-x','0deg');
   root.style.setProperty('--dante-rotate-y','0deg');
   root.classList.remove('dante-touching');
@@ -2137,6 +2143,12 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
   root.style.setProperty('--dante-touch-x',x.toFixed(3));
   root.style.setProperty('--dante-touch-y',y.toFixed(3));
   root.style.setProperty('--dante-touch-depth',depth.toFixed(2)+'px');
+  root.style.setProperty('--dante-background-x',(-x*16).toFixed(2)+'px');
+  root.style.setProperty('--dante-background-y',(-y*16).toFixed(2)+'px');
+  root.style.setProperty('--dante-translate-x',(-x*3).toFixed(2)+'px');
+  root.style.setProperty('--dante-translate-y',(-y*3).toFixed(2)+'px');
+  root.style.setProperty('--dante-depth-main',(depth*.3).toFixed(2)+'px');
+  root.style.setProperty('--dante-depth-item',(depth*.55).toFixed(2)+'px');
   root.style.setProperty('--dante-rotate-x',(-y*3.2).toFixed(2)+'deg');
   root.style.setProperty('--dante-rotate-y',(x*3.2).toFixed(2)+'deg');
   root.classList.add('dante-touching');
