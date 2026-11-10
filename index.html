@@ -277,6 +277,7 @@ header .brand-wrap .brand-logo{width:100px!important;height:100px!important;min-
 .visual-effect-option input:disabled{opacity:.42;cursor:not-allowed}
 html.dante-effects-off *,html.dante-effects-off *::before,html.dante-effects-off *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 html.dante-transitions-off *,html.dante-transitions-off *::before,html.dante-transitions-off *::after{transition:none!important;scroll-behavior:auto!important}
+html.dante-transitions-off main>section:not(.hidden){animation:none!important}
 html.dante-micro-off button:not(:disabled),html.dante-micro-off .card,html.dante-micro-off .panel,html.dante-micro-off .driver-choice{transition:none!important}
 html.dante-micro-off button:not(:disabled):active{transform:none!important}
 body::after{content:"";position:fixed;inset:-7%;z-index:0;pointer-events:none;opacity:.22;background:radial-gradient(ellipse at 18% 18%,rgba(0,237,121,.10),transparent 42%),radial-gradient(ellipse at 84% 76%,rgba(0,237,121,.075),transparent 44%);transform:translate3d(var(--dante-parallax-x,0px),var(--dante-parallax-y,0px),0);will-change:transform}
