@@ -51,6 +51,7 @@ jobs:
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
+      # Disparo de compilación correspondiente a la revisión 7dd602f.
       - name: Validate visual layer structure
         run: |
           python3 - <<'PY'
