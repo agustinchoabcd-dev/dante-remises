@@ -564,7 +564,7 @@ const availabilityRefresh=createAvailabilityRefreshScheduler({
  getDeadlines:()=>Object.values(cars).map(car=>car.until),
  onRefresh:()=>render("availability-clock")
 });
-function notify(msg){const t=byId('toast');t.textContent=msg;t.style.display='block';clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.style.display='none',2800)}
+function notify(msg){const feedback=String(msg||'');if(window.DanteAudio){if(/no se pudo|no podés|no tenés|no hay|no puede|no admite|inválid|error|rechaz|deneg|supera|falló|fallo|primero|no se concedió|no está disponible/i.test(feedback))window.DanteAudio.playError();else if(/guardad|enviad|cread|actualizad|confirmad|aprob|finalizad|solicitad|eliminad|restablecid|conectad|sesión iniciada|registrad|asignad/i.test(feedback))window.DanteAudio.playConfirm()}const t=byId('toast');t.textContent=msg;t.style.display='block';clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.style.display='none',2800)}
 const statusWriteVersions={};
 async function setStatus(id,status,minutes=null,indefinite=false){
  if(cars[id]?.activeTripId&&status!=='ocupado'){notify('No podés cambiar la disponibilidad mientras hay un viaje activo.');return}
@@ -2387,11 +2387,17 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
   });
   volumeControl.addEventListener('change',()=>{if(enabled)playToggle()});
  }
- document.addEventListener('pointerdown',()=>{if(!startupPlayed)void unlock()},{capture:true,passive:true});
+ let lastMicPointerAt=0;
+ document.addEventListener('pointerdown',event=>{
+  if(!startupPlayed)void unlock();
+  const mic=event.target&&event.target.closest?event.target.closest('#chatRecordButton'):null;
+  if(mic){const wasUnlocked=startupPlayed;if(wasUnlocked){lastMicPointerAt=performance.now();void unlock().then(ok=>{if(ok)playPop()})}}
+ },{capture:true,passive:true});
  document.addEventListener('keydown',event=>{if(!startupPlayed&&(event.key==='Enter'||event.key===' '))void unlock()},{capture:true});
  document.addEventListener('click',event=>{
   const target=event.target&&event.target.closest?event.target.closest('button,a,[role="button"],[role="tab"],.tab,.driver-choice,.chat-conversation,.chat-attachment-image,.avatar img,.profile-photo-preview,.photo-frame img,.leaflet-container,.demo-map'):null;
   if(!target||target.disabled||target.getAttribute('aria-disabled')==='true'||isFormControl(target))return;
+  if(target.closest('#chatRecordButton')&&performance.now()-lastMicPointerAt<500)return;
   if(!startupPlayed){void unlock();return}
   playAction(target);
  },true);
