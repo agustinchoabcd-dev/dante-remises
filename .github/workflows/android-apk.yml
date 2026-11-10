@@ -151,7 +151,7 @@ jobs:
           if "DeviceOrientationEvent" in source or "deviceorientation" in source:
               raise SystemExit("The obsolete device-orientation parallax must be removed.")
           for touch_event in ("touchstart", "touchmove", "touchend", "touchcancel"):
-              if f'"{touch_event}"' not in source:
+              if f'"{touch_event}"' not in source and f"\'{touch_event}\'" not in source:
                   raise SystemExit(f"Missing global touch parallax event: {touch_event}")
           for marker in ("perspective:1200px", "rotateX(var(--dante-rotate-x", "rotateY(var(--dante-rotate-y", "body>header", "body>main", "body>#appFooter"):
               if marker not in source:
