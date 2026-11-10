@@ -1807,4 +1807,65 @@ html[data-theme="light"] #realMap .leaflet-tile-pane{filter:brightness(.9) satur
 }
 </style>
 
+
+<style id="dante-screen-polish">
+/* ACCESO — identidad Dante desde la primera pantalla */
+#acceso{max-width:680px;margin:clamp(14px,4vh,42px) auto 0;text-align:center}
+#acceso .login-welcome{max-width:610px;margin:0 auto 10px;font-size:clamp(29px,6vw,43px);line-height:1.04;letter-spacing:-.055em;text-wrap:balance}
+#acceso .login-welcome:after{content:"";display:block;width:86px;height:4px;margin:17px auto 0;border-radius:9px;background:linear-gradient(90deg,#008b43,#00ed79);box-shadow:0 0 18px rgba(0,238,112,.55)}
+#acceso .login-location{color:var(--accent);font-size:11px;font-weight:850;letter-spacing:.2em;margin:14px 0 25px}
+#authPanel{margin-inline:auto;text-align:left;padding:clamp(20px,4vw,30px);border-color:rgba(0,238,112,.35);background:linear-gradient(145deg,rgba(12,28,17,.98),rgba(5,15,9,.98));box-shadow:0 22px 65px rgba(0,0,0,.4),0 0 36px rgba(0,238,112,.075)}
+html[data-theme="light"] #authPanel{background:linear-gradient(145deg,#fff,#e9f8ee)}
+#authPanel>h3{font-size:21px;margin:0 0 20px}
+#authPanel .field{margin:16px 0}
+#authPanel .field label{color:var(--accent);font-size:11px;letter-spacing:.09em;text-transform:uppercase}
+#authPanel .field input{min-height:49px;border-radius:13px}
+#loginButton,#registerButton{width:100%;min-height:51px;font-size:15px}
+#showRegisterButton{width:100%;min-height:47px}
+#authStatus{min-height:20px}
+#whatsappEntryButton{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;margin:20px auto;box-shadow:0 0 0 5px rgba(0,238,112,.08),0 0 25px rgba(0,238,112,.18)}
+#whatsappEntryButton svg{width:26px;height:26px}
+/* PASAJEROS — tarjetas de selección con estados legibles y protagonismo */
+#pasajero>div>h2{font-size:clamp(25px,4vw,32px)}
+#randomFreeDriver{min-height:47px;border-radius:13px}
+#passengerCars{gap:14px}
+#passengerCars .driver-choice{min-height:150px;border-radius:18px;padding:17px;background:linear-gradient(145deg,var(--surface),var(--surface-2));border-color:rgba(0,238,112,.2)}
+#passengerCars .driver-choice:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+#selectedDriverCard{border-color:rgba(0,238,112,.38);background:linear-gradient(135deg,rgba(0,238,112,.1),var(--card) 60%)}
+#passengerTripScreen>.card{border-radius:20px}
+#passengerTripScreen>.card h3{margin:4px 0 15px}
+#passengerTripScreen .field{margin:17px 0}
+#passengerTripScreen .field input{min-height:49px;border-radius:13px}
+#passengerTripScreen .map-tools button{min-height:43px}
+#requestResult{border-color:rgba(0,238,112,.38);background:linear-gradient(125deg,rgba(0,238,112,.1),var(--surface-2))}
+#backToDrivers{border-radius:999px}
+/* AJUSTES Y PERFIL — paneles de personalización consistentes */
+#configuracion>h2{font-size:clamp(25px,4vw,32px)}
+#configuracion>.muted{max-width:680px}
+#configuracion .card.panel{border-color:rgba(0,238,112,.2);background:linear-gradient(145deg,var(--card),var(--surface-2))}
+#appearanceSettingsCard{border-color:rgba(0,238,112,.48)!important;background:radial-gradient(ellipse at 100% 0,rgba(0,238,112,.14),transparent 52%),linear-gradient(145deg,var(--card),var(--surface-2))!important;box-shadow:var(--shadow),inset 3px 0 var(--accent)}
+#appearanceSettingsCard h3{display:flex;align-items:center;gap:9px}
+#appearanceSettingsCard .field{max-width:440px}
+#appearanceSettingsCard select{min-height:47px;border-radius:13px}
+#configuracion .upload-box{border:1px solid rgba(0,238,112,.24);border-radius:17px;background:linear-gradient(145deg,var(--surface),var(--surface-2));padding:15px;transition:border-color .2s,box-shadow .2s,transform .2s}
+#configuracion .upload-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--focus)}
+#configuracion .photo-frame{border:2px solid rgba(0,238,112,.35);box-shadow:0 0 18px rgba(0,238,112,.09)}
+#configuracion .photo-controls{border-color:var(--line)}
+#configuracion input[type=file]{color:var(--muted);font-size:12px}
+#configuracion input[type=range]{accent-color:var(--accent)}
+#configuracion .upload-row{gap:13px}
+#configuracion .settings-icon{color:var(--accent)}
+/* Controles generales de formularios */
+input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
+select option{background:var(--surface);color:var(--ink)}
+::selection{background:rgba(0,238,112,.35);color:var(--ink)}
+@media(max-width:600px){
+ #acceso{margin-top:18px}
+ #acceso .login-welcome{font-size:30px}
+ #authPanel{padding:19px 16px}
+ #passengerCars .driver-choice{min-height:135px}
+ #configuracion .upload-row{grid-template-columns:1fr}
+}
+</style>
+
 </body></html>
