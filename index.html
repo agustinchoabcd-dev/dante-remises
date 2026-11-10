@@ -393,7 +393,7 @@ html.dante-transitions-off.dante-parallax-active .dante-parallax-surface{transit
  </div>
 </section>
 <section id="configuracion" class="hidden">
-<div class="card panel" id="appearanceSettingsCard" style="margin-top:12px"><h3>✨ Apariencia</h3><p class="muted">Personalizá el aspecto de Dante Remises sin modificar sus funciones.</p><div class="field"><label for="themePreference">Tema de la aplicación</label><select id="themePreference"><option value="system">Automático · según el dispositivo</option><option value="light">Claro</option><option value="dark">Oscuro</option><option value="electric">Verde Eléctrico · Dante</option></select></div><p class="hint">El cambio se aplica al instante y queda guardado en este dispositivo.</p><div class="visual-effects-settings"><h4>✨ Efectos y movimiento</h4><label class="visual-effect-option"><span><strong>Efectos visuales</strong><small>Activa o desactiva todos los movimientos y animaciones.</small></span><input id="visualEffectsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Parallax 3D táctil</strong><small>Toda la app responde al movimiento de tu dedo con profundidad tridimensional.</small></span><input id="parallaxEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Transiciones suaves</strong><small>Animaciones al cambiar de pantalla y abrir secciones.</small></span><input id="transitionsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Microanimaciones</strong><small>Pequeños efectos en botones y tarjetas.</small></span><input id="microAnimationsEnabled" type="checkbox" checked></label><p class="hint" id="visualEffectsStatus" role="status" aria-live="polite">Deslizá el dedo por la pantalla para activar la perspectiva 3D en toda la app.</p></div></div>
+<div class="card panel" id="appearanceSettingsCard" style="margin-top:12px"><h3>✨ Apariencia</h3><p class="muted">Personalizá el aspecto de Dante Remises sin modificar sus funciones.</p><div class="field"><label for="themePreference">Tema de la aplicación</label><select id="themePreference"><option value="system">Automático · según el dispositivo</option><option value="light">Claro</option><option value="dark">Oscuro</option><option value="electric">Verde Eléctrico · Dante</option></select></div><p class="hint">El cambio se aplica al instante y queda guardado en este dispositivo.</p><div class="visual-effects-settings"><h4>✨ Efectos y movimiento</h4><label class="visual-effect-option"><span><strong>Efectos visuales</strong><small>Activa o desactiva todos los movimientos y animaciones.</small></span><input id="visualEffectsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Parallax 3D táctil</strong><small>Toda la app responde al movimiento de tu dedo con profundidad tridimensional.</small></span><input id="parallaxEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Transiciones suaves</strong><small>Animaciones al cambiar de pantalla y abrir secciones.</small></span><input id="transitionsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Microanimaciones</strong><small>Pequeños efectos en botones y tarjetas.</small></span><input id="microAnimationsEnabled" type="checkbox" checked></label><p class="hint" id="visualEffectsStatus" role="status" aria-live="polite">Deslizá el dedo por la pantalla para activar la perspectiva 3D en toda la app.</p></div><div class="sound-settings" id="danteSoundSettings"><h4>🔊 Sonidos de la aplicación</h4><label class="visual-effect-option"><span><strong>Efectos de sonido</strong><small>Sonidos de botones, navegación, controles, confirmaciones e inicio.</small></span><input id="danteSoundsEnabled" type="checkbox" checked></label><label class="visual-effect-option sound-volume-option"><span><strong>Volumen</strong><small>Ajustá la intensidad de los sonidos.</small></span><input id="danteSoundVolume" type="range" min="0" max="100" step="5" value="65"><output id="danteSoundVolumeValue">65%</output></label><p class="hint" id="danteSoundStatus" role="status" aria-live="polite">Sonidos activos · El primer gesto habilita el audio cuando el navegador lo requiere.</p></div></div>
 <div class="card panel" id="sessionSettingsCard" style="margin-top:12px"><h3>🔐 Sesión</h3><p class="muted">Cuando termines de usar Dante Remises, podés cerrar tu sesión desde acá.</p><button class="danger hidden" id="logoutButton" type="button">Cerrar sesión</button></div>
 
 <h2>⚙️ Configuración</h2><p class="muted">Administrá tus datos visuales y preferencias de perfil.</p>
@@ -2115,7 +2115,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
 #passengerCars>.driver-choice.dante-driver-touch-active:before,
 #centralCars>.card.dante-driver-touch-active:before{
  content:"";position:absolute;inset:-5px;z-index:2;pointer-events:none;border-radius:inherit;padding:2px;
- background:radial-gradient(ellipse 118px 88px at var(--dante-touch-x,50%) var(--dante-touch-y,50%),rgba(0,255,124,.98) 0%,rgba(0,255,124,.64) 27%,rgba(0,238,112,.24) 54%,transparent 78%);
+ background:linear-gradient(135deg,rgba(0,255,124,.98) 0%,rgba(0,238,112,.92) 35%,rgba(150,255,204,.98) 52%,rgba(0,238,112,.92) 72%,rgba(0,255,124,.98) 100%);
  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  -webkit-mask-composite:xor;mask-composite:exclude;
  filter:drop-shadow(0 0 4px rgba(0,255,116,.76)) drop-shadow(0 0 9px rgba(0,255,116,.34));
@@ -2254,4 +2254,161 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  refreshSurfaces();render();
 })();;
 </script>
+
+<script id="dante-audio-system">
+/* Audio propio de Dante Remises: síntesis Web Audio, sin dependencias ni archivos externos. */
+(function(){
+ const enabledControl=document.getElementById('danteSoundsEnabled');
+ const volumeControl=document.getElementById('danteSoundVolume');
+ const volumeLabel=document.getElementById('danteSoundVolumeValue');
+ const status=document.getElementById('danteSoundStatus');
+ const storageKeys={enabled:'dante-sounds-enabled',volume:'dante-sounds-volume'};
+ const read=(key,fallback)=>{try{const value=localStorage.getItem(key);return value===null?fallback:value}catch(_){return fallback}};
+ const save=(key,value)=>{try{localStorage.setItem(key,String(value))}catch(_){}};
+ let enabled=read(storageKeys.enabled,'true')!=='false';
+ let volume=Math.max(0,Math.min(100,Number(read(storageKeys.volume,'65'))||0))/100;
+ let context=null,noiseBuffer=null,startupPlayed=false,firstUnlockAt=0,lastActionAt=0;
+ const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+ function getContext(){
+  if(!AudioContextClass)return null;
+  if(!context){
+   try{context=new AudioContextClass();}catch(_){return null}
+  }
+  return context;
+ }
+ function gainValue(value){return Math.max(0,Math.min(1,value*volume))}
+ function makeNoiseBuffer(ctx){
+  if(noiseBuffer)return noiseBuffer;
+  const length=Math.max(1,Math.floor(ctx.sampleRate*.12));
+  noiseBuffer=ctx.createBuffer(1,length,ctx.sampleRate);
+  const data=noiseBuffer.getChannelData(0);
+  for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/length,2.2);
+  return noiseBuffer;
+ }
+ function envelope(param,now,peak,attack,decay){
+  param.cancelScheduledValues(now);param.setValueAtTime(.0001,now);
+  param.exponentialRampToValueAtTime(Math.max(.0002,peak),now+attack);
+  param.exponentialRampToValueAtTime(.0001,now+attack+decay);
+ }
+ function tone(freqStart,freqEnd,duration,wave='sine',level=.16,delay=0){
+  const ctx=getContext();if(!ctx||ctx.state!=='running'||!enabled||volume<=0)return;
+  const now=ctx.currentTime+delay,osc=ctx.createOscillator(),amp=ctx.createGain();
+  osc.type=wave;osc.frequency.setValueAtTime(Math.max(20,freqStart),now);
+  if(freqEnd!==freqStart)osc.frequency.exponentialRampToValueAtTime(Math.max(20,freqEnd),now+duration);
+  envelope(amp.gain,now,gainValue(level),.008,duration);
+  osc.connect(amp);amp.connect(ctx.destination);osc.start(now);osc.stop(now+duration+.035);
+ }
+ function noiseBurst(duration,level,frequency,type='bandpass',delay=0){
+  const ctx=getContext();if(!ctx||ctx.state!=='running'||!enabled||volume<=0)return;
+  const now=ctx.currentTime+delay,source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),amp=ctx.createGain();
+  source.buffer=makeNoiseBuffer(ctx);filter.type=type;filter.frequency.setValueAtTime(frequency,now);filter.Q.value=.72;
+  envelope(amp.gain,now,gainValue(level),.004,duration);
+  source.connect(filter);filter.connect(amp);amp.connect(ctx.destination);source.start(now);source.stop(now+duration+.025);
+ }
+ function playPop(){
+  tone(245,72,.115,'sine',.27);
+  tone(520,185,.075,'triangle',.075,.008);
+  noiseBurst(.045,.12,1450,'bandpass',.002);
+ }
+ function playNavigation(){
+  noiseBurst(.12,.075,950,'lowpass');
+  tone(420,610,.105,'sine',.055);
+ }
+ function playToggle(){
+  tone(720,980,.075,'sine',.085);
+ }
+ function playConfirm(){
+  tone(540,680,.12,'sine',.10);
+  tone(760,1040,.16,'sine',.095,.105);
+ }
+ function playError(){
+  tone(250,185,.15,'triangle',.11);
+  tone(180,125,.19,'sine',.09,.13);
+ }
+ function playMessage(){
+  tone(330,125,.12,'sine',.18);
+  tone(620,390,.11,'triangle',.07,.07);
+ }
+ function playStartup(){
+  tone(392,392,.25,'sine',.085);
+  tone(523.25,523.25,.28,'sine',.095,.13);
+  tone(783.99,783.99,.42,'sine',.085,.29);
+  tone(1046.5,1046.5,.5,'sine',.045,.42);
+ }
+ function unlock(){
+  if(!enabled)return Promise.resolve(false);
+  const ctx=getContext();if(!ctx)return Promise.resolve(false);
+  return ctx.resume().then(()=>{
+   if(ctx.state!=='running')return false;
+   if(!startupPlayed){
+    startupPlayed=true;firstUnlockAt=performance.now();playStartup();
+   }
+   return true;
+  }).catch(()=>false);
+ }
+ function isFormControl(node){return !!node&&node.matches&&node.matches('input,select,textarea,option')}
+ function playAction(target){
+  if(!enabled||volume<=0)return;
+  const now=performance.now();
+  if(now-firstUnlockAt<420)return;
+  if(now-lastActionAt<115)return;
+  lastActionAt=now;
+  if(target.closest('.tab,a,[role="tab"],.chat-conversation,.map-tools,.map-search-results')){playNavigation();return}
+  if(target.closest('.danger,[data-sound="error"]')){playError();return}
+  if(target.closest('[data-sound="confirm"]')){playConfirm();return}
+  if(target.closest('#chatSendButton,#chatSendRecordingButton')){playMessage();return}
+  if(target.closest('button,[role="button"],.driver-choice,.chat-attachment-image,.avatar img,.profile-photo-preview,.photo-frame img')){playPop();return}
+  if(target.closest('.leaflet-container,.demo-map')){playNavigation();return}
+ }
+ if(enabledControl){
+  enabledControl.checked=enabled;
+  enabledControl.addEventListener('change',()=>{
+   if(enabled)playToggle();
+   enabled=enabledControl.checked;save(storageKeys.enabled,enabled);
+   if(status)status.textContent=enabled?'Sonidos activos · El primer gesto habilita el audio cuando el navegador lo requiere.':'Sonidos desactivados.';
+  });
+ }
+ if(volumeControl){
+  volumeControl.value=String(Math.round(volume*100));
+  if(volumeLabel)volumeLabel.textContent=Math.round(volume*100)+'%';
+  volumeControl.addEventListener('input',()=>{
+   volume=Math.max(0,Math.min(100,Number(volumeControl.value)||0))/100;
+   if(volumeLabel)volumeLabel.textContent=Math.round(volume*100)+'%';
+   save(storageKeys.volume,Math.round(volume*100));
+  });
+  volumeControl.addEventListener('change',()=>{if(enabled)playToggle()});
+ }
+ document.addEventListener('pointerdown',()=>{if(!startupPlayed)void unlock()},{capture:true,passive:true});
+ document.addEventListener('keydown',event=>{if(!startupPlayed&&(event.key==='Enter'||event.key===' '))void unlock()},{capture:true});
+ document.addEventListener('click',event=>{
+  const target=event.target&&event.target.closest?event.target.closest('button,a,[role="button"],[role="tab"],.tab,.driver-choice,.chat-conversation,.chat-attachment-image,.avatar img,.profile-photo-preview,.photo-frame img,.leaflet-container,.demo-map'):null;
+  if(!target||target.disabled||target.getAttribute('aria-disabled')==='true'||isFormControl(target))return;
+  if(!startupPlayed){void unlock();return}
+  playAction(target);
+ },true);
+ document.addEventListener('change',event=>{
+  const target=event.target;
+  if(!target||!target.matches||!target.matches('input,select,textarea'))return;
+  if(target===enabledControl||target===volumeControl)return;
+  if(!startupPlayed){void unlock();return}
+  if(!enabled||volume<=0)return;
+  const now=performance.now();if(now-firstUnlockAt<420||now-lastActionAt<115)return;lastActionAt=now;
+  if(target.type==='checkbox'||target.type==='radio')playToggle();else playPop();
+ },true);
+ document.addEventListener('submit',event=>{
+  if(!startupPlayed){void unlock();return}
+  const now=performance.now();if(!enabled||volume<=0||now-firstUnlockAt<420||now-lastActionAt<180)return;
+  lastActionAt=now;playMessage();
+ },true);
+ /* Intento de sonido de inicio al cargar; si el navegador bloquea autoplay, queda pendiente hasta el primer gesto. */
+ if(enabled){
+  const ctx=getContext();
+  if(ctx)ctx.resume().then(()=>{
+   if(ctx.state==='running'&&!startupPlayed){startupPlayed=true;playStartup()}
+  }).catch(()=>{});
+ }
+ window.DanteAudio={playPop,playNavigation,playToggle,playConfirm,playError,playMessage,playStartup,unlock};
+})();
+</script>
+
 </body></html>
