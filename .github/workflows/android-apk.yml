@@ -59,6 +59,16 @@ jobs:
           Path("/tmp/dante-visual-effects.mjs").write_text(matches[0], encoding="utf-8")
           PY
           node --check /tmp/dante-visual-effects.mjs
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r'<script id="dante-audio-system">\s*(.*?)\s*</script>', html, re.DOTALL)
+          if len(scripts) != 1:
+              raise SystemExit(f"Expected one Dante audio runtime, found {len(scripts)}")
+          Path("/tmp/dante-audio-system.mjs").write_text(scripts[0], encoding="utf-8")
+          PY
+          node --check /tmp/dante-audio-system.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
@@ -142,6 +152,8 @@ jobs:
               "dante-navigation-polish",
               "dante-motion-system",
               "dante-visual-effects",
+              "dante-driver-card-parallax",
+              "dante-audio-styles",
           ]
           missing = [name for name in required if f'id="{name}"' not in source]
           if missing:
@@ -163,6 +175,12 @@ jobs:
               raise SystemExit("The touch-driven 3D parallax setting label is missing.")
           if "html.dante-transitions-off main>section:not(.hidden)" not in source:
               raise SystemExit("Screen-entry animations must respect the transitions preference.")
+          for marker in ("linear-gradient(135deg,rgba(0,255,124,.98)", "ellipse 92px 76px", "const boost=surface===activeDriverCard?2:1;"):
+              if marker not in source:
+                  raise SystemExit(f"Missing preserved driver-card touch effect: {marker}")
+          for marker in ('id="dante-audio-system"', 'id="danteSoundsEnabled"', 'id="danteSoundVolume"', "AudioContext", "playStartup", "playPop", "playNavigation", "playToggle", "playConfirm", "playError", "playMessage"):
+              if marker not in source:
+                  raise SystemExit(f"Missing Dante sound system feature: {marker}")
           for control_id in ("visualEffectsEnabled", "parallaxEnabled", "transitionsEnabled", "microAnimationsEnabled"):
               if parser.ids.count(control_id) != 1:
                   raise SystemExit(f"Expected exactly one visual-effects control #{control_id}.")
