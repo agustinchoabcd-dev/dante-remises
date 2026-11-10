@@ -2,7 +2,7 @@ name: Client module tests
 
 on:
   push:
-    branches: [dante-test]
+    branches: [dante-test, perf-optimization]
     paths:
       - 'chat-client.mjs'
       - 'chat-client.test.mjs'
