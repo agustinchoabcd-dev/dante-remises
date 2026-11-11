@@ -285,6 +285,7 @@ html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
 body{background-attachment:scroll}
 body>header,body>main,body>#appFooter{position:relative;z-index:1}
 /* El efecto 3D existe exclusivamente en las superficies/recuadros, nunca en el fondo ni en los contenedores generales. */
+.dante-parallax-preparing{will-change:transform}
 .dante-parallax-surface{transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px));transform-style:preserve-3d;backface-visibility:hidden;transition:transform .22s cubic-bezier(.2,.7,.25,1)}
 html.dante-touching .dante-parallax-surface{transition-duration:.06s}
 html.dante-parallax-active .driver-choice:not(:disabled):hover{transform:perspective(900px) rotateX(var(--dante-card-rx,0deg)) rotateY(var(--dante-card-ry,0deg)) translate3d(var(--dante-card-x,0px),var(--dante-card-y,0px),var(--dante-card-z,0px)) translateY(-2px)}
@@ -2303,7 +2304,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
 }
 </style>
 <script id="dante-visual-effects-runtime">
-/* Parallax 3D táctil: superficies dinámicas y realce localizado en la tarjeta bajo el dedo. */
+/* Parallax 3D táctil: geometría cacheada durante el gesto y composición preparada sólo mientras se usa. */
 (function(){
  const root=document.documentElement;
  const $=id=>document.getElementById(id);
@@ -2319,9 +2320,12 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  const driverCardSelector='#passengerCars>.driver-choice,#centralCars>.card';
  let surfaces=[];
  let surfaceRects=[];
+ let preparedSurfaces=[];
+ let rectsDirty=true;
  let touchIdentifier=null;
  let activeDriverCard=null;
  let pendingTouch=null;
+ let lastTouch=null;
  let pendingFrame=0;
  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
  const parallaxAvailable=()=>state.master&&state.parallax&&!(reducedMotion&&reducedMotion.matches);
@@ -2329,6 +2333,25 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
   surfaces=Array.from(document.querySelectorAll(surfaceSelector));
   surfaceRects.length=surfaces.length;
   for(const surface of surfaces)surface.classList.add('dante-parallax-surface');
+  rectsDirty=true;
+ }
+ function prepareVisibleSurfaces(){
+  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
+  preparedSurfaces.length=0;
+  /* Una sola lectura geométrica por superficie al iniciar el gesto o invalidar el layout. */
+  for(let i=0;i<surfaces.length;i++){
+   const rect=surfaces[i].getBoundingClientRect();
+   surfaceRects[i]=rect;
+   if(rect.bottom>0&&rect.right>0&&rect.top<height&&rect.left<width){
+    surfaces[i].classList.add('dante-parallax-preparing');
+    preparedSurfaces.push(surfaces[i]);
+   }else surfaces[i].classList.remove('dante-parallax-preparing');
+  }
+  rectsDirty=false;
+ }
+ function releasePreparedSurfaces(){
+  for(const surface of preparedSurfaces)surface.classList.remove('dante-parallax-preparing');
+  preparedSurfaces.length=0;
  }
  function setActiveDriverCard(card,touch,rect){
   if(activeDriverCard!==card){
@@ -2351,6 +2374,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
    surface.style.setProperty('--dante-card-rx','0deg');
    surface.style.setProperty('--dante-card-ry','0deg');
   }
+  releasePreparedSurfaces();
   if(activeDriverCard){
    activeDriverCard.classList.remove('dante-driver-touch-active');
    activeDriverCard.style.removeProperty('--dante-touch-x');
@@ -2362,6 +2386,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  function resetTouch(){
   touchIdentifier=null;
   pendingTouch=null;
+  lastTouch=null;
   if(pendingFrame){window.cancelAnimationFrame(pendingFrame);pendingFrame=0}
   setNeutralPosition();
  }
@@ -2370,14 +2395,14 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
   const hit=document.elementFromPoint(touch.clientX,touch.clientY);
   const driverCard=hit&&hit.closest?hit.closest(driverCardSelector):null;
   const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
+  if(rectsDirty)prepareVisibleSurfaces();
   let driverRect=null;
-  /* Fase de lectura: obtener toda la geometría antes de modificar estilos. */
-  for(let i=0;i<surfaces.length;i++){
-   const rect=surfaces[i].getBoundingClientRect();
-   surfaceRects[i]=rect;
-   if(surfaces[i]===driverCard)driverRect=rect;
+  /* Las coordenadas de cada tarjeta se reutilizan entre frames; sólo se releen si cambia el layout. */
+  if(driverCard){
+   const driverIndex=surfaces.indexOf(driverCard);
+   if(driverIndex>=0)driverRect=surfaceRects[driverIndex];
   }
-  /* Fase de escritura: el realce y las variables se aplican después de las lecturas. */
+  /* Fase de escritura: no se mezclan lecturas de geometría con cambios de estilos. */
   setActiveDriverCard(driverCard,touch,driverRect);
   for(let i=0;i<surfaces.length;i++){
    const surface=surfaces[i],rect=surfaceRects[i];
@@ -2397,6 +2422,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  }
  function queueTouchFrame(touch){
   pendingTouch={clientX:touch.clientX,clientY:touch.clientY};
+  lastTouch=pendingTouch;
   if(pendingFrame)return;
   pendingFrame=window.requestAnimationFrame(()=>{
    pendingFrame=0;
@@ -2404,11 +2430,16 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
    if(latest)applyTouchFrame(latest);
   });
  }
+ function invalidateGeometry(){
+  rectsDirty=true;
+  if(touchIdentifier!==null&&lastTouch)queueTouchFrame(lastTouch);
+ }
  function findTouch(list){for(let i=0;i<list.length;i++)if(list[i].identifier===touchIdentifier)return list[i];return null}
  function onTouchStart(event){
   if(!parallaxAvailable()||document.hidden||touchIdentifier!==null||!event.changedTouches.length)return;
   refreshSurfaces();
-  const touch=event.changedTouches[0];touchIdentifier=touch.identifier;applyTouchFrame(touch);
+  const touch=event.changedTouches[0];touchIdentifier=touch.identifier;lastTouch={clientX:touch.clientX,clientY:touch.clientY};
+  applyTouchFrame(touch);
  }
  function onTouchMove(event){
   if(touchIdentifier===null||!parallaxAvailable())return;
@@ -2437,8 +2468,10 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  document.addEventListener('touchend',onTouchEnd,{passive:true,capture:true});
  document.addEventListener('touchcancel',resetTouch,{passive:true,capture:true});
  document.addEventListener('visibilitychange',()=>{if(document.hidden)resetTouch()});
+ window.addEventListener('scroll',invalidateGeometry,{passive:true,capture:true});
+ window.addEventListener('resize',invalidateGeometry,{passive:true});
  if(reducedMotion&&typeof reducedMotion.addEventListener==='function')reducedMotion.addEventListener('change',render);
- if(typeof MutationObserver==='function')new MutationObserver(refreshSurfaces).observe(document.body,{childList:true,subtree:true});
+ if(typeof MutationObserver==='function')new MutationObserver(()=>{refreshSurfaces();invalidateGeometry()}).observe(document.body,{childList:true,subtree:true});
  refreshSurfaces();render();
 })();;
 </script>
