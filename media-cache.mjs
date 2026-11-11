@@ -92,8 +92,14 @@ export function createMediaCache({
     try {
       const transaction = db.transaction(STORE_NAME, "readonly");
       const done = transactionDone(transaction);
-      const result = await requestResult(transaction.objectStore(STORE_NAME).getAll());
-      await done;
+      let result;
+      try {
+        result = await requestResult(transaction.objectStore(STORE_NAME).getAll());
+        await done;
+      } catch (error) {
+        await done.catch(() => {});
+        throw error;
+      }
       const merged = new Map(result.map(record => [record.key, record]));
       for (const [key, record] of memory) merged.set(key, record);
       return [...merged.values()];
@@ -111,8 +117,13 @@ export function createMediaCache({
       try {
         const transaction = db.transaction(STORE_NAME, "readonly");
         const done = transactionDone(transaction);
-        record = await requestResult(transaction.objectStore(STORE_NAME).get(key));
-        await done;
+        try {
+          record = await requestResult(transaction.objectStore(STORE_NAME).get(key));
+          await done;
+        } catch (error) {
+          await done.catch(() => {});
+          throw error;
+        }
       } catch (error) {
         emit("read-error", { name: error?.name || "Error" });
         record = null;
