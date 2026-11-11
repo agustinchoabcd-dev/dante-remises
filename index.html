@@ -1945,9 +1945,7 @@ async function startStaffPhotosSync(user){
  if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==uid)return;
  for(const staffUid of Object.keys(STAFF_PHOTO_USERS)){
   const listener=()=>{if(currentUser?.uid===uid)void scheduleStaffPhotoReconcile(uid,staffUid,generation)};
-  staffPhotoListeners.push(onValue(ref(db,`staffPhotos/${staffUid}/photoMeta`),listener,error=>{if(currentUser?.uid===uid)diagnostics.mark('firebase.staffPhotos.meta_error',{code:error?.code||'',name:error?.name||'Error'})}));
   staffPhotoListeners.push(onValue(ref(db,`staffPhotos/${staffUid}/updatedAt`),listener,error=>{if(currentUser?.uid===uid)diagnostics.mark('firebase.staffPhotos.updated_error',{code:error?.code||'',name:error?.name||'Error'})}));
-  void scheduleStaffPhotoReconcile(uid,staffUid,generation);
  }
  perf.mark('firebase.staffPhotos.metadata-listeners.ready',{count:staffPhotoListeners.length});
 }
