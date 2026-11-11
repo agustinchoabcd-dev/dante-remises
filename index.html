@@ -446,6 +446,10 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
   .then(() => perf.mark("service-worker.registered"))
   .catch(error => console.warn("No se pudo activar la caché de recursos estáticos:", error?.name || "Error"));
 }
+if (navigator.storage?.persist) {
+ navigator.storage.persist().then(granted => perf.mark("media-cache.storage-persistent", { granted: granted ? 1 : 0 }))
+  .catch(error => console.warn("El almacenamiento persistente no está disponible:", error?.name || "Error"));
+}
 requestStartupPermissions().catch(error=>console.warn("No se pudieron solicitar permisos iniciales:",error));
 const firebaseConfig = {
   apiKey: "AIzaSyAkODSNiFyWVaPTG7t0qx-Dru4IBqOb9nE",
