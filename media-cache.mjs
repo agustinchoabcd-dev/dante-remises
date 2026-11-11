@@ -46,7 +46,7 @@ export function createMediaCache({
   indexedDBImpl = globalThis.indexedDB,
   urlApi = globalThis.URL,
   maxBytes = 40 * 1024 * 1024,
-  maxAgeMs = 30 * 24 * 60 * 60 * 1000,
+  maxAgeMs = 90 * 24 * 60 * 60 * 1000,
   now = () => Date.now(),
   onMetric = () => {}
 } = {}) {
