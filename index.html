@@ -2339,10 +2339,15 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
   const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
   preparedSurfaces.length=0;
   /* Una sola lectura geométrica por superficie al iniciar el gesto o invalidar el layout. */
+  const visible=[];
   for(let i=0;i<surfaces.length;i++){
    const rect=surfaces[i].getBoundingClientRect();
    surfaceRects[i]=rect;
-   if(rect.bottom>0&&rect.right>0&&rect.top<height&&rect.left<width){
+   visible[i]=rect.bottom>0&&rect.right>0&&rect.top<height&&rect.left<width;
+  }
+  /* Las lecturas terminan antes de preparar capas para evitar alternar lectura/escritura. */
+  for(let i=0;i<surfaces.length;i++){
+   if(visible[i]){
     surfaces[i].classList.add('dante-parallax-preparing');
     preparedSurfaces.push(surfaces[i]);
    }else surfaces[i].classList.remove('dante-parallax-preparing');
@@ -2406,7 +2411,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
   setActiveDriverCard(driverCard,touch,driverRect);
   for(let i=0;i<surfaces.length;i++){
    const surface=surfaces[i],rect=surfaceRects[i];
-   if(!rect||!rect.width||!rect.height)continue;
+   if(!surface.classList.contains('dante-parallax-preparing')||!rect||!rect.width||!rect.height)continue;
    const dx=clamp((rect.left+rect.width/2-touch.clientX)/width,-.5,.5);
    const dy=clamp((rect.top+rect.height/2-touch.clientY)/height,-.5,.5);
    const boost=surface===activeDriverCard?2:1;
