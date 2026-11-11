@@ -182,10 +182,10 @@ export function createMediaCache({
     const record = await get(key);
     if (!record) return null;
     const current = objectUrls.get(key);
-    if (current?.createdAt === record.createdAt) return current.url;
+    if (current?.createdAt === record.createdAt && current?.version === record.version) return current.url;
     const nextUrl = urlApi.createObjectURL(record.blob);
     if (current?.url) urlApi.revokeObjectURL(current.url);
-    objectUrls.set(key, { url: nextUrl, createdAt: record.createdAt });
+    objectUrls.set(key, { url: nextUrl, createdAt: record.createdAt, version: record.version });
     return nextUrl;
   }
 
