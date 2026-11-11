@@ -53,13 +53,14 @@ export function createMediaCache({
   const memory = new Map();
   const objectUrls = new Map();
   let databasePromise = null;
+  let databaseUnavailable = false;
 
   function emit(name, details = {}) {
     try { onMetric(name, details); } catch {}
   }
 
   async function database() {
-    if (!indexedDBImpl) return null;
+    if (!indexedDBImpl || databaseUnavailable) return null;
     if (!databasePromise) {
       databasePromise = new Promise((resolve, reject) => {
         const request = indexedDBImpl.open(DB_NAME, DB_VERSION);
@@ -76,6 +77,7 @@ export function createMediaCache({
         request.onblocked = () => reject(new Error("Media cache upgrade is blocked"));
       }).catch(error => {
         databasePromise = null;
+        databaseUnavailable = true;
         emit("open-error", { name: error?.name || "Error" });
         return null;
       });
@@ -113,7 +115,7 @@ export function createMediaCache({
       emit("miss", { key });
       return null;
     }
-    if (!indexedDBImpl) record.lastAccessAt = now();
+    if (!db) record.lastAccessAt = now();
     if ((record.expiresAt && record.expiresAt <= now()) || now() - record.createdAt > maxAgeMs) {
       await remove(key);
       emit("expired", { key });
