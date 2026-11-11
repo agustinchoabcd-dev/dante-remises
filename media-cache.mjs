@@ -87,8 +87,9 @@ export function createMediaCache({
     const db = await database();
     if (!db) return [...memory.values()];
     const transaction = db.transaction(STORE_NAME, "readonly");
+    const done = transactionDone(transaction);
     const result = await requestResult(transaction.objectStore(STORE_NAME).getAll());
-    await transactionDone(transaction);
+    await done;
     return result;
   }
 
@@ -98,14 +99,21 @@ export function createMediaCache({
     let record;
     if (!db) record = memory.get(key) || null;
     else {
-      const transaction = db.transaction(STORE_NAME, "readonly");
-      record = await requestResult(transaction.objectStore(STORE_NAME).get(key));
-      await transactionDone(transaction);
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const done = transactionDone(transaction);
+      const store = transaction.objectStore(STORE_NAME);
+      record = await requestResult(store.get(key));
+      if (record) {
+        record.lastAccessAt = now();
+        store.put(record);
+      }
+      await done;
     }
     if (!record) {
       emit("miss", { key });
       return null;
     }
+    if (!indexedDBImpl) record.lastAccessAt = now();
     if ((record.expiresAt && record.expiresAt <= now()) || now() - record.createdAt > maxAgeMs) {
       await remove(key);
       emit("expired", { key });
