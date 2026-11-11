@@ -1780,6 +1780,13 @@ byId('savePersonalization').addEventListener('click',async()=>{
  if(pendingPersonalPhotos.vehiclePhoto)payload.vehiclePhoto=pendingPersonalPhotos.vehiclePhoto;
  if(pendingPhotoTransforms.profilePhoto)payload.profilePhotoTransform=pendingPhotoTransforms.profilePhoto;
  if(pendingPhotoTransforms.vehiclePhoto&&target.role!=='operator')payload.vehiclePhotoTransform=pendingPhotoTransforms.vehiclePhoto;
+ const existingPhotoMeta=staffPhotos[uid]?.photoMeta||{},nextPhotoMeta={updatedAt:payload.updatedAt};
+ for(const field of ['profilePhoto','vehiclePhoto']){
+  const transform=payload[field+'Transform']||existingPhotoMeta[field]?.transform||staffPhotos[uid]?.[field+'Transform']||defaultPhotoTransform();
+  const version=payload[field]?await sha256(payload[field]):existingPhotoMeta[field]?.version||staffPhotos[uid]?.[field+'Version']||'';
+  nextPhotoMeta[field]={version,transform};
+ }
+ payload.photoMeta=nextPhotoMeta;
  const photoKinds=[...(pendingPersonalPhotos.profilePhoto?["profilePhoto"]:[]),...(pendingPersonalPhotos.vehiclePhoto?["vehiclePhoto"]:[])];
  const photoCount=photoKinds.length,photoPhase=photoKinds.join("+")||(pendingPhotoTransforms.profilePhoto||pendingPhotoTransforms.vehiclePhoto?"transform":"none");
  const payloadBytes=new TextEncoder().encode(JSON.stringify(payload)).length;
@@ -1789,10 +1796,21 @@ byId('savePersonalization').addEventListener('click',async()=>{
   await update(ref(db,'staffPhotos/'+uid),payload);
   writeCompleted=true;
   diagnostics.mark("firebase.staffPhotos.write.success",{carId:target.carId||"",count:photoCount,phase:photoPhase,bytes:payloadBytes});
-  const verificationSnapshot=await get(ref(db,'staffPhotos/'+uid));
-  const saved=verificationSnapshot.val();
-  const verified=!!saved&&Object.entries(payload).every(([key,value])=>JSON.stringify(saved[key])===JSON.stringify(value));
+  const [metaSnapshot,updatedSnapshot]=await Promise.all([get(ref(db,'staffPhotos/'+uid+'/photoMeta')),get(ref(db,'staffPhotos/'+uid+'/updatedAt'))]);
+  const savedMeta=metaSnapshot.val()||{};
+  let verified=Number(updatedSnapshot.val()||0)===payload.updatedAt&&JSON.stringify(savedMeta)===JSON.stringify(payload.photoMeta);
+  for(const field of photoKinds){const photoSnapshot=await get(ref(db,'staffPhotos/'+uid+'/'+field));if(photoSnapshot.val()!==payload[field])verified=false}
   if(!verified)throw new Error('Firebase aceptó la escritura, pero la lectura posterior no confirmó todos los campos.');
+  const saved={...(staffPhotos[uid]||{}),updatedAt:payload.updatedAt,photoMeta:savedMeta};
+  for(const field of ['profilePhoto','vehiclePhoto']){
+   if(payload[field]){
+    const cacheKey=staffPhotoCacheKey(currentUser.uid,uid,field);
+    await mediaCache.putDataUrl(cacheKey,payload[field],{version:nextPhotoMeta[field].version,privateUid:currentUser.uid,category:'staff-photo',extra:{transform:nextPhotoMeta[field].transform}});
+    saved[field]=await mediaCache.objectUrl(cacheKey);
+    saved[field+'Version']=nextPhotoMeta[field].version;
+   }
+   saved[field+'Transform']=nextPhotoMeta[field].transform;
+  }
   staffPhotos[uid]=saved;
   diagnostics.mark("firebase.staffPhotos.write.verified",{carId:target.carId||"",count:photoCount,phase:photoPhase,bytes:payloadBytes,profilePresent:!!saved.profilePhoto,vehiclePresent:!!saved.vehiclePhoto});
   void diagnostics.flush();
@@ -1813,38 +1831,99 @@ byId('savePersonalization').addEventListener('click',async()=>{
   }
  }
 });
-let staffPhotosFirstSnapshot=true;
-let staffPhotosListenerUnsub=null;
+let staffPhotoListeners=[];
+let staffPhotoSyncGeneration=0;
+const staffPhotoSyncTasks=new Map();
+function staffPhotoCacheKey(viewerUid,staffUid,field){return `private:${viewerUid}:staff:${staffUid}:${field}`}
 function stopStaffPhotosSync(){
- if(staffPhotosListenerUnsub){staffPhotosListenerUnsub();staffPhotosListenerUnsub=null}
+ staffPhotoSyncGeneration++;
+ staffPhotoListeners.forEach(unsubscribe=>{try{unsubscribe()}catch{}});
+ staffPhotoListeners=[];
+ staffPhotoSyncTasks.clear();
  Object.keys(staffPhotos).forEach(key=>delete staffPhotos[key]);
 }
-function startStaffPhotosSync(user){
- const uid=user?.uid;
- if(!uid)return;
- if(staffPhotosListenerUnsub)staffPhotosListenerUnsub();
- staffPhotosListenerUnsub=null;
- staffPhotosFirstSnapshot=true;
- perf.mark('firebase.staffPhotos.listener.attached');
- diagnostics.mark("firebase.staffPhotos.listener.attached");
- staffPhotosListenerUnsub=onValue(ref(db,'staffPhotos'),snap=>{
-  if(currentUser?.uid!==uid)return;
-  diagnostics.mark("firebase.staffPhotos.callback.enter");
-  try{applyStaffPhotosSnapshot(snap,'listener')}catch(error){diagnostics.mark("firebase.staffPhotos.error",{code:error?.code||"",name:error?.name||"Error",phase:"snapshot-process-listener"});console.error('No se pudo procesar la fotografía del personal:',error)}
- },error=>{
-  if(currentUser?.uid!==uid)return;
-  staffPhotosListenerUnsub=null;
-  diagnostics.mark("firebase.staffPhotos.error",{code:error?.code||"",name:error?.name||"Error"});
-  console.error('No se pudieron leer las fotos compartidas:',error);
- });
+async function restoreStaffPhotosCache(viewerUid,generation){
+ for(const staffUid of Object.keys(STAFF_PHOTO_USERS)){
+  if(generation!==staffPhotoSyncGeneration)return;
+  const entry=staffPhotos[staffUid]||{};
+  for(const field of ['profilePhoto','vehiclePhoto']){
+   const cacheKey=staffPhotoCacheKey(viewerUid,staffUid,field),record=await mediaCache.get(cacheKey);
+   if(!record)continue;
+   entry[field]=await mediaCache.objectUrl(cacheKey);
+   entry[field+'Version']=record.version||'';
+   entry[field+'Transform']=record.extra?.transform||entry[field+'Transform']||defaultPhotoTransform();
+  }
+  staffPhotos[staffUid]=entry;
+ }
+ if(generation===staffPhotoSyncGeneration&&currentUser?.uid===viewerUid){paintPersonalizationPreviews();render('staff-photos-cache');perf.mark('staff-photos.cache-restored')}
 }
-function applyStaffPhotosSnapshot(snap,source){
- const data=snap.val()||{},childCount=Object.keys(data).length;
- if(staffPhotosFirstSnapshot){perf.mark('firebase.staffPhotos.first-snapshot',{children:childCount});diagnostics.mark("firebase.staffPhotos.first_snapshot",{children:childCount,kind:source});staffPhotosFirstSnapshot=false}
- if(childCount===0&&Object.keys(staffPhotos).length>0){diagnostics.mark("firebase.staffPhotos.snapshot.empty_ignored",{children:0,kind:source});return}
- Object.keys(staffPhotos).forEach(k=>delete staffPhotos[k]);Object.assign(staffPhotos,data);diagnostics.mark("firebase.staffPhotos.snapshot",{children:Object.keys(staffPhotos).length,kind:source});if(currentUser){paintPersonalizationPreviews();render('staff-photos-'+source)}
+async function reconcileStaffPhotos(viewerUid,staffUid,generation){
+ if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
+ const [metaSnapshot,updatedSnapshot]=await Promise.all([
+  get(ref(db,`staffPhotos/${staffUid}/photoMeta`)),
+  get(ref(db,`staffPhotos/${staffUid}/updatedAt`))
+ ]);
+ if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
+ const meta=metaSnapshot.val()||{},updatedAt=Number(updatedSnapshot.val()||0);
+ const hasMetaTimestamp=Object.prototype.hasOwnProperty.call(meta,'updatedAt');
+ const legacyChanged=updatedAt!==Number(meta.updatedAt||0);
+ const nextMeta={updatedAt},entry=staffPhotos[staffUid]||{};
+ let needsMetaWrite=!hasMetaTimestamp||legacyChanged;
+ for(const field of ['profilePhoto','vehiclePhoto']){
+  const fieldMeta=meta[field]||{};
+  let transform=fieldMeta.transform;
+  if(!transform){const transformSnapshot=await get(ref(db,`staffPhotos/${staffUid}/${field}Transform`));transform=transformSnapshot.val()||defaultPhotoTransform()}
+  const cacheKey=staffPhotoCacheKey(viewerUid,staffUid,field);
+  const cached=await mediaCache.get(cacheKey);
+  const needsFetch=legacyChanged||!fieldMeta.version||cached?.version!==fieldMeta.version;
+  let version=fieldMeta.version||'',source=entry[field]||null;
+  if(needsFetch){
+   const photoSnapshot=await get(ref(db,`staffPhotos/${staffUid}/${field}`));
+   const data=photoSnapshot.val();
+   if(typeof data==='string'&&data.startsWith('data:')){
+    version=await sha256(data);
+    await mediaCache.putDataUrl(cacheKey,data,{version,privateUid:viewerUid,category:'staff-photo',extra:{transform}});
+    source=await mediaCache.objectUrl(cacheKey);
+   }else{
+    version='';source=null;await mediaCache.remove(cacheKey);
+   }
+   if(version!==fieldMeta.version||!fieldMeta.version||legacyChanged)needsMetaWrite=true;
+  }else{
+   source=await mediaCache.objectUrl(cacheKey);
+  }
+  nextMeta[field]={version,transform};
+  entry[field]=source;entry[field+'Version']=version;entry[field+'Transform']=transform;
+ }
+ entry.photoMeta=nextMeta;entry.updatedAt=updatedAt;staffPhotos[staffUid]=entry;
+ const canBackfill=currentUser?.uid===ADMIN_UID||currentUser?.uid===staffUid;
+ if(needsMetaWrite&&canBackfill){
+  try{await update(ref(db,`staffPhotos/${staffUid}/photoMeta`),nextMeta);perf.mark('staff-photos.metadata-backfilled')}
+  catch(error){diagnostics.mark('firebase.staffPhotos.meta_backfill_error',{code:error?.code||'',name:error?.name||'Error'});console.warn('No se pudo actualizar la versión de una foto antigua:',error?.code||error?.name||'Error')}
+ }
+ if(generation===staffPhotoSyncGeneration&&currentUser?.uid===viewerUid){paintPersonalizationPreviews();render('staff-photos-sync')}
 }
-
+function scheduleStaffPhotoReconcile(viewerUid,staffUid,generation){
+ const taskKey=viewerUid+':'+staffUid,existing=staffPhotoSyncTasks.get(taskKey);
+ if(existing){existing.rerun=true;return existing.promise}
+ const state={rerun:false,promise:null};
+ state.promise=(async()=>{do{state.rerun=false;try{await reconcileStaffPhotos(viewerUid,staffUid,generation)}catch(error){diagnostics.mark('firebase.staffPhotos.error',{code:error?.code||'',name:error?.name||'Error'});console.error('No se pudo sincronizar una foto del personal:',error)}}while(state.rerun&&generation===staffPhotoSyncGeneration)})().finally(()=>staffPhotoSyncTasks.delete(taskKey));
+ staffPhotoSyncTasks.set(taskKey,state);
+ return state.promise;
+}
+async function startStaffPhotosSync(user){
+ const uid=user?.uid;if(!uid)return;
+ stopStaffPhotosSync();const generation=staffPhotoSyncGeneration;
+ perf.mark('firebase.staffPhotos.listener.attached');diagnostics.mark('firebase.staffPhotos.listener.attached');
+ await restoreStaffPhotosCache(uid,generation);
+ if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==uid)return;
+ for(const staffUid of Object.keys(STAFF_PHOTO_USERS)){
+  const listener=()=>{if(currentUser?.uid===uid)void scheduleStaffPhotoReconcile(uid,staffUid,generation)};
+  staffPhotoListeners.push(onValue(ref(db,`staffPhotos/${staffUid}/photoMeta`),listener,error=>{if(currentUser?.uid===uid)diagnostics.mark('firebase.staffPhotos.meta_error',{code:error?.code||'',name:error?.name||'Error'})}));
+  staffPhotoListeners.push(onValue(ref(db,`staffPhotos/${staffUid}/updatedAt`),listener,error=>{if(currentUser?.uid===uid)diagnostics.mark('firebase.staffPhotos.updated_error',{code:error?.code||'',name:error?.name||'Error'})}));
+  void scheduleStaffPhotoReconcile(uid,staffUid,generation);
+ }
+ perf.mark('firebase.staffPhotos.metadata-listeners.ready',{count:staffPhotoListeners.length});
+}
 
 fillSelects();render('initial');perf.mark('app.initial.render.done');
 
