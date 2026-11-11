@@ -6,9 +6,13 @@ on:
   push:
     branches:
       - dante-test
+      - cache-optimization
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
+      - 'media-cache.mjs'
+      - 'service-worker.js'
+      - 'scripts/copy-web.mjs'
 
 permissions:
   contents: read
@@ -69,6 +73,8 @@ jobs:
           Path("/tmp/dante-audio-system.mjs").write_text(scripts[0], encoding="utf-8")
           PY
           node --check /tmp/dante-audio-system.mjs
+          node --check media-cache.mjs
+          node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
