@@ -32,7 +32,7 @@ test("expires temporary media and removes private data by account", async () => 
   const cache = createMediaCache({ indexedDBImpl: null, now: () => timestamp });
   await cache.put("private:user-1:chat:one", new Blob(["audio"]), { ttlMs: 5000 });
   await cache.put("private:user-1:staff:one", new Blob(["photo"]));
-  await cache.put("private:user-2:staff:one", new Blob(["other"]));
+  await cache.put("private:user-2:staff:one", new Blob(["other"]), { ttlMs: 5000 });
   assert.equal(await cache.clearPrivate("user-1"), 2);
   assert.equal(await cache.get("private:user-1:chat:one"), null);
   assert.ok(await cache.get("private:user-2:staff:one"));
@@ -50,5 +50,5 @@ test("evicts least-recently-written entries when the byte budget is exceeded", a
 });
 
 test("creates stable SHA-256 versions for image data", async () => {
-  assert.equal(await sha256("dante"), "5f8f9b8f4b4b5e0b0b2e7a4c4d6a7f9c7b5f9d2b2f5e5c5a4f3f2f1f0e0d0c0b".slice(0,64));
+  assert.equal(await sha256("dante"), "16814e8cd706b29de1ba77f011fd96f1b245ca6641b3af63b0f787af54284f90");
 });
