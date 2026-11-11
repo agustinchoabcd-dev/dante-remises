@@ -1,8 +1,8 @@
 const STATIC_CACHE = "dante-static-v1";
 const STATIC_ASSETS = [
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
-  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
- ];
+  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+];
 const ALLOWED_HOSTS = new Set(["unpkg.com", "cdn.jsdelivr.net", "storage.googleapis.com"]);
 
 self.addEventListener("install", event => {
