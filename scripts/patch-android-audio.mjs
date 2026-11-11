@@ -3,6 +3,31 @@ import path from "node:path";
 
 const root = path.resolve("android/app/src/main/java");
 
+const manifestPath = path.resolve("android/app/src/main/AndroidManifest.xml");
+let manifest = await readFile(manifestPath, "utf8");
+const manifestOpen = manifest.match(/<manifest\\b[^>]*>/);
+if (!manifestOpen) throw new Error("No se encontró <manifest> en AndroidManifest.xml");
+
+for (const permission of [
+  "android.permission.RECORD_AUDIO",
+  "android.permission.MODIFY_AUDIO_SETTINGS"
+]) {
+  if (!manifest.includes(`android:name="${permission}"`)) {
+    manifest = manifest.replace(
+      manifestOpen[0],
+      `${manifestOpen[0]}\\n    <uses-permission android:name="${permission}" />`
+    );
+  }
+}
+if (!manifest.includes('android:name="android.hardware.microphone"')) {
+  manifest = manifest.replace(
+    manifestOpen[0],
+    `${manifestOpen[0]}\\n    <uses-feature android:name="android.hardware.microphone" android:required="false" />`
+  );
+}
+await writeFile(manifestPath, manifest, "utf8");
+console.log("AndroidManifest.xml: permisos de micrófono y audio declarados (micrófono opcional).");
+
 async function findMainActivity(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
