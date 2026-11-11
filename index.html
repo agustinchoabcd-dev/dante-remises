@@ -1185,7 +1185,15 @@ async function renderChatPeerAvatar(conversation){
     if(error?.status!==404&&error?.status!==501)throw error;
     result=await api?.getParticipantPhoto(conversation.conversationId,otherUid);
    }
-   if(typeof result?.readUrl==='string'&&result.readUrl.startsWith('https://'))photo=result.readUrl;
+   if(typeof result?.readUrl==='string'&&result.readUrl.startsWith('https://')){
+    const readUrl=result.readUrl,sourceVersion=new URL(readUrl).pathname,cacheKey=`private:${currentUser.uid}:chat-profile:${otherUid}`;
+    const cached=await mediaCache.get(cacheKey);
+    if(cached?.version===sourceVersion)photo=await mediaCache.objectUrl(cacheKey);
+    else{
+     try{const response=await fetch(readUrl,{cache:'no-store'});if(!response.ok)throw new Error('Photo fetch failed');const blob=await response.blob();if(blob.size>0&&blob.size<=1_000_000){await mediaCache.put(cacheKey,blob,{version:sourceVersion,ttlMs:7*24*60*60*1000,privateUid:currentUser.uid,category:'chat-profile'});photo=await mediaCache.objectUrl(cacheKey)}else photo=readUrl}
+     catch{photo=readUrl;perf.mark('media-cache.chat-profile-cors-fallback')}
+    }
+   }
   }catch(error){console.warn('No se pudo obtener la foto de perfil del participante:',error)}
  }
  if(version!==chatPeerAvatarLoadVersion||!photo)return;
@@ -1209,12 +1217,28 @@ function updateChatHistoryControls(){
  button.textContent=chatMessagesLoadingOlder?'Cargando…':'Cargar mensajes anteriores';
 }
 async function getChatAttachmentUrl(conversationId,key){
- const cached=chatAttachmentUrls.get(key);
- if(cached&&cached.expiresAt>Date.now())return cached.url;
- const result=await getChatApiClient()?.getAttachmentReadUrl(conversationId,key);
- if(typeof result?.readUrl!=='string'||!result.readUrl.startsWith('https://'))throw new Error('El servicio no devolvió un enlace seguro para el adjunto.');
- chatAttachmentUrls.set(key,{url:result.readUrl,expiresAt:Date.now()+240_000});
- return result.readUrl;
+ const uid=currentUser?.uid;if(!uid)throw new Error('La sesión del chat ya no está activa.');
+ const cacheKey=`private:${uid}:chat-attachment:${conversationId}:${key}`;
+ const cachedMedia=await mediaCache.get(cacheKey);
+ if(cachedMedia)return mediaCache.objectUrl(cacheKey);
+ const cachedLink=chatAttachmentUrls.get(key);
+ let readUrl=cachedLink&&cachedLink.expiresAt>Date.now()?cachedLink.url:'';
+ if(!readUrl){
+  const result=await getChatApiClient()?.getAttachmentReadUrl(conversationId,key);
+  if(typeof result?.readUrl!=='string'||!result.readUrl.startsWith('https://'))throw new Error('El servicio no devolvió un enlace seguro para el adjunto.');
+  readUrl=result.readUrl;chatAttachmentUrls.set(key,{url:readUrl,expiresAt:Date.now()+240_000});
+ }
+ try{
+  const response=await fetch(readUrl,{cache:'no-store'});
+  if(!response.ok)throw new Error('No se pudo descargar el adjunto.');
+  const blob=await response.blob();
+  if(!blob.size||blob.size>8_000_000)throw new Error('El adjunto supera el tamaño permitido.');
+  await mediaCache.put(cacheKey,blob,{ttlMs:15*24*60*60*1000,privateUid:uid,category:'chat-attachment',extra:{conversationId}});
+  return mediaCache.objectUrl(cacheKey);
+ }catch(error){
+  perf.mark('media-cache.chat-attachment-cors-fallback');
+  return readUrl;
+ } 
 }
 function showChatImageLightbox(src,caption){
  byId('lightboxImage').src=src;byId('lightboxCaption').textContent=caption||'';
