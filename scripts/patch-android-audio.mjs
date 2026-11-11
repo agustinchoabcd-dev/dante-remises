@@ -5,7 +5,7 @@ const root = path.resolve("android/app/src/main/java");
 
 const manifestPath = path.resolve("android/app/src/main/AndroidManifest.xml");
 let manifest = await readFile(manifestPath, "utf8");
-const manifestOpen = manifest.match(/<manifest\\b[^>]*>/);
+const manifestOpen = manifest.match(/<manifest\b[^>]*>/);
 if (!manifestOpen) throw new Error("No se encontró <manifest> en AndroidManifest.xml");
 
 for (const permission of [
@@ -15,14 +15,14 @@ for (const permission of [
   if (!manifest.includes(`android:name="${permission}"`)) {
     manifest = manifest.replace(
       manifestOpen[0],
-      `${manifestOpen[0]}\\n    <uses-permission android:name="${permission}" />`
+      `${manifestOpen[0]}\n    <uses-permission android:name="${permission}" />`
     );
   }
 }
 if (!manifest.includes('android:name="android.hardware.microphone"')) {
   manifest = manifest.replace(
     manifestOpen[0],
-    `${manifestOpen[0]}\\n    <uses-feature android:name="android.hardware.microphone" android:required="false" />`
+    `${manifestOpen[0]}\n    <uses-feature android:name="android.hardware.microphone" android:required="false" />`
   );
 }
 await writeFile(manifestPath, manifest, "utf8");
