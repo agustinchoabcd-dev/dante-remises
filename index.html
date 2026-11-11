@@ -729,26 +729,51 @@ async function waitForPassengerImage(img,src,timeoutMs=15000){
   }
  });
 }
-async function getVerifiedPassengerPhotoUrl(key,token){
+async function getVerifiedPassengerPhoto(key,token){
  const response=await fetch(PROFILE_PHOTO_WORKER+'/v1/profile-photo/read-url?key='+encodeURIComponent(key),{headers:passengerPhotoHeaders(token,false)});
  if(!response.ok)throw new Error('No se pudo obtener el enlace privado de la foto.');
  const data=await response.json();
  if(typeof data.readUrl!=='string'||!data.readUrl.startsWith('https://'))throw new Error('El servidor devolvió un enlace de foto inválido.');
- const image=new Image();
- await waitForPassengerImage(image,data.readUrl);
- return data.readUrl;
+ try{
+  const imageResponse=await fetch(data.readUrl,{cache:'no-store'});
+  if(!imageResponse.ok)throw new Error('No se pudo descargar la foto privada.');
+  const blob=await imageResponse.blob();
+  if(!blob.size||blob.size>1_000_000)throw new Error('La foto descargada está vacía o supera el tamaño permitido.');
+  const objectUrl=URL.createObjectURL(blob),image=new Image();
+  try{await waitForPassengerImage(image,objectUrl)}finally{URL.revokeObjectURL(objectUrl)}
+  return {blob,readUrl:data.readUrl};
+ }catch(fetchError){
+  const image=new Image();
+  await waitForPassengerImage(image,data.readUrl);
+  perf.mark('media-cache.passenger-photo-cors-fallback');
+  return {blob:null,readUrl:data.readUrl};
+ }
 }
 async function loadPassengerPhoto(){
  const version=++passengerPhotoLoadVersion;
  const card=byId('passengerPhotoCard'),isPassenger=currentRole?.role==='passenger',preview=byId('passengerProfilePhotoPreview');
  passengerPhotoReady=false;card.classList.toggle('hidden',!isPassenger);if(!isPassenger)return false;
- const key=currentRole.profile?.profilePhotoKey||'';
- if(!key){preview.removeAttribute('src');setPassengerPhotoStatus('Todavía falta tu foto. Guardala para poder pedir viajes.');return false}
+ const key=currentRole.profile?.profilePhotoKey||'',uid=currentUser?.uid||'';
+ if(!key){preview.removeAttribute('src');if(uid)void mediaCache.removePrefix(`private:${uid}:passenger-profile:`);setPassengerPhotoStatus('Todavía falta tu foto. Guardala para poder pedir viajes.');return false}
+ const cacheKey=`private:${uid}:passenger-profile:${key}`;
  try{
-  const token=await currentUser.getIdToken();
-  const readUrl=await getVerifiedPassengerPhotoUrl(key,token);
+  const cached=await mediaCache.get(cacheKey);
   if(version!==passengerPhotoLoadVersion)return false;
-  preview.src=readUrl;passengerPhotoReady=true;
+  if(cached?.version===key){
+   const localUrl=await mediaCache.objectUrl(cacheKey),image=new Image();
+   await waitForPassengerImage(image,localUrl);
+   if(version!==passengerPhotoLoadVersion)return false;
+   preview.src=localUrl;passengerPhotoReady=true;setPassengerPhotoStatus('Foto de perfil cargada desde el dispositivo.');perf.mark('passenger.photo.cache-hit');return true;
+  }
+  const token=await currentUser.getIdToken();
+  const verified=await getVerifiedPassengerPhoto(key,token);
+  if(version!==passengerPhotoLoadVersion)return false;
+  let source=verified.readUrl;
+  if(verified.blob){
+   await mediaCache.put(cacheKey,verified.blob,{version:key,privateUid:uid,category:'passenger-photo'});
+   source=await mediaCache.objectUrl(cacheKey);
+  }
+  preview.src=source;passengerPhotoReady=true;
   setPassengerPhotoStatus('Foto de perfil guardada y cargada correctamente. Ya podés solicitar viajes.');return true;
  }catch(error){
   console.error(error);
@@ -791,14 +816,16 @@ byId('savePassengerProfilePhoto').addEventListener('click',async()=>{
   const ticket=await ticketResponse.json();newKey=ticket.key;
   const uploaded=await fetch(ticket.uploadUrl,{method:'PUT',headers:{'Content-Type':'image/jpeg'},body:pendingPassengerPhotoBlob});
   if(!uploaded.ok)throw new Error('No se pudo subir la foto. Intentá nuevamente.');
-  const newPhotoUrl=await getVerifiedPassengerPhotoUrl(newKey,token);
+  const verifiedPhoto=await getVerifiedPassengerPhoto(newKey,token);
   if(operationVersion!==passengerPhotoLoadVersion)throw new Error('La operación fue reemplazada por una carga más reciente. Volvé a intentar.');
   await set(ref(db,'profiles/'+currentUser.uid+'/profilePhotoKey'),newKey);profileRefSaved=true;
   currentRole.profile={...(currentRole.profile||{}),profilePhotoKey:newKey};
+  let newPhotoUrl=verifiedPhoto.readUrl;
+  if(verifiedPhoto.blob){const cacheKey=`private:${currentUser.uid}:passenger-profile:${newKey}`;await mediaCache.put(cacheKey,verifiedPhoto.blob,{version:newKey,privateUid:currentUser.uid,category:'passenger-photo'});newPhotoUrl=await mediaCache.objectUrl(cacheKey)}
   byId('passengerProfilePhotoPreview').src=newPhotoUrl;passengerPhotoReady=true;
   pendingPassengerPhotoBlob=null;passengerPhotoInput.value='';passengerPhotoCameraInput.value='';
   setPassengerPhotoStatus('Foto de perfil guardada y cargada correctamente. Ya podés solicitar viajes.');
-  if(oldKey&&oldKey!==newKey){try{const deleted=await deletePassengerPhoto(oldKey,token);if(!deleted)setPassengerPhotoStatus('La foto nueva está lista. No se pudo borrar la anterior; avisá a soporte.')}catch(cleanupError){console.warn('No se pudo borrar la foto anterior.',cleanupError);setPassengerPhotoStatus('La foto nueva está lista. No se pudo borrar la anterior; avisá a soporte.')}}
+  if(oldKey&&oldKey!==newKey){try{const deleted=await deletePassengerPhoto(oldKey,token);if(deleted)await mediaCache.remove(`private:${currentUser.uid}:passenger-profile:${oldKey}`);else setPassengerPhotoStatus('La foto nueva está lista. No se pudo borrar la anterior; avisá a soporte.')}catch(cleanupError){console.warn('No se pudo borrar la foto anterior.',cleanupError);setPassengerPhotoStatus('La foto nueva está lista. No se pudo borrar la anterior; avisá a soporte.')}}
   notify('Foto de perfil guardada y comprobada.');showView('pasajero');
  }catch(error){
   console.error(error);
