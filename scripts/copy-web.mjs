@@ -4,6 +4,8 @@ const sourceDirectory = new URL("../", import.meta.url);
 const destinationDirectory = new URL("../www/", import.meta.url);
 const webAssets = [
   "index.html",
+  "service-worker.js",
+  "media-cache.mjs",
   "role-resolver.mjs",
   "chat-client.mjs",
   "perf-monitor.mjs",
