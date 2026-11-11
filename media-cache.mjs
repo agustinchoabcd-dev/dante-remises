@@ -122,12 +122,11 @@ export function createMediaCache({
         record = null;
       }
     }
-    if (record && !db) record.lastAccessAt = now();
+    if (record && memory.has(key)) { record.lastAccessAt = now(); memory.set(key, record); }
     if (!record) {
       emit("miss", { key });
       return null;
     }
-    if (!db) record.lastAccessAt = now();
     if ((record.expiresAt && record.expiresAt <= now()) || now() - record.createdAt > maxAgeMs) {
       await remove(key);
       emit("expired", { key });
