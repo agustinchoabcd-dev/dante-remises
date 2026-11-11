@@ -27,7 +27,7 @@ test("chat composer exposes photo attachments and on-demand voice recording", as
   assert.ok(html.includes("navigator.mediaDevices.getUserMedia"));
   assert.ok(html.includes("api.sendAttachment"));
   assert.ok(html.includes("getAttachmentReadUrl"));
-  assert.ok(html.includes("attachment.expiresAt"));
+  assert.ok(html.includes("attachment?.expiresAt"));
   assert.ok(html.includes("Adjunto eliminado automáticamente después de 7 días."));
 });
 
