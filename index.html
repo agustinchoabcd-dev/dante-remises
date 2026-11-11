@@ -1869,6 +1869,7 @@ async function restoreStaffPhotosCache(viewerUid,generation){
    if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
    if(!record)continue;
    entry[field]=await mediaCache.objectUrl(cacheKey);
+   if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
    entry[field+'Version']=record.version||'';
    entry[field+'Transform']=record.extra?.transform||entry[field+'Transform']||defaultPhotoTransform();
   }
@@ -1915,13 +1916,15 @@ async function reconcileStaffPhotos(viewerUid,staffUid,generation){
   }else{
    source=await mediaCache.objectUrl(cacheKey);
   }
+  if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
   nextMeta[field]={version,transform};
   entry[field]=source;entry[field+'Version']=version;entry[field+'Transform']=transform;
  }
+ if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
  entry.photoMeta=nextMeta;entry.updatedAt=updatedAt;staffPhotos[staffUid]=entry;
  const canBackfill=currentUser?.uid===ADMIN_UID||currentUser?.uid===staffUid;
  if(needsMetaWrite&&canBackfill){
-  try{await update(ref(db,`staffPhotos/${staffUid}/photoMeta`),nextMeta);perf.mark('staff-photos.metadata-backfilled')}
+  try{await update(ref(db,`staffPhotos/${staffUid}/photoMeta`),nextMeta);if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;perf.mark('staff-photos.metadata-backfilled')}
   catch(error){diagnostics.mark('firebase.staffPhotos.meta_backfill_error',{code:error?.code||'',name:error?.name||'Error'});console.warn('No se pudo actualizar la versión de una foto antigua:',error?.code||error?.name||'Error')}
  }
  if(generation===staffPhotoSyncGeneration&&currentUser?.uid===viewerUid){paintPersonalizationPreviews();render('staff-photos-sync')}
