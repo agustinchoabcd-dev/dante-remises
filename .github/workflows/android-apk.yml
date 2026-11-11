@@ -7,6 +7,7 @@ on:
     branches:
       - dante-test
       - cache-optimization
+      - parallax-optimization
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
