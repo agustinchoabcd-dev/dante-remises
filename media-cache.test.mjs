@@ -52,3 +52,16 @@ test("evicts least-recently-written entries when the byte budget is exceeded", a
 test("creates stable SHA-256 versions for image data", async () => {
   assert.equal(await sha256("dante"), "16814e8cd706b29de1ba77f011fd96f1b245ca6641b3af63b0f787af54284f90");
 });
+test("falls back to in-memory storage when IndexedDB cannot open", async () => {
+  const unavailableIndexedDB = {
+    open() {
+      const request = { error: Object.assign(new Error("Storage unavailable"), { name: "SecurityError" }) };
+      queueMicrotask(() => request.onerror?.());
+      return request;
+    }
+  };
+  const cache = createMediaCache({ indexedDBImpl: unavailableIndexedDB });
+  await cache.put("public:fallback", new Blob(["works"]));
+  const saved = await cache.get("public:fallback");
+  assert.equal(await saved.blob.text(), "works");
+});
