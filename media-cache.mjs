@@ -52,6 +52,7 @@ export function createMediaCache({
 } = {}) {
   const memory = new Map();
   const objectUrls = new Map();
+  const accessTimes = new Map();
   let databasePromise = null;
   let databaseUnavailable = false;
 
@@ -108,21 +109,16 @@ export function createMediaCache({
     let record = memory.get(key) || null;
     if (!record && db) {
       try {
-        const transaction = db.transaction(STORE_NAME, "readwrite");
+        const transaction = db.transaction(STORE_NAME, "readonly");
         const done = transactionDone(transaction);
-        const store = transaction.objectStore(STORE_NAME);
-        record = await requestResult(store.get(key));
-        if (record) {
-          record.lastAccessAt = now();
-          store.put(record);
-        }
+        record = await requestResult(transaction.objectStore(STORE_NAME).get(key));
         await done;
       } catch (error) {
         emit("read-error", { name: error?.name || "Error" });
         record = null;
       }
     }
-    if (record && memory.has(key)) { record.lastAccessAt = now(); memory.set(key, record); }
+    if (record) accessTimes.set(key, now());
     if (!record) {
       emit("miss", { key });
       return null;
@@ -153,6 +149,7 @@ export function createMediaCache({
       category: typeof metadata.category === "string" ? metadata.category : "media",
       extra: metadata.extra && typeof metadata.extra === "object" ? metadata.extra : {}
     };
+    accessTimes.set(key, timestamp);
     const db = await database();
     if (!db) memory.set(key, record);
     else {
@@ -191,6 +188,7 @@ export function createMediaCache({
 
   async function remove(key) {
     memory.delete(key);
+    accessTimes.delete(key);
     const db = await database();
     if (db) {
       try {
@@ -227,7 +225,7 @@ export function createMediaCache({
     );
     for (const record of expired) await remove(record.key);
     const remaining = records.filter(record => !expired.includes(record))
-      .sort((left, right) => (left.lastAccessAt || left.createdAt) - (right.lastAccessAt || right.createdAt));
+      .sort((left, right) => (accessTimes.get(left.key) || left.lastAccessAt || left.createdAt) - (accessTimes.get(right.key) || right.lastAccessAt || right.createdAt));
     let totalBytes = remaining.reduce((sum, record) => sum + (record.size || record.blob?.size || 0), 0);
     for (const record of remaining) {
       if (totalBytes <= maxBytes) break;
