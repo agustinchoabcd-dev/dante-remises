@@ -1793,9 +1793,11 @@ byId('savePersonalization').addEventListener('click',async()=>{
  if(pendingPersonalPhotos.vehiclePhoto)payload.vehiclePhoto=pendingPersonalPhotos.vehiclePhoto;
  if(pendingPhotoTransforms.profilePhoto)payload.profilePhotoTransform=pendingPhotoTransforms.profilePhoto;
  if(pendingPhotoTransforms.vehiclePhoto&&target.role!=='operator')payload.vehiclePhotoTransform=pendingPhotoTransforms.vehiclePhoto;
- const existingPhotoMeta=staffPhotos[uid]?.photoMeta||{},nextPhotoMeta={updatedAt:payload.updatedAt};
+ const existingMetaSnapshot=await get(ref(db,'staffPhotos/'+uid+'/photoMeta'));
+ const existingPhotoMeta=existingMetaSnapshot.val()||staffPhotos[uid]?.photoMeta||{},nextPhotoMeta={updatedAt:payload.updatedAt};
  for(const field of ['profilePhoto','vehiclePhoto']){
-  const transform=payload[field+'Transform']||existingPhotoMeta[field]?.transform||staffPhotos[uid]?.[field+'Transform']||defaultPhotoTransform();
+  let transform=payload[field+'Transform']||existingPhotoMeta[field]?.transform||staffPhotos[uid]?.[field+'Transform'];
+  if(!transform){const transformSnapshot=await get(ref(db,'staffPhotos/'+uid+'/'+field+'Transform'));transform=transformSnapshot.val()||defaultPhotoTransform()}
   const version=payload[field]?await sha256(payload[field]):existingPhotoMeta[field]?.version||staffPhotos[uid]?.[field+'Version']||'';
   nextPhotoMeta[field]={version,transform};
  }
