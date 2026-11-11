@@ -511,7 +511,7 @@ let latestDriverPresence = {};
 const ADMIN_UID='2kDmq0zik2SQiqz7WxU8PC9bOlk1';
 const LOCATIONIQ_KEY='pk.5345850e051f788db6c1274d8cb1eb72';
 const PROFILE_PHOTO_WORKER='https://dante-remises-b2-test.agustinchoabcd.workers.dev';
-// Empty until a separately reviewed chat Worker is deployed and its URL is approved.
+// Shared B2 + chat Worker; media and operator-selector routes stay fail-closed until their dedicated configuration is enabled.
 const CHAT_API_BASE_URL='https://dante-remises-b2-test.agustinchoabcd.workers.dev'; // Shared B2 + chat Worker; Firebase ID tokens are sent per request.
 diagnostics.configure({endpoint:CHAT_API_BASE_URL+"/v1/chat/diagnostics",getToken:()=>auth.currentUser?.getIdToken(),getContext:()=>({role:currentRole?.role||"unknown",carId:currentRole?.carId||(currentRole?.role==="admin"?"144":"")}),client:{appVersion:"0.6.1",build:"apk195-diagnostics-fix"}});
 installAppTelemetry({monitor:diagnostics});
