@@ -65,3 +65,18 @@ test("falls back to in-memory storage when IndexedDB cannot open", async () => {
   const saved = await cache.get("public:fallback");
   assert.equal(await saved.blob.text(), "works");
 });
+test("replaces the object URL when a cached image version changes", async () => {
+  let nextId = 0;
+  const revoked = [];
+  const urlApi = {
+    createObjectURL() { return `blob:test-${++nextId}`; },
+    revokeObjectURL(url) { revoked.push(url); }
+  };
+  const cache = createMediaCache({ indexedDBImpl: null, urlApi });
+  await cache.put("staff:photo", new Blob(["old"]), { version: "v1" });
+  const oldUrl = await cache.objectUrl("staff:photo");
+  await cache.put("staff:photo", new Blob(["new"]), { version: "v2" });
+  const newUrl = await cache.objectUrl("staff:photo");
+  assert.notEqual(oldUrl, newUrl);
+  assert.deepEqual(revoked, [oldUrl]);
+});
