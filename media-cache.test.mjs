@@ -80,3 +80,17 @@ test("replaces the object URL when a cached image version changes", async () => 
   assert.notEqual(oldUrl, newUrl);
   assert.deepEqual(revoked, [oldUrl]);
 });
+test("evicts the least recently accessed entry first", async () => {
+  let timestamp = 1;
+  const cache = createMediaCache({ indexedDBImpl: null, maxBytes: 8, now: () => timestamp });
+  await cache.put("one", new Blob(["1111"]));
+  timestamp = 2;
+  await cache.put("two", new Blob(["2222"]));
+  timestamp = 3;
+  assert.ok(await cache.get("one"));
+  timestamp = 4;
+  await cache.put("three", new Blob(["3333"]));
+  assert.ok(await cache.get("one"));
+  assert.equal(await cache.get("two"), null);
+  assert.ok(await cache.get("three"));
+});
