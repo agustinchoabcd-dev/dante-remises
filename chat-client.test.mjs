@@ -12,6 +12,7 @@ test("passenger chat exposes the connected-operator selector in the green chat h
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
   assert.ok(html.includes('id="chatPeerSelect"'));
   assert.ok(html.includes('id="chatPeerMenu"'));
+  assert.ok(html.includes('class="chat-peer-caret" aria-hidden="true">▼</span>'));
   assert.ok(html.includes("api.listOperators()"));
   assert.ok(html.includes("setInterval(sendOperatorPresence,10_000)"));
   assert.ok(html.includes("getProfilePhoto(otherUid)"));
@@ -26,6 +27,8 @@ test("chat composer exposes photo attachments and on-demand voice recording", as
   assert.ok(html.includes("navigator.mediaDevices.getUserMedia"));
   assert.ok(html.includes("api.sendAttachment"));
   assert.ok(html.includes("getAttachmentReadUrl"));
+  assert.ok(html.includes("attachment.expiresAt"));
+  assert.ok(html.includes("Adjunto eliminado automáticamente después de 7 días."));
 });
 
 function makeClient(fetchImpl, token = "firebase-test-token") {
