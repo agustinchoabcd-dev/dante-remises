@@ -88,29 +88,41 @@ export function createMediaCache({
   async function allRecords() {
     const db = await database();
     if (!db) return [...memory.values()];
-    const transaction = db.transaction(STORE_NAME, "readonly");
-    const done = transactionDone(transaction);
-    const result = await requestResult(transaction.objectStore(STORE_NAME).getAll());
-    await done;
-    return result;
+    try {
+      const transaction = db.transaction(STORE_NAME, "readonly");
+      const done = transactionDone(transaction);
+      const result = await requestResult(transaction.objectStore(STORE_NAME).getAll());
+      await done;
+      const merged = new Map(result.map(record => [record.key, record]));
+      for (const [key, record] of memory) merged.set(key, record);
+      return [...merged.values()];
+    } catch (error) {
+      emit("read-error", { name: error?.name || "Error" });
+      return [...memory.values()];
+    }
   }
 
   async function get(key) {
     if (typeof key !== "string" || !key) throw new TypeError("Cache key is required");
     const db = await database();
-    let record;
-    if (!db) record = memory.get(key) || null;
-    else {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const done = transactionDone(transaction);
-      const store = transaction.objectStore(STORE_NAME);
-      record = await requestResult(store.get(key));
-      if (record) {
-        record.lastAccessAt = now();
-        store.put(record);
+    let record = memory.get(key) || null;
+    if (!record && db) {
+      try {
+        const transaction = db.transaction(STORE_NAME, "readwrite");
+        const done = transactionDone(transaction);
+        const store = transaction.objectStore(STORE_NAME);
+        record = await requestResult(store.get(key));
+        if (record) {
+          record.lastAccessAt = now();
+          store.put(record);
+        }
+        await done;
+      } catch (error) {
+        emit("read-error", { name: error?.name || "Error" });
+        record = null;
       }
-      await done;
     }
+    if (record && !db) record.lastAccessAt = now();
     if (!record) {
       emit("miss", { key });
       return null;
@@ -145,9 +157,16 @@ export function createMediaCache({
     const db = await database();
     if (!db) memory.set(key, record);
     else {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      transaction.objectStore(STORE_NAME).put(record);
-      await transactionDone(transaction);
+      try {
+        const transaction = db.transaction(STORE_NAME, "readwrite");
+        const done = transactionDone(transaction);
+        transaction.objectStore(STORE_NAME).put(record);
+        await done;
+        memory.delete(key);
+      } catch (error) {
+        memory.set(key, record);
+        emit("write-error", { name: error?.name || "Error", bytes: record.size });
+      }
     }
     emit("write", { key, bytes: record.size, category: record.category });
     await prune();
@@ -172,12 +191,17 @@ export function createMediaCache({
   }
 
   async function remove(key) {
+    memory.delete(key);
     const db = await database();
-    if (!db) memory.delete(key);
-    else {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      transaction.objectStore(STORE_NAME).delete(key);
-      await transactionDone(transaction);
+    if (db) {
+      try {
+        const transaction = db.transaction(STORE_NAME, "readwrite");
+        const done = transactionDone(transaction);
+        transaction.objectStore(STORE_NAME).delete(key);
+        await done;
+      } catch (error) {
+        emit("delete-error", { name: error?.name || "Error" });
+      }
     }
     const current = objectUrls.get(key);
     if (current?.url) urlApi.revokeObjectURL(current.url);
