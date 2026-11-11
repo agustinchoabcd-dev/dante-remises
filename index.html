@@ -1236,6 +1236,7 @@ async function getChatAttachmentUrl(conversationId,key){
   const response=await fetch(readUrl,{cache:'no-store'});
   if(!response.ok)throw new Error('No se pudo descargar el adjunto.');
   const blob=await response.blob();
+  if(currentUser?.uid!==uid)throw new Error('La sesión del chat cambió durante la descarga.');
   if(!blob.size||blob.size>8_000_000)throw new Error('El adjunto supera el tamaño permitido.');
   await mediaCache.put(cacheKey,blob,{ttlMs:15*24*60*60*1000,privateUid:uid,category:'chat-attachment',extra:{conversationId}});
   return mediaCache.objectUrl(cacheKey);
@@ -1672,6 +1673,7 @@ onAuthStateChanged(auth,async user=>{
   void mediaCache.clearPrivate(previousMediaUid).catch(error=>console.warn('No se pudo limpiar la caché privada de la cuenta anterior:',error?.name||'Error'));
  }
  const authGeneration=++authStateGeneration;
+ passengerPhotoLoadVersion++;chatPeerAvatarLoadVersion++;
  perf.mark("auth.callback.start");
  stopStaffPhotosSync();
  await stopOperatorPresence();
@@ -1860,7 +1862,9 @@ async function restoreStaffPhotosCache(viewerUid,generation){
   if(generation!==staffPhotoSyncGeneration)return;
   const entry=staffPhotos[staffUid]||{};
   for(const field of ['profilePhoto','vehiclePhoto']){
+   if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
    const cacheKey=staffPhotoCacheKey(viewerUid,staffUid,field),record=await mediaCache.get(cacheKey);
+   if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
    if(!record)continue;
    entry[field]=await mediaCache.objectUrl(cacheKey);
    entry[field+'Version']=record.version||'';
@@ -1883,19 +1887,24 @@ async function reconcileStaffPhotos(viewerUid,staffUid,generation){
  const nextMeta={updatedAt},entry=staffPhotos[staffUid]||{};
  let needsMetaWrite=!hasMetaTimestamp||legacyChanged;
  for(const field of ['profilePhoto','vehiclePhoto']){
+  if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
   const fieldMeta=meta[field]||{};
   let transform=fieldMeta.transform;
   if(!transform){const transformSnapshot=await get(ref(db,`staffPhotos/${staffUid}/${field}Transform`));transform=transformSnapshot.val()||defaultPhotoTransform()}
+  if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
   const cacheKey=staffPhotoCacheKey(viewerUid,staffUid,field);
   const cached=await mediaCache.get(cacheKey);
+  if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
   const needsFetch=legacyChanged||!fieldMeta.version||cached?.version!==fieldMeta.version;
   let version=fieldMeta.version||'',source=entry[field]||null;
   if(needsFetch){
    const photoSnapshot=await get(ref(db,`staffPhotos/${staffUid}/${field}`));
+   if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
    const data=photoSnapshot.val();
    if(typeof data==='string'&&data.startsWith('data:')){
     version=await sha256(data);
     await mediaCache.putDataUrl(cacheKey,data,{version,privateUid:viewerUid,category:'staff-photo',extra:{transform}});
+    if(generation!==staffPhotoSyncGeneration||currentUser?.uid!==viewerUid)return;
     source=await mediaCache.objectUrl(cacheKey);
    }else{
     version='';source=null;await mediaCache.remove(cacheKey);
