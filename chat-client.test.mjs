@@ -405,7 +405,7 @@ test("retains the idempotency key when both immediate attempts have uncertain ou
 test("chat header can switch existing conversations and connected operators", async () => {
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
   assert.ok(html.includes('id="chatPeerSelect"'));
-  assert.ok(html.includes('data-conversation-id=conversation.conversationId'));
+  assert.ok(html.includes('button.dataset.conversationId=conversation.conversationId'));
   assert.ok(html.includes("selectChatConversation(conversation)"));
   assert.ok(html.includes("nuevo chat"));
 });
