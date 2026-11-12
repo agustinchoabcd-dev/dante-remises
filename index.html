@@ -1183,10 +1183,11 @@ async function refreshChatOperators(){
   const result=await api.listOperators();
   chatOperators=Array.isArray(result?.operators)?result.operators:[];
   if(!chatOperators.some(item=>item.uid===chatSelectedOperatorUid))chatSelectedOperatorUid=chatOperators[0]?.uid||'';
-  renderChatOperatorMenu();updatePassengerOperatorSelector(activeChatConversation);
+  renderChatOperatorMenu();renderChatConversationList();updatePassengerOperatorSelector(activeChatConversation);
  }catch(error){
+  chatOperators=[];renderChatOperatorMenu();renderChatConversationList();updatePassengerOperatorSelector(activeChatConversation);
   if(error?.status===404||error?.status===501){
-   chatOperatorServiceUnavailable=true;chatOperators=[];renderChatOperatorMenu();updatePassengerOperatorSelector(activeChatConversation);
+   chatOperatorServiceUnavailable=true;
    if(chatOperatorPollTimer!==null){clearInterval(chatOperatorPollTimer);chatOperatorPollTimer=null}
   }else console.warn('No se pudo actualizar la lista de operadores conectados:',error)
  }
@@ -1309,8 +1310,24 @@ async function renderChatPeerAvatar(conversation){
 }
 function renderChatConversationList(){
  const list=byId('chatConversationList');list.replaceChildren();
- if(!chatConversations.length){const empty=document.createElement('p');empty.className='hint';empty.textContent='Todavía no tenés conversaciones.';list.appendChild(empty);return}
- chatConversations.forEach(conversation=>{
+ const visible=currentRole?.role==='passenger'
+  ?chatConversations.filter(conversation=>{
+    if(conversation.kind==='operator-support')return chatOperators.length>0;
+    if(conversation.kind==='passenger-operator'){
+     const otherUid=Object.keys(conversation.participantUids||{}).find(uid=>uid!==currentUser?.uid);
+     return chatOperators.some(operator=>operator.uid===otherUid);
+    }
+    return true;
+   })
+  :chatConversations;
+ if(!visible.length){
+  const empty=document.createElement('p');empty.className='hint';
+  empty.textContent=currentRole?.role==='passenger'&&chatConversations.length
+   ?'No hay operadores conectados. Podés iniciar un chat con un chofer.'
+   :'Todavía no tenés conversaciones.';
+  list.appendChild(empty);return;
+ }
+ visible.forEach(conversation=>{
   const button=document.createElement('button');button.type='button';button.className='chat-conversation'+(conversation.conversationId===activeChatConversation?.conversationId?' active':'');button.dataset.conversationId=conversation.conversationId;
   const title=document.createElement('strong');title.textContent=conversationTitle(conversation);button.appendChild(title);
   const preview=document.createElement('small');preview.textContent=conversation.lastMessagePreview||'Sin mensajes todavía';button.appendChild(preview);list.appendChild(button);
@@ -1732,6 +1749,34 @@ async function listAllChatConversations(api){
  const conversations=[...byId.values()].sort((a,b)=>(Number(b.lastMessageAt)||0)-(Number(a.lastMessageAt)||0));
  return {conversations,complete:!hasMore};
 }
+function getDefaultChatConversation(){
+ if(currentRole?.role==='passenger'){
+  if(!chatOperators.length)return null;
+  const support=chatConversations.find(conversation=>conversation.kind==='operator-support');
+  if(support)return support;
+  return chatConversations.find(conversation=>{
+   if(conversation.kind!=='passenger-operator')return false;
+   const otherUid=Object.keys(conversation.participantUids||{}).find(uid=>uid!==currentUser?.uid);
+   return chatOperators.some(operator=>operator.uid===otherUid);
+  })||null;
+ }
+ return chatConversations[0]||null;
+}
+async function ensurePassengerDefaultChat(){
+ if(currentRole?.role!=='passenger'||activeChatConversation||!chatOperators.length)return;
+ const preferred=getDefaultChatConversation();
+ if(preferred){await selectChatConversation(preferred);return}
+ const api=getChatApiClient();if(!api)return;
+ try{
+  const result=await api.openConversation({target:'operators'});
+  if(!result?.conversation?.conversationId)throw new Error('El servicio no devolvió el chat de operadores.');
+  activeChatConversation=result.conversation;
+  await refreshChatConversations(true);
+ }catch(error){
+  setChatStatus(error.message||'No se pudo abrir el chat de operadores.');
+  console.warn('No se pudo abrir la conversación general de operadores:',error);
+ }
+}
 async function refreshChatConversations(silent=false){
  if(!ensureChatSessionForCurrentUser())return false;
  const api=getChatApiClient();if(!api)return false;if(chatRefreshing){chatRefreshPending=true;return true;}
@@ -1751,7 +1796,7 @@ async function refreshChatConversations(silent=false){
     renderChatMessages([],'bottom');updateChatHistoryControls();
    }
   }
-  if(!activeChatConversation&&chatConversations.length)await selectChatConversation(chatConversations[0]);
+  if(!activeChatConversation&&chatConversations.length){const preferred=getDefaultChatConversation();if(preferred)await selectChatConversation(preferred);}
   if(!chatConversations.length){
    activeChatConversation=null;chatMessagesConversationId=null;chatMessages=[];chatMessagesCursor=null;chatMessagesHasMore=false;
    byId('chatTitle').textContent='Elegí una conversación';renderChatMessages([],'bottom');updateChatHistoryControls();
@@ -1769,7 +1814,7 @@ async function loadChatView(){
  if(cachedList?.conversations?.length){
   chatConversations=cachedList.conversations;
   renderChatConversationList();renderChatOperatorMenu();updatePassengerOperatorSelector(activeChatConversation);
-  if(!activeChatConversation){
+  if(!activeChatConversation&&currentRole?.role!=='passenger'){
    const cachedActive=chatConversations[0];
    activeChatConversation=cachedActive;
    await selectChatConversation(cachedActive);
@@ -1785,7 +1830,7 @@ async function loadChatView(){
  }
  byId('chatStartButton').disabled=false;byId('chatRefreshButton').disabled=false;
  byId('chatFooterNote').textContent='Los mensajes de texto, fotografías y audios se envían mediante el servicio de chat.';
- await refreshChatConversations();startChatPolling();void prefetchChatConversationHistories();
+ await refreshChatConversations();await ensurePassengerDefaultChat();startChatPolling();void prefetchChatConversationHistories();
 }
 async function openChatConversation(payload){
  if(!ensureChatSessionForCurrentUser())return;
