@@ -1695,11 +1695,25 @@ async function selectChatConversation(conversation){
  const title=await resolveConversationTitle(conversation);
  if(activeChatConversation?.conversationId===conversation.conversationId){byId('chatTitle').textContent=title;updatePassengerOperatorSelector(conversation);renderChatConversationList();void renderChatPeerAvatar(conversation);startChatEvents(conversation.conversationId)}
 }
+async function listAllChatConversations(api){
+ const first=await api.listConversations();
+ const byId=new Map();
+ (Array.isArray(first?.conversations)?first.conversations:[]).forEach(item=>{if(item?.conversationId)byId.set(item.conversationId,item)});
+ let cursor=first?.nextCursor||null,hasMore=Boolean(first?.hasMore),lastCursor='';
+ while(hasMore&&cursor&&cursor!==lastCursor){
+  lastCursor=cursor;
+  const page=await api.listConversations(cursor);
+  (Array.isArray(page?.conversations)?page.conversations:[]).forEach(item=>{if(item?.conversationId)byId.set(item.conversationId,item)});
+  cursor=page?.nextCursor||null;hasMore=Boolean(page?.hasMore);
+ }
+ const conversations=[...byId.values()].sort((a,b)=>(Number(b.lastMessageAt)||0)-(Number(a.lastMessageAt)||0));
+ return {conversations,complete:!hasMore};
+}
 async function refreshChatConversations(silent=false){
  const api=getChatApiClient();if(!api)return false;if(chatRefreshing){chatRefreshPending=true;return true;}
  chatRefreshing=true;
  try{
-  const result=await api.listConversations();chatConversations=Array.isArray(result.conversations)?result.conversations:[];
+  const result=await listAllChatConversations(api);chatConversations=Array.isArray(result.conversations)?result.conversations:[];
   if(currentUser?.uid)await chatHistoryCache.putConversations(currentUser.uid,chatConversations);
   renderChatConversationList();renderChatOperatorMenu();updatePassengerOperatorSelector(activeChatConversation);
   if(activeChatConversation){
