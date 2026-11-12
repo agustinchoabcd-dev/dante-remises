@@ -1595,8 +1595,15 @@ async function prefetchChatConversationHistories(){
    const conversationId=conversation?.conversationId;
    if(!conversationId||conversationId===activeChatConversation?.conversationId)continue;
    const cached=await chatHistoryCache.getMessages(uid,conversationId);
-   if(cached?.complete)continue;
    try{
+    if(cached?.complete){
+     if((Number(conversation.lastMessageAt)||0)>(Number(cached.lastSyncedAt)||0)){
+      const latest=await api.listMessages(conversationId);
+      const updated=mergeChatMessagePages(cached.messages||[],latest.messages||[]);
+      await chatHistoryCache.putMessages(uid,conversationId,updated,{complete:true});
+     }
+     continue;
+    }
     const firstPage=await api.listMessages(conversationId);
     const complete=await syncCompleteChatHistory(conversationId,uid,firstPage);
     if(complete===false)break;
