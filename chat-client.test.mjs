@@ -31,6 +31,12 @@ test("chat composer exposes photo attachments and on-demand voice recording", as
   assert.ok(html.includes("Adjunto eliminado automáticamente después de 7 días."));
 });
 
+test("clears every private media cache entry when the authenticated account signs out", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("if(previousMediaUid&&!user){"));
+  assert.ok(html.includes("void mediaCache.clearPrivate(previousMediaUid)"));
+});
+
 function makeClient(fetchImpl, token = "firebase-test-token") {
   return new ChatApiClient({
     baseUrl: "https://chat.example.test/",
