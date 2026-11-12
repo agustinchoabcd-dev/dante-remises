@@ -26,6 +26,21 @@ button,select,input,textarea{font:inherit}button{cursor:pointer;border:0;border-
 .image-lightbox>img{display:block;max-width:min(94vw,1000px);max-height:78vh;width:auto;height:auto;object-fit:contain;border-radius:12px;box-shadow:0 12px 48px #0008;background:#fff}
 .lightbox-close{position:absolute;top:16px;right:18px;width:46px;height:46px;padding:0;border-radius:50%;background:#fff;color:#182230;font-size:32px;line-height:1}
 .lightbox-caption{color:#fff;font-size:14px;text-align:center}
+
+/* Dedicated WhatsApp-like chat screen: no card expansion or parallax surface. */
+.chat-peer-group-label{padding:10px 12px 5px;color:var(--muted);font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.chat-peer-menu button{min-height:44px}
+body.chat-screen-open,html.chat-screen-open{overflow:hidden!important;overscroll-behavior:none}
+body.chat-screen-open #chat{position:fixed!important;inset:0!important;z-index:10000!important;display:flex!important;flex-direction:column!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;margin:0!important;padding:0!important;overflow:hidden!important;background:var(--bg)!important}
+body.chat-screen-open #chat>h2,body.chat-screen-open #chat>#chatIntro,body.chat-screen-open #chat .chatRecipientField,body.chat-screen-open #chat #chatRecipientField,body.chat-screen-open #chat>.card.panel>.field,body.chat-screen-open #chat>.card.panel>.actions,body.chat-screen-open #chat #chatStatus,body.chat-screen-open #chat #chatConversationList,body.chat-screen-open #chat #chatFooterNote{display:none!important}
+body.chat-screen-open #chat>.card.panel{display:flex!important;flex:1 1 auto!important;flex-direction:column!important;width:100%!important;max-width:none!important;min-height:0!important;height:100%!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important;background:var(--bg)!important}
+body.chat-screen-open #chat .chatbox{position:relative!important;inset:auto!important;z-index:auto!important;display:flex!important;flex:1 1 auto!important;flex-direction:column!important;width:100%!important;max-width:none!important;min-width:0!important;height:100%!important;min-height:0!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important;transform:none!important;transition:none!important;background:var(--card)!important}
+body.chat-screen-open #chat .chathead{flex:0 0 auto!important;padding-top:max(12px,env(safe-area-inset-top))!important;padding-left:max(14px,env(safe-area-inset-left))!important;padding-right:max(14px,env(safe-area-inset-right))!important;border-radius:0!important}
+body.chat-screen-open #chat .messages{flex:1 1 auto!important;height:auto!important;min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding-bottom:18px}
+body.chat-screen-open #chat .chat-history-toolbar{flex:0 0 auto!important;padding-top:8px}
+body.chat-screen-open #chat .chatcompose{flex:0 0 auto!important;padding-bottom:max(12px,env(safe-area-inset-bottom))!important;padding-left:max(12px,env(safe-area-inset-left))!important;padding-right:max(12px,env(safe-area-inset-right))!important}
+body.chat-screen-open #chat .chat-peer-menu{position:fixed!important;top:calc(env(safe-area-inset-top) + 68px)!important;left:12px!important;right:12px!important;max-height:60dvh!important;overflow:auto!important}
+body.chat-screen-open #chat .chatbox,body.chat-screen-open #chat .chatbox *{transform:none!important}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -437,6 +452,7 @@ import { diagnostics } from "./diagnostics-monitor.mjs";
 import { installAppTelemetry } from "./app-telemetry.mjs";
 import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.mjs";
 import { ChatApiClient, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";
+import { chatHistoryCache } from "./chat-history-cache.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getDatabase, ref, onValue as firebaseOnValue, get as firebaseGet, set as firebaseSet, update as firebaseUpdate, remove as firebaseRemove, push as firebasePush, runTransaction as firebaseRunTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
@@ -861,6 +877,7 @@ function showPassengerOnboarding(){
 }
 function showView(v){
  diagnostics.mark("ui.view",{view:v});
+ if(v!=='chat')closeChatScreen();
  if(v==='pasajero'&&currentRole?.role==='passenger'&&!passengerPhotoReady){showPassengerOnboarding();return}
  if(v==='configuracion'&&!currentUser){notify('Iniciá sesión para acceder a Configuración.');return}
  if(v==='chofer'&&(!currentRole||!['admin','driver'].includes(currentRole.role))){notify('Esta sección es exclusiva del personal.');return}
@@ -980,7 +997,7 @@ byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='op
 byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
 byId('setFree').addEventListener('click',()=>setStatus(activeDriver,'libre'));
-let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,operatorPresenceUnavailable=false,chatOperatorPollTimer=null,chatOperatorServiceUnavailable=false,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false,chatRecordingFinalized=false,chatRecordingHoldActive=false,chatRecordingAutoSend=false,activeTripRestoreVersion=0;
+let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatDirectoryRecipients=[],chatHistorySyncing=new Set(),chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatMessagesUid=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,operatorPresenceUnavailable=false,chatOperatorPollTimer=null,chatOperatorServiceUnavailable=false,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false,chatRecordingFinalized=false,chatRecordingHoldActive=false,chatRecordingAutoSend=false,activeTripRestoreVersion=0;
 function getChatApiClient(){
  if(!CHAT_API_BASE_URL||!currentUser)return null;
  if(!chatApiClient)chatApiClient=new ChatApiClient({baseUrl:CHAT_API_BASE_URL,getIdToken:()=>currentUser.getIdToken()});
@@ -1060,8 +1077,47 @@ function chatRecipientLabel(value){
  if(value==='operators')return 'Operadores de Dante Remises';
  if(value==='available')return 'Cualquier remisero libre';
  if(value.startsWith('driver:')){const c=cars[value.slice(7)];return c?`${c.driver} · Coche ${c.id}`:'Chofer'}
+ if(value.startsWith('operator:')){const operator=chatOperators.find(item=>item.uid===value.slice(9));return operator?operator.firstName+' · operador':'Operador conectado'}
  if(value.startsWith('user:'))return byId('contactChoice').selectedOptions[0]?.textContent||'Usuario';
  return 'Conversación';
+}
+function getChatDriverRecipients(){
+ return initial.map(car=>{
+  const uid=driverUidForCar(car.id),known=USER_ROLES[uid]||{};
+  if(!uid||uid===currentUser?.uid)return null;
+  return {uid,carId:car.id,name:known.name||car.driver,role:uid===ADMIN_UID?'admin':'driver'};
+ }).filter(Boolean);
+}
+function appendChatMenuHeading(menu,label){
+ const heading=document.createElement('div');heading.className='chat-peer-group-label';heading.textContent=label;menu.appendChild(heading);
+}
+function findChatConversationForUid(uid){
+ return chatConversations.find(conversation=>
+  conversation.kind!=='operator-support'&&
+  conversation.participantUids?.[currentUser?.uid]===true&&
+  conversation.participantUids?.[uid]===true
+ )||null;
+}
+function appendChatRecipientGroup(menu,label,recipients,targetType){
+ if(!recipients.length)return 0;
+ appendChatMenuHeading(menu,label);
+ recipients.forEach(recipient=>{
+  const button=document.createElement('button');button.type='button';button.setAttribute('role','menuitem');
+  const existing=findChatConversationForUid(recipient.uid);
+  if(existing)button.dataset.conversationId=existing.conversationId;
+  else{button.dataset.targetUid=recipient.uid;button.dataset.targetType=targetType}
+  button.textContent=recipient.carId?`${recipient.name} (${recipient.carId})`:recipient.name;
+  menu.appendChild(button);
+ });
+ return recipients.length;
+}
+function appendChatConversationGroup(menu,conversations,label='Conversaciones'){
+ if(!conversations.length)return;
+ appendChatMenuHeading(menu,label);
+ conversations.forEach(conversation=>{
+  const button=document.createElement('button');button.type='button';button.dataset.conversationId=conversation.conversationId;
+  button.setAttribute('role','menuitem');button.textContent=conversationTitle(conversation);menu.appendChild(button);
+ });
 }
 async function configureChatRecipients(){
  const select=byId('contactChoice'),field=byId('chatRecipientField'),start=byId('chatStartButton');
@@ -1072,33 +1128,38 @@ async function configureChatRecipients(){
  byId('chatPeerMenu').replaceChildren();
  byId('chatPeerSelect').classList.add('hidden');
  byId('chatTitle').classList.remove('hidden');
+ chatDirectoryRecipients=[];
  const add=(value,label)=>{const option=document.createElement('option');option.value=value;option.textContent=label;select.appendChild(option)};
  if(role==='passenger'){
+  getChatDriverRecipients().forEach(car=>add('driver:'+car.carId,`${car.name} · Coche ${car.carId}`));
   await refreshChatOperators();
-  if(!chatOperators.length)setChatStatus('No hay operadores conectados en este momento, o el servicio de presencia aún no está habilitado.');
- }else if(role==='operator'){
-  initial.forEach(c=>add('driver:'+c.id,`${c.driver} · Coche ${c.id}`));
- }else if(role==='admin'){
-  if(!CHAT_API_BASE_URL){
-   Object.entries(USER_ROLES).filter(([uid])=>uid!==currentUser.uid).forEach(([uid,p])=>add('user:'+uid,`${p.name} · ${p.role}`));
-  }else{
-   try{
-    const snapshot=await get(ref(db,'profiles')),profiles=snapshot.val()||{};
-    const recipients=new Map(Object.entries(USER_ROLES).filter(([uid])=>uid!==currentUser.uid).map(([uid,p])=>[uid,{...p}]));
-    Object.entries(profiles).forEach(([uid,p])=>{
-     if(uid===currentUser.uid)return;
-     if(!p||p.active===false||p.status==='disabled'){recipients.delete(uid);return}
-     const legacy=USER_ROLES[uid]||{};
-     recipients.set(uid,{
-      name:[p.name,p.lastName].filter(Boolean).join(' ').trim()||legacy.name||'Usuario',
-      role:p.role||legacy.role||'cuenta'
-     });
-    });
-    recipients.forEach((p,uid)=>add('user:'+uid,`${p.name} · ${p.role}`));
-   }catch(error){console.error('No se pudieron cargar destinatarios del chat:',error);setChatStatus('No se pudieron cargar los destinatarios.');}
+  if(chatOperators.length){
+   add('operators','Operadores de Dante Remises');
+   chatOperators.forEach(operator=>add('operator:'+operator.uid,operator.firstName+' · operador'));
   }
+  if(!chatOperators.length)setChatStatus('No hay operadores conectados en este momento.');
+ }else if(role==='operator'){
+  getChatDriverRecipients().forEach(car=>add('driver:'+car.carId,`${car.name} · Coche ${car.carId}`));
+ }else if(role==='admin'){
+  const recipients=new Map(Object.entries(USER_ROLES).filter(([uid])=>uid!==currentUser.uid).map(([uid,p])=>[uid,{uid,...p}]));
+  try{
+   const snapshot=await get(ref(db,'profiles')),profiles=snapshot.val()||{};
+   Object.entries(profiles).forEach(([uid,p])=>{
+    if(uid===currentUser.uid)return;
+    if(!p||p.active===false||p.status==='disabled'){recipients.delete(uid);return}
+    const legacy=USER_ROLES[uid]||{};
+    recipients.set(uid,{
+     uid,
+     name:[p.name,p.lastName].filter(Boolean).join(' ').trim()||legacy.name||'Usuario',
+     role:p.role||legacy.role||'cuenta',
+     carId:String(p.carId||legacy.carId||'')
+    });
+   });
+  }catch(error){console.warn('No se pudo actualizar el directorio de destinatarios administrativos:',error)}
+  chatDirectoryRecipients=[...recipients.values()].filter(item=>item.uid!==currentUser.uid);
+  chatDirectoryRecipients.forEach(item=>add('user:'+item.uid,`${item.name} · ${item.role}`));
  }else if(role==='driver'){
-  byId('chatIntro').textContent='Tus conversaciones con pasajeros aparecerán acá cuando te contacten desde una solicitud.';
+  byId('chatIntro').textContent='Tus conversaciones con pasajeros y personal que te contacte aparecerán acá.';
  }
  if(select.options.length)updateChatRecipientTitle();
 }
@@ -1120,20 +1181,52 @@ async function refreshChatOperators(){
 }
 function renderChatOperatorMenu(){
  const menu=byId('chatPeerMenu');menu.replaceChildren();
- chatConversations.forEach(conversation=>{
-  const button=document.createElement('button');button.type='button';button.dataset.conversationId=conversation.conversationId;
-  button.setAttribute('role','menuitem');button.textContent=conversationTitle(conversation);menu.appendChild(button);
- });
- chatOperators.forEach(operator=>{
-  const hasConversation=chatConversations.some(conversation=>conversation.kind==='passenger-operator'&&Object.keys(conversation.participantUids||{}).includes(operator.uid));
-  if(hasConversation)return;
-  const button=document.createElement('button');button.type='button';button.dataset.operatorUid=operator.uid;
-  button.setAttribute('role','menuitem');button.textContent=operator.firstName+' · operador (nuevo chat)';menu.appendChild(button);
- });
+ const role=currentRole?.role;
+ if(role==='passenger'){
+  const drivers=getChatDriverRecipients();
+  appendChatRecipientGroup(menu,'Choferes',drivers,'driver');
+  if(chatOperators.length){
+   const support=chatConversations.find(conversation=>conversation.kind==='operator-support');
+   appendChatMenuHeading(menu,'Operadores');
+   const supportButton=document.createElement('button');supportButton.type='button';supportButton.setAttribute('role','menuitem');
+   if(support)supportButton.dataset.conversationId=support.conversationId;
+   else supportButton.dataset.targetType='operators';
+   supportButton.textContent='Operadores de Dante Remises';menu.appendChild(supportButton);
+   chatOperators.forEach(operator=>{
+    const button=document.createElement('button');button.type='button';button.setAttribute('role','menuitem');
+    const existing=findChatConversationForUid(operator.uid);
+    if(existing)button.dataset.conversationId=existing.conversationId;
+    else{button.dataset.targetUid=operator.uid;button.dataset.targetType='operator'}
+    button.textContent=operator.firstName+' · operador';menu.appendChild(button);
+   });
+  }
+  const other=chatConversations.filter(conversation=>
+   !['passenger-driver','passenger-operator','operator-support'].includes(conversation.kind)
+  );
+  appendChatConversationGroup(menu,other);
+ }else if(role==='operator'){
+  appendChatRecipientGroup(menu,'Choferes',getChatDriverRecipients(),'driver');
+  appendChatConversationGroup(menu,chatConversations.filter(conversation=>conversation.kind!=='operator-driver'));
+ }else if(role==='driver'){
+  appendChatConversationGroup(menu,chatConversations);
+ }else if(role==='admin'){
+  const drivers=getChatDriverRecipients();
+  appendChatRecipientGroup(menu,'Choferes',drivers,'user');
+  const operators=chatDirectoryRecipients.filter(item=>item.role==='operator'&&item.uid!==currentUser?.uid);
+  appendChatRecipientGroup(menu,'Operadores',operators,'user');
+  const passengers=chatDirectoryRecipients.filter(item=>item.role==='passenger');
+  appendChatRecipientGroup(menu,'Pasajeros',passengers,'user');
+  const known=new Set([...drivers,...operators,...passengers].map(item=>item.uid));
+  const others=chatDirectoryRecipients.filter(item=>!known.has(item.uid));
+  appendChatRecipientGroup(menu,'Otros usuarios',others,'user');
+  const existing=chatConversations.filter(conversation=>conversation.kind==='operator-support'||!Object.keys(conversation.participantUids||{}).some(uid=>known.has(uid)));
+  appendChatConversationGroup(menu,existing);
+ }
 }
 function updatePassengerOperatorSelector(conversation){
  const canSwitch=['passenger','driver','operator','admin'].includes(currentRole?.role);
- const show=canSwitch&&(chatConversations.length>0||chatOperators.length>0);
+ const hasChoices=byId('chatPeerMenu').querySelectorAll('button').length>0;
+ const show=canSwitch&&hasChoices;
  byId('chatPeerSelect').classList.toggle('hidden',!show);
  byId('chatTitle').classList.toggle('hidden',show);
  if(!show)return;
@@ -1439,38 +1532,88 @@ function renderChatMessages(messages,scrollMode='bottom'){
  else if(scrollMode==='preserve'&&!nearBottom)box.scrollTop=oldTop;
  else box.scrollTop=box.scrollHeight;
 }
+function chatHistorySyncKey(uid,conversationId){return uid+':'+conversationId}
+async function syncCompleteChatHistory(conversationId,uid,firstPage){
+ const syncKey=chatHistorySyncKey(uid,conversationId);
+ if(chatHistorySyncing.has(syncKey))return;
+ chatHistorySyncing.add(syncKey);
+ let remoteMessages=mergeChatMessagePages([],firstPage?.messages||[]);
+ let cursor=firstPage?.nextCursor||null;
+ let hasMore=Boolean(firstPage?.hasMore);
+ try{
+  const api=getChatApiClient();
+  while(hasMore&&cursor){
+   const page=await api.listMessages(conversationId,cursor);
+   remoteMessages=mergeChatMessagePages(remoteMessages,page.messages||[]);
+   cursor=page.nextCursor||null;hasMore=Boolean(page.hasMore);
+  }
+  if(hasMore)throw new Error('El historial todavía tiene páginas pendientes.');
+  const latest=await api.listMessages(conversationId);
+  remoteMessages=mergeChatMessagePages(remoteMessages,latest.messages||[]);
+  if(currentUser?.uid!==uid)return;
+  await chatHistoryCache.putMessages(uid,conversationId,remoteMessages,{complete:true});
+  if(currentUser?.uid===uid&&chatMessagesUid===uid&&chatMessagesConversationId===conversationId&&activeChatConversation?.conversationId===conversationId){
+   chatMessages=remoteMessages;chatMessagesCursor=null;chatMessagesHasMore=false;
+   renderChatMessages(chatMessages,'preserve');updateChatHistoryControls();
+   setChatStatus('Historial completo sincronizado en este dispositivo.');
+  }
+ }catch(error){
+  if(currentUser?.uid!==uid)return;
+  const cached=await chatHistoryCache.getMessages(uid,conversationId);
+  const combined=mergeChatMessagePages(cached?.messages||[],remoteMessages);
+  await chatHistoryCache.putMessages(uid,conversationId,combined,{complete:false});
+  if(chatMessagesUid===uid&&chatMessagesConversationId===conversationId&&activeChatConversation?.conversationId===conversationId){
+   chatMessages=combined;chatMessagesCursor=cursor;chatMessagesHasMore=Boolean(hasMore&&cursor);
+   renderChatMessages(chatMessages,'preserve');updateChatHistoryControls();
+   setChatStatus('Historial guardado en el dispositivo; quedan mensajes anteriores por sincronizar.');
+  }
+  console.warn('No se pudo completar la descarga local del historial:',error);
+ }finally{
+  chatHistorySyncing.delete(syncKey);
+ }
+}
 async function loadChatMessages(conversationId,silent=false,reset=false){
- const api=getChatApiClient();if(!api||!conversationId)return;
- const switching=reset||chatMessagesConversationId!==conversationId;
+ const api=getChatApiClient(),uid=currentUser?.uid;
+ if(!api||!conversationId||!uid)return;
+ const switching=reset||chatMessagesConversationId!==conversationId||chatMessagesUid!==uid;
+ let cached=null;
  if(switching){
-  chatMessagesConversationId=conversationId;chatMessages=[];chatMessagesCursor=null;chatMessagesHasMore=false;
-  renderChatMessages([],'bottom');updateChatHistoryControls();
+  chatMessagesConversationId=conversationId;chatMessagesUid=uid;chatMessages=[];chatMessagesCursor=null;chatMessagesHasMore=false;
+  cached=await chatHistoryCache.getMessages(uid,conversationId);
+  if(chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||currentUser?.uid!==uid)return;
+  chatMessages=cached?.messages||[];
+  renderChatMessages(chatMessages,'bottom');updateChatHistoryControls();
+  if(cached?.messages?.length)setChatStatus('Mostrando historial guardado en este dispositivo…');
  }
  try{
   const result=await api.listMessages(conversationId);
-  if(chatMessagesConversationId!==conversationId)return;
-  if(switching){
-   chatMessages=mergeChatMessagePages([],result.messages||[]);
-   chatMessagesCursor=result.nextCursor||null;chatMessagesHasMore=Boolean(result.hasMore);
-   renderChatMessages(chatMessages,'bottom');
-  }else{
-   const previousLength=chatMessages.length;
-   chatMessages=mergeChatMessagePages(chatMessages,result.messages||[]);
-   if(chatMessages.length!==previousLength)renderChatMessages(chatMessages,'preserve');
-   chatMessagesHasMore=chatMessagesHasMore||Boolean(result.hasMore);
-  }
+  if(chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||currentUser?.uid!==uid)return;
+  const previousLength=chatMessages.length;
+  chatMessages=mergeChatMessagePages(chatMessages,result.messages||[]);
+  const cacheComplete=cached?.complete===true;
+  chatMessagesCursor=cacheComplete?null:(result.nextCursor||null);
+  chatMessagesHasMore=cacheComplete?false:Boolean(result.hasMore);
+  if(switching||chatMessages.length!==previousLength)renderChatMessages(chatMessages,switching?'bottom':'preserve');
+  await chatHistoryCache.putMessages(uid,conversationId,chatMessages,{complete:cacheComplete});
   updateChatHistoryControls();
- }catch(error){if(!silent)setChatStatus(error.message||'No se pudieron cargar los mensajes.')}
+  if(!cacheComplete)void syncCompleteChatHistory(conversationId,uid,result);
+ }catch(error){
+  if(!silent)setChatStatus(error.message||'No se pudieron actualizar los mensajes. Se conserva la copia local disponible.');
+ }
 }
 async function refreshLatestChatMessages(conversationId){
- const api=getChatApiClient();if(!api||!conversationId||chatMessagesConversationId!==conversationId)return;
+ const api=getChatApiClient(),uid=currentUser?.uid;
+ if(!api||!conversationId||chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||!uid)return;
  const result=await api.listMessages(conversationId);
- if(chatMessagesConversationId!==conversationId||activeChatConversation?.conversationId!==conversationId)return;
+ if(chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||activeChatConversation?.conversationId!==conversationId||currentUser?.uid!==uid)return;
  const previousLength=chatMessages.length;
  chatMessages=mergeChatMessagePages(chatMessages,result.messages||[]);
  if(chatMessages.length!==previousLength)renderChatMessages(chatMessages,'preserve');
- chatMessagesHasMore=Boolean(chatMessagesCursor)&&(chatMessagesHasMore||Boolean(result.hasMore));
+ const cached=await chatHistoryCache.getMessages(uid,conversationId);
+ await chatHistoryCache.putMessages(uid,conversationId,chatMessages,{complete:cached?.complete===true});
+ chatMessagesHasMore=cached?.complete===true?false:Boolean(chatMessagesCursor)&&(chatMessagesHasMore||Boolean(result.hasMore));
  updateChatHistoryControls();
+ if(cached?.complete!==true&&!chatHistorySyncing.has(chatHistorySyncKey(uid,conversationId)))void syncCompleteChatHistory(conversationId,uid,result);
 }
 async function loadOlderChatMessages(){
  const api=getChatApiClient(),conversationId=activeChatConversation?.conversationId,cursor=chatMessagesCursor;
@@ -1483,12 +1626,13 @@ async function loadOlderChatMessages(){
   chatMessages=mergeChatMessagePages(result.messages||[],chatMessages);
   chatMessagesCursor=result.nextCursor||null;chatMessagesHasMore=Boolean(result.hasMore);
   if(chatMessages.length!==previousLength)renderChatMessages(chatMessages,'prepend');
+  await chatHistoryCache.putMessages(currentUser.uid,conversationId,chatMessages,{complete:false});
   updateChatHistoryControls();
  }catch(error){setChatStatus(error.message||'No se pudieron cargar los mensajes anteriores.')}
  finally{chatMessagesLoadingOlder=false;updateChatHistoryControls()}
 }
 async function selectChatConversation(conversation){
- const alreadyLoaded=chatMessagesConversationId===conversation.conversationId;
+ const alreadyLoaded=chatMessagesConversationId===conversation.conversationId&&chatMessagesUid===currentUser?.uid;
  activeChatConversation=conversation;byId('chatTitle').textContent=conversationTitle(conversation);updatePassengerOperatorSelector(conversation);void renderChatPeerAvatar(conversation);renderChatConversationList();
  if(!alreadyLoaded)await loadChatMessages(conversation.conversationId,false,true);
  const title=await resolveConversationTitle(conversation);
@@ -1499,6 +1643,7 @@ async function refreshChatConversations(silent=false){
  chatRefreshing=true;
  try{
   const result=await api.listConversations();chatConversations=Array.isArray(result.conversations)?result.conversations:[];
+  if(currentUser?.uid)await chatHistoryCache.putConversations(currentUser.uid,chatConversations);
   renderChatConversationList();renderChatOperatorMenu();updatePassengerOperatorSelector(activeChatConversation);
   if(activeChatConversation){
    const updated=chatConversations.find(c=>c.conversationId===activeChatConversation.conversationId);
@@ -1523,11 +1668,23 @@ async function refreshChatConversations(silent=false){
 }
 async function loadChatView(){
  if(!currentUser||!currentRole)return;
+ const uid=currentUser.uid;
+ const cachedList=await chatHistoryCache.getConversations(uid);
+ if(currentUser?.uid!==uid)return;
+ if(cachedList?.conversations?.length){
+  chatConversations=cachedList.conversations;
+  renderChatConversationList();renderChatOperatorMenu();updatePassengerOperatorSelector(activeChatConversation);
+  if(!activeChatConversation){
+   const cachedActive=chatConversations[0];
+   activeChatConversation=cachedActive;
+   await selectChatConversation(cachedActive);
+  }
+ }
  await configureChatRecipients();
  const api=getChatApiClient();
  if(!api){
   setChatStatus('Modo demostración: los mensajes no se envían a otras personas.');
-  byId('chatFooterNote').textContent='El cliente está preparado, pero el Worker no está desplegado ni configurado. No se realizan requests de chat.';
+  byId('chatFooterNote').textContent='El cliente está preparado, pero el Worker no está configurado. No se realizan requests de chat.';
   byId('chatStartButton').disabled=true;byId('chatRefreshButton').disabled=true;
   return;
  }
@@ -1554,6 +1711,7 @@ async function startChatFromSelection(){
  const role=currentRole?.role,value=byId('contactChoice').value;let payload={};
  if(role==='passenger'){
   if(value==='operators')payload={target:'operators'};
+  else if(value.startsWith('operator:'))payload={target:'operator',targetUid:value.slice(9)};
   else{
    let carId=value.startsWith('driver:')?value.slice(7):'';
    if(value==='available'){
@@ -1581,27 +1739,34 @@ byId('chatPeerSelect').addEventListener('click',()=>{
  menu.classList.toggle('hidden',!open);byId('chatPeerSelect').setAttribute('aria-expanded',String(open));
 });
 byId('chatPeerMenu').addEventListener('click',async event=>{
- const button=event.target.closest('[data-conversation-id],[data-operator-uid]');if(!button)return;
+ const button=event.target.closest('[data-conversation-id],[data-target-uid],[data-target-type="operators"]');if(!button)return;
  byId('chatPeerMenu').classList.add('hidden');byId('chatPeerSelect').setAttribute('aria-expanded','false');
  if(button.dataset.conversationId){
   const conversation=chatConversations.find(item=>item.conversationId===button.dataset.conversationId);
   if(conversation)await selectChatConversation(conversation);
   return;
  }
- const targetUid=button.dataset.operatorUid;chatSelectedOperatorUid=targetUid;
- await openChatConversation({target:'operator',targetUid});
+ if(button.dataset.targetType==='operators'){await openChatConversation({target:'operators'});return}
+ const targetUid=button.dataset.targetUid,targetType=button.dataset.targetType;
+ if(!targetUid||!targetType)return;
+ if(targetType==='operator'){chatSelectedOperatorUid=targetUid;await openChatConversation({target:'operator',targetUid})}
+ else if(targetType==='driver')await openChatConversation({target:'driver',targetUid})
+ else if(targetType==='user')await openChatConversation({targetUid})
 });
-byId('chatFullscreenButton').addEventListener('click',()=>{
- const box=byId('chatFullscreenButton').closest('.chatbox');if(!box)return;
- const expanded=box.classList.toggle('chatbox-fullscreen');
- document.documentElement.classList.toggle('chat-fullscreen-open',expanded);
- document.body.classList.toggle('chat-fullscreen-open',expanded);
+function setChatScreenOpen(open){
+ document.body.classList.toggle('chat-screen-open',open);
+ document.documentElement.classList.toggle('chat-screen-open',open);
  const button=byId('chatFullscreenButton');
- button.setAttribute('aria-label',expanded?'Salir de pantalla completa':'Expandir chat a pantalla completa');
- button.title=expanded?'Salir de pantalla completa':'Pantalla completa';
- button.innerHTML=expanded?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v5H3M16 3v5h5M3 16h5v5M21 16h-5v5"/></svg>':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg>';
-});
-document.addEventListener('keydown',event=>{if(event.key==='Escape'&&byId('chatFullscreenButton').closest('.chatbox')?.classList.contains('chatbox-fullscreen'))byId('chatFullscreenButton').click()});
+ button.setAttribute('aria-label',open?'Volver a Dante Remises':'Abrir chat como pantalla independiente');
+ button.title=open?'Volver':'Abrir chat';
+ button.innerHTML=open
+  ?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6M9 12h12"/></svg>'
+  :'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg>';
+ if(open)requestAnimationFrame(()=>{const box=byId('messages');if(box)box.scrollTop=box.scrollHeight});
+}
+function closeChatScreen(){if(document.body.classList.contains('chat-screen-open'))setChatScreenOpen(false)}
+byId('chatFullscreenButton').addEventListener('click',()=>setChatScreenOpen(!document.body.classList.contains('chat-screen-open')));
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('chat-screen-open'))closeChatScreen()});
 byId('chatRefreshButton').addEventListener('click',()=>refreshChatConversations());
 byId('chatLoadOlderButton').addEventListener('click',loadOlderChatMessages);
 byId('chatConversationList').addEventListener('click',async event=>{
