@@ -457,3 +457,18 @@ test("passenger and operator recipient menus include the four registered driver 
   assert.ok(html.includes("appendChatRecipientGroup(menu,'Choferes',drivers,'driver')"));
   assert.ok(html.includes("appendChatRecipientGroup(menu,'Choferes',getChatDriverRecipients(),'driver')"));
 });
+
+test("conversation and message indexes are paginated before being cached locally", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("async function listAllChatConversations(api)"));
+  assert.ok(html.includes("api.listConversations(cursor)"));
+  assert.ok(html.includes("while(hasMore&&cursor&&cursor!==lastCursor)"));
+  assert.ok(html.includes("void prefetchChatConversationHistories()"));
+});
+
+test("drivers see only existing passenger/operator conversations grouped by counterpart role", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("chatConversations.filter(conversation=>conversation.kind==='passenger-driver'),'Pasajeros'"));
+  assert.ok(html.includes("chatConversations.filter(conversation=>conversation.kind==='operator-driver'),'Operadores'"));
+  assert.ok(html.includes("chatConversations.filter(conversation=>['passenger-operator','operator-support'].includes(conversation.kind)),'Pasajeros'"));
+});
