@@ -1679,7 +1679,7 @@ let authStateGeneration=0;
 onAuthStateChanged(auth,async user=>{
  const previousMediaUid=currentUser?.uid||'';
  if(previousMediaUid&&!user){
-  void Promise.all([mediaCache.removePrefix(`private:${previousMediaUid}:chat-attachment:`),mediaCache.removePrefix(`private:${previousMediaUid}:chat-profile:`)]).catch(error=>console.warn('No se pudo limpiar la caché temporal del chat:',error?.name||'Error'));
+  void mediaCache.clearPrivate(previousMediaUid).catch(error=>console.warn('No se pudo limpiar la caché privada de la cuenta anterior:',error?.name||'Error'));
  }else if(previousMediaUid&&user?.uid&&previousMediaUid!==user.uid){
   void mediaCache.clearPrivate(previousMediaUid).catch(error=>console.warn('No se pudo limpiar la caché privada de la cuenta anterior:',error?.name||'Error'));
  }
