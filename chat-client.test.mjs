@@ -481,3 +481,18 @@ test("chat in-memory state resets when the authenticated UID changes", async () 
   assert.ok(html.includes("chatHistorySyncing=new Set()"));
   assert.ok(html.includes("chatAttachmentUrls.clear()"));
 });
+
+test("passenger general chat defaults to the operator channel only when operators are connected", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("function getDefaultChatConversation()"));
+  assert.ok(html.includes("if(!chatOperators.length)return null"));
+  assert.ok(html.includes("await api.openConversation({target:'operators'})"));
+  assert.ok(html.includes("await ensurePassengerDefaultChat()"));
+});
+
+test("passengers cannot select offline operator conversations from the conversation list", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("if(conversation.kind==='operator-support')return chatOperators.length>0"));
+  assert.ok(html.includes("return chatOperators.some(operator=>operator.uid===otherUid)"));
+  assert.ok(html.includes("chatOperators=[];renderChatOperatorMenu();renderChatConversationList()"));
+});
