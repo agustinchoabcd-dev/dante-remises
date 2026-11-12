@@ -402,20 +402,25 @@ test("retains the idempotency key when both immediate attempts have uncertain ou
   assert.equal(requestBodies[2].clientMessageId, "first-generated-id-123");
 });
 
-test("chat header can switch existing conversations and connected operators", async () => {
+test("chat recipient menu groups drivers and only exposes connected operators", async () => {
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
   assert.ok(html.includes('id="chatPeerSelect"'));
-  assert.ok(html.includes('button.dataset.conversationId=conversation.conversationId'));
+  assert.ok(html.includes("appendChatRecipientGroup(menu,'Choferes'"));
+  assert.ok(html.includes("appendChatRecipientGroup(menu,'Operadores'") || html.includes("appendChatMenuHeading(menu,'Operadores')"));
+  assert.ok(html.includes("chatOperators.forEach(operator=>"));
+  assert.ok(html.includes("findChatConversationForUid(operator.uid)"));
+  assert.ok(html.includes("button.dataset.targetType=targetType"));
   assert.ok(html.includes("selectChatConversation(conversation)"));
-  assert.ok(html.includes("nuevo chat"));
 });
 
-test("chat supports an explicit fullscreen mode with a dedicated header control", async () => {
+test("chat opens as a separate WhatsApp-like screen and returns to the app shell", async () => {
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
   assert.ok(html.includes('id="chatFullscreenButton"'));
-  assert.ok(html.includes("chatbox-fullscreen"));
-  assert.ok(html.includes("Salir de pantalla completa"));
-  assert.ok(html.includes("chat-fullscreen-open"));
+  assert.ok(html.includes("body.chat-screen-open #chat"));
+  assert.ok(html.includes("setChatScreenOpen(open)"));
+  assert.ok(html.includes("Volver a Dante Remises"));
+  assert.ok(html.includes("closeChatScreen()"));
+  assert.ok(!html.includes("chatbox-fullscreen"));
 });
 
 test("audio attachments use a styled player with live elapsed and total duration", async () => {
