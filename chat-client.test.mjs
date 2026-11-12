@@ -490,9 +490,11 @@ test("passenger general chat defaults to the operator channel only when operator
   assert.ok(html.includes("await ensurePassengerDefaultChat()"));
 });
 
-test("passengers cannot select offline operator conversations from the conversation list", async () => {
+test("offline operators are excluded as new recipients but previous conversations remain accessible", async () => {
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
-  assert.ok(html.includes("if(conversation.kind==='operator-support')return chatOperators.length>0"));
-  assert.ok(html.includes("return chatOperators.some(operator=>operator.uid===otherUid)"));
+  assert.ok(html.includes("chatOperators.forEach(operator=>"));
+  assert.ok(html.includes("const previousOperatorChats=chatConversations.filter"));
+  assert.ok(html.includes("appendChatConversationGroup(menu,previousOperatorChats,'Conversaciones anteriores')"));
+  assert.ok(html.includes("chatConversations.forEach(conversation=>"));
   assert.ok(html.includes("chatOperators=[];renderChatOperatorMenu();renderChatConversationList()"));
 });
