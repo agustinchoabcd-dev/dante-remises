@@ -437,3 +437,23 @@ test("message rendering reuses existing DOM nodes instead of rebuilding the full
   assert.ok(html.includes("const existing=new Map([...box.children]"));
   assert.ok(html.includes("item.dataset.messageId=id"));
 });
+
+test("chat stores complete histories per account and renders older pages from local cache", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('import { chatHistoryCache } from "./chat-history-cache.mjs"'));
+  assert.ok(html.includes("chatHistoryCache.putMessages(uid,conversationId,remoteMessages,{complete:true})"));
+  assert.ok(html.includes("chatHistoryCache.getMessages(uid,conversationId)"));
+  assert.ok(html.includes("async function prefetchChatConversationHistories()"));
+  assert.ok(html.includes("if(chatMessagesCacheComplete)"));
+  assert.ok(html.includes("all.slice(start,firstIndex)"));
+  assert.ok(html.includes("chatMessages=combined.slice(-visibleCount)"));
+});
+
+test("passenger and operator recipient menus include the four registered driver cars", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("function getChatDriverRecipients()"));
+  assert.ok(html.includes("const uid=driverUidForCar(car.id)"));
+  assert.ok(html.includes("return {uid,carId:car.id,name:known.name||car.driver,role:uid===ADMIN_UID?'admin':'driver'}"));
+  assert.ok(html.includes("appendChatRecipientGroup(menu,'Choferes',drivers,'driver')"));
+  assert.ok(html.includes("appendChatRecipientGroup(menu,'Choferes',getChatDriverRecipients(),'driver')"));
+});
