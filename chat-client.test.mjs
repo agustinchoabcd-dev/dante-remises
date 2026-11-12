@@ -401,3 +401,34 @@ test("retains the idempotency key when both immediate attempts have uncertain ou
   assert.equal(requestBodies[1].clientMessageId, "first-generated-id-123");
   assert.equal(requestBodies[2].clientMessageId, "first-generated-id-123");
 });
+
+test("chat header can switch existing conversations and connected operators", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('id="chatPeerSelect"'));
+  assert.ok(html.includes('data-conversation-id=conversation.conversationId'));
+  assert.ok(html.includes("selectChatConversation(conversation)"));
+  assert.ok(html.includes("nuevo chat"));
+});
+
+test("chat supports an explicit fullscreen mode with a dedicated header control", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('id="chatFullscreenButton"'));
+  assert.ok(html.includes("chatbox-fullscreen"));
+  assert.ok(html.includes("Salir de pantalla completa"));
+  assert.ok(html.includes("chat-fullscreen-open"));
+});
+
+test("audio attachments use a styled player with live elapsed and total duration", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("chat-audio-player"));
+  assert.ok(html.includes("loadedmetadata"));
+  assert.ok(html.includes("durationchange"));
+  assert.ok(html.includes("timeupdate"));
+  assert.ok(html.includes("chat-audio-progress"));
+});
+
+test("message rendering reuses existing DOM nodes instead of rebuilding the full chat on refresh", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("const existing=new Map([...box.children]"));
+  assert.ok(html.includes("item.dataset.messageId=id"));
+});
