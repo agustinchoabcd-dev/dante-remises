@@ -998,7 +998,18 @@ byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='op
 byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
 byId('setFree').addEventListener('click',()=>setStatus(activeDriver,'libre'));
-let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatDirectoryRecipients=[],chatHistorySyncing=new Set(),chatHistoryPrefetching=false,chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatMessagesUid=null,chatMessagesCacheComplete=false,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,operatorPresenceUnavailable=false,chatOperatorPollTimer=null,chatOperatorServiceUnavailable=false,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false,chatRecordingFinalized=false,chatRecordingHoldActive=false,chatRecordingAutoSend=false,activeTripRestoreVersion=0;
+let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatDirectoryRecipients=[],chatHistorySyncing=new Set(),chatHistoryPrefetching=false,chatSessionUid=null,chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatMessagesUid=null,chatMessagesCacheComplete=false,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,operatorPresenceUnavailable=false,chatOperatorPollTimer=null,chatOperatorServiceUnavailable=false,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false,chatRecordingFinalized=false,chatRecordingHoldActive=false,chatRecordingAutoSend=false,activeTripRestoreVersion=0;
+function ensureChatSessionForCurrentUser(){
+ const uid=currentUser?.uid;if(!uid)return false;
+ if(chatSessionUid&&chatSessionUid!==uid){
+  stopChatPolling();
+  chatConversations=[];activeChatConversation=null;chatMessages=[];chatMessagesCursor=null;chatMessagesHasMore=false;chatMessagesConversationId=null;chatMessagesUid=null;chatMessagesCacheComplete=false;
+  chatOperators=[];chatSelectedOperatorUid='';chatDirectoryRecipients=[];chatResolvedTitles.clear();chatAttachmentUrls.clear();
+  renderChatMessages([],'bottom');renderChatConversationList();renderChatOperatorMenu();updateChatHistoryControls();
+ }
+ chatSessionUid=uid;
+ return true;
+}
 function getChatApiClient(){
  if(!CHAT_API_BASE_URL||!currentUser)return null;
  if(!chatApiClient)chatApiClient=new ChatApiClient({baseUrl:CHAT_API_BASE_URL,getIdToken:()=>currentUser.getIdToken()});
@@ -1722,6 +1733,7 @@ async function listAllChatConversations(api){
  return {conversations,complete:!hasMore};
 }
 async function refreshChatConversations(silent=false){
+ if(!ensureChatSessionForCurrentUser())return false;
  const api=getChatApiClient();if(!api)return false;if(chatRefreshing){chatRefreshPending=true;return true;}
  chatRefreshing=true;
  try{
@@ -1750,7 +1762,7 @@ async function refreshChatConversations(silent=false){
  finally{chatRefreshing=false;if(chatRefreshPending){chatRefreshPending=false;void refreshChatConversations(true)}}
 }
 async function loadChatView(){
- if(!currentUser||!currentRole)return;
+ if(!currentUser||!currentRole||!ensureChatSessionForCurrentUser())return;
  const uid=currentUser.uid;
  const cachedList=await chatHistoryCache.getConversations(uid);
  if(currentUser?.uid!==uid)return;
@@ -1776,6 +1788,7 @@ async function loadChatView(){
  await refreshChatConversations();startChatPolling();void prefetchChatConversationHistories();
 }
 async function openChatConversation(payload){
+ if(!ensureChatSessionForCurrentUser())return;
  const api=getChatApiClient();
  if(!api){showView('chat');setChatStatus('Modo demostración: el servicio de chat todavía no está configurado.');return}
  if(chatBusy)return;chatBusy=true;byId('chatStartButton').disabled=true;
