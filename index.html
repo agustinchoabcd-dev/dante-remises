@@ -997,7 +997,7 @@ byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='op
 byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
 byId('setFree').addEventListener('click',()=>setStatus(activeDriver,'libre'));
-let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatDirectoryRecipients=[],chatHistorySyncing=new Set(),chatHistoryPrefetching=false,chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatMessagesUid=null,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,operatorPresenceUnavailable=false,chatOperatorPollTimer=null,chatOperatorServiceUnavailable=false,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false,chatRecordingFinalized=false,chatRecordingHoldActive=false,chatRecordingAutoSend=false,activeTripRestoreVersion=0;
+let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatDirectoryRecipients=[],chatHistorySyncing=new Set(),chatHistoryPrefetching=false,chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatMessagesUid=null,chatMessagesCacheComplete=false,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,operatorPresenceUnavailable=false,chatOperatorPollTimer=null,chatOperatorServiceUnavailable=false,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false,chatRecordingFinalized=false,chatRecordingHoldActive=false,chatRecordingAutoSend=false,activeTripRestoreVersion=0;
 function getChatApiClient(){
  if(!CHAT_API_BASE_URL||!currentUser)return null;
  if(!chatApiClient)chatApiClient=new ChatApiClient({baseUrl:CHAT_API_BASE_URL,getIdToken:()=>currentUser.getIdToken()});
@@ -1303,9 +1303,10 @@ function renderChatConversationList(){
 }
 function updateChatHistoryControls(){
  const button=byId('chatLoadOlderButton');
- button.classList.toggle('hidden',!chatMessagesHasMore||!chatMessagesCursor||!activeChatConversation?.conversationId);
- button.disabled=chatMessagesLoadingOlder;
- button.textContent=chatMessagesLoadingOlder?'Cargando…':'Cargar mensajes anteriores';
+ const syncing=Boolean(currentUser?.uid&&activeChatConversation?.conversationId&&chatHistorySyncing.has(chatHistorySyncKey(currentUser.uid,activeChatConversation.conversationId)));
+ button.classList.toggle('hidden',syncing||!chatMessagesHasMore||(!chatMessagesCursor&&!chatMessagesCacheComplete));
+ button.disabled=chatMessagesLoadingOlder||syncing;
+ button.textContent=syncing?'Guardando historial…':'Cargar mensajes anteriores';
 }
 async function getChatAttachmentUrl(conversationId,attachment){
  const key=attachment?.key;
@@ -1540,6 +1541,7 @@ async function syncCompleteChatHistory(conversationId,uid,firstPage){
  let remoteMessages=mergeChatMessagePages([],firstPage?.messages||[]);
  let cursor=firstPage?.nextCursor||null;
  let hasMore=Boolean(firstPage?.hasMore);
+ updateChatHistoryControls();
  try{
   const api=getChatApiClient();
   while(hasMore&&cursor){
@@ -1553,7 +1555,9 @@ async function syncCompleteChatHistory(conversationId,uid,firstPage){
   if(currentUser?.uid!==uid)return;
   await chatHistoryCache.putMessages(uid,conversationId,remoteMessages,{complete:true});
   if(currentUser?.uid===uid&&chatMessagesUid===uid&&chatMessagesConversationId===conversationId&&activeChatConversation?.conversationId===conversationId){
-   chatMessages=remoteMessages;chatMessagesCursor=null;chatMessagesHasMore=false;
+   const visibleCount=Math.max(100,chatMessages.length);
+   chatMessages=remoteMessages.slice(-visibleCount);
+   chatMessagesCacheComplete=true;chatMessagesCursor=null;chatMessagesHasMore=remoteMessages.length>chatMessages.length;
    renderChatMessages(chatMessages,'preserve');updateChatHistoryControls();
    setChatStatus('Historial completo sincronizado en este dispositivo.');
   }
@@ -1564,7 +1568,9 @@ async function syncCompleteChatHistory(conversationId,uid,firstPage){
   const combined=mergeChatMessagePages(cached?.messages||[],remoteMessages);
   await chatHistoryCache.putMessages(uid,conversationId,combined,{complete:false});
   if(chatMessagesUid===uid&&chatMessagesConversationId===conversationId&&activeChatConversation?.conversationId===conversationId){
-   chatMessages=combined;chatMessagesCursor=cursor;chatMessagesHasMore=Boolean(hasMore&&cursor);
+   const visibleCount=Math.max(100,chatMessages.length);
+   chatMessages=combined.slice(-visibleCount);
+   chatMessagesCacheComplete=false;chatMessagesCursor=cursor;chatMessagesHasMore=combined.length>chatMessages.length||Boolean(hasMore&&cursor);
    renderChatMessages(chatMessages,'preserve');updateChatHistoryControls();
    setChatStatus('Historial guardado en el dispositivo; quedan mensajes anteriores por sincronizar.');
   }
@@ -1572,6 +1578,7 @@ async function syncCompleteChatHistory(conversationId,uid,firstPage){
   return false;
  }finally{
   chatHistorySyncing.delete(syncKey);
+  updateChatHistoryControls();
  }
 }
 async function prefetchChatConversationHistories(){
@@ -1602,25 +1609,31 @@ async function loadChatMessages(conversationId,silent=false,reset=false){
  const switching=reset||chatMessagesConversationId!==conversationId||chatMessagesUid!==uid;
  let cached=null;
  if(switching){
-  chatMessagesConversationId=conversationId;chatMessagesUid=uid;chatMessages=[];chatMessagesCursor=null;chatMessagesHasMore=false;
+  chatMessagesConversationId=conversationId;chatMessagesUid=uid;chatMessages=[];chatMessagesCursor=null;chatMessagesHasMore=false;chatMessagesCacheComplete=false;
   cached=await chatHistoryCache.getMessages(uid,conversationId);
   if(chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||currentUser?.uid!==uid)return;
-  chatMessages=cached?.messages||[];
+  const cachedMessages=cached?.messages||[];
+  chatMessagesCacheComplete=cached?.complete===true;
+  chatMessages=cachedMessages.slice(-100);
+  chatMessagesHasMore=cachedMessages.length>chatMessages.length;
   renderChatMessages(chatMessages,'bottom');updateChatHistoryControls();
-  if(cached?.messages?.length)setChatStatus('Mostrando historial guardado en este dispositivo…');
+  if(cachedMessages.length)setChatStatus('Mostrando historial guardado en este dispositivo…');
  }
  try{
   const result=await api.listMessages(conversationId);
   if(chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||currentUser?.uid!==uid)return;
   const previousLength=chatMessages.length;
-  chatMessages=mergeChatMessagePages(chatMessages,result.messages||[]);
-  const cacheComplete=cached?.complete===true;
-  chatMessagesCursor=cacheComplete?null:(result.nextCursor||null);
-  chatMessagesHasMore=cacheComplete?false:Boolean(result.hasMore);
+  const baseMessages=cached?.complete===true?cached.messages:chatMessages;
+  const combined=mergeChatMessagePages(baseMessages,result.messages||[]);
+  chatMessagesCacheComplete=cached?.complete===true;
+  const visibleCount=Math.max(100,chatMessages.length);
+  chatMessages=combined.slice(-visibleCount);
+  chatMessagesCursor=chatMessagesCacheComplete?null:(result.nextCursor||null);
+  chatMessagesHasMore=combined.length>chatMessages.length||(!chatMessagesCacheComplete&&Boolean(result.hasMore));
   if(switching||chatMessages.length!==previousLength)renderChatMessages(chatMessages,switching?'bottom':'preserve');
-  await chatHistoryCache.putMessages(uid,conversationId,chatMessages,{complete:cacheComplete});
+  await chatHistoryCache.putMessages(uid,conversationId,combined,{complete:chatMessagesCacheComplete});
   updateChatHistoryControls();
-  if(!cacheComplete)void syncCompleteChatHistory(conversationId,uid,result);
+  if(!chatMessagesCacheComplete)void syncCompleteChatHistory(conversationId,uid,result);
  }catch(error){
   if(!silent)setChatStatus(error.message||'No se pudieron actualizar los mensajes. Se conserva la copia local disponible.');
  }
@@ -1630,27 +1643,47 @@ async function refreshLatestChatMessages(conversationId){
  if(!api||!conversationId||chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||!uid)return;
  const result=await api.listMessages(conversationId);
  if(chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||activeChatConversation?.conversationId!==conversationId||currentUser?.uid!==uid)return;
- const previousLength=chatMessages.length;
- chatMessages=mergeChatMessagePages(chatMessages,result.messages||[]);
- if(chatMessages.length!==previousLength)renderChatMessages(chatMessages,'preserve');
  const cached=await chatHistoryCache.getMessages(uid,conversationId);
- await chatHistoryCache.putMessages(uid,conversationId,chatMessages,{complete:cached?.complete===true});
- chatMessagesHasMore=cached?.complete===true?false:Boolean(chatMessagesCursor)&&(chatMessagesHasMore||Boolean(result.hasMore));
+ const complete=cached?.complete===true;
+ const baseMessages=complete?cached.messages:chatMessages;
+ const combined=mergeChatMessagePages(baseMessages,result.messages||[]);
+ const visibleCount=Math.max(100,chatMessages.length);
+ chatMessages=combined.slice(-visibleCount);
+ chatMessagesCacheComplete=complete;
+ chatMessagesCursor=complete?null:(chatMessagesCursor||result.nextCursor||null);
+ chatMessagesHasMore=combined.length>chatMessages.length||(!complete&&Boolean(chatMessagesCursor)&&(chatMessagesHasMore||Boolean(result.hasMore)));
+ renderChatMessages(chatMessages,'preserve');
+ await chatHistoryCache.putMessages(uid,conversationId,combined,{complete});
  updateChatHistoryControls();
- if(cached?.complete!==true&&!chatHistorySyncing.has(chatHistorySyncKey(uid,conversationId)))void syncCompleteChatHistory(conversationId,uid,result);
+ if(!complete&&!chatHistorySyncing.has(chatHistorySyncKey(uid,conversationId)))void syncCompleteChatHistory(conversationId,uid,result);
 }
 async function loadOlderChatMessages(){
- const api=getChatApiClient(),conversationId=activeChatConversation?.conversationId,cursor=chatMessagesCursor;
- if(!api||!conversationId||!cursor||chatMessagesLoadingOlder)return;
+ const api=getChatApiClient(),uid=currentUser?.uid,conversationId=activeChatConversation?.conversationId,cursor=chatMessagesCursor;
+ if(!conversationId||!uid||chatMessagesLoadingOlder)return;
  chatMessagesLoadingOlder=true;updateChatHistoryControls();
  try{
+  if(chatMessagesCacheComplete){
+   const cached=await chatHistoryCache.getMessages(uid,conversationId);
+   if(currentUser?.uid!==uid||activeChatConversation?.conversationId!==conversationId)return;
+   const all=cached?.messages||[];
+   const firstId=chatMessages[0]?.messageId||chatMessages[0]?.id;
+   const firstIndex=all.findIndex(message=>(message.messageId||message.id)===firstId);
+   if(firstIndex>0){
+    const start=Math.max(0,firstIndex-100);
+    chatMessages=mergeChatMessagePages(all.slice(start,firstIndex),chatMessages);
+    chatMessagesHasMore=start>0;
+    renderChatMessages(chatMessages,'prepend');
+   }else chatMessagesHasMore=false;
+   updateChatHistoryControls();
+   return;
+  }
+  if(!api||!cursor)return;
   const result=await api.listMessages(conversationId,cursor);
-  if(chatMessagesConversationId!==conversationId||activeChatConversation?.conversationId!==conversationId)return;
-  const previousLength=chatMessages.length;
+  if(chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||activeChatConversation?.conversationId!==conversationId)return;
   chatMessages=mergeChatMessagePages(result.messages||[],chatMessages);
   chatMessagesCursor=result.nextCursor||null;chatMessagesHasMore=Boolean(result.hasMore);
-  if(chatMessages.length!==previousLength)renderChatMessages(chatMessages,'prepend');
-  await chatHistoryCache.putMessages(currentUser.uid,conversationId,chatMessages,{complete:false});
+  renderChatMessages(chatMessages,'prepend');
+  await chatHistoryCache.putMessages(uid,conversationId,chatMessages,{complete:false});
   updateChatHistoryControls();
  }catch(error){setChatStatus(error.message||'No se pudieron cargar los mensajes anteriores.')}
  finally{chatMessagesLoadingOlder=false;updateChatHistoryControls()}
@@ -1676,7 +1709,7 @@ async function refreshChatConversations(silent=false){
     if(chatMessagesConversationId!==updated.conversationId)await selectChatConversation(updated);
     else if(!chatEventController)await refreshLatestChatMessages(updated.conversationId);
    }else{
-    activeChatConversation=null;chatMessagesConversationId=null;chatMessages=[];chatMessagesCursor=null;chatMessagesHasMore=false;
+    activeChatConversation=null;chatMessagesConversationId=null;chatMessagesUid=null;chatMessagesCacheComplete=false;chatMessages=[];chatMessagesCursor=null;chatMessagesHasMore=false;
     renderChatMessages([],'bottom');updateChatHistoryControls();
    }
   }
