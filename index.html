@@ -1623,7 +1623,7 @@ async function loadChatMessages(conversationId,silent=false,reset=false){
   const result=await api.listMessages(conversationId);
   if(chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||currentUser?.uid!==uid)return;
   const previousLength=chatMessages.length;
-  const baseMessages=cached?.complete===true?cached.messages:chatMessages;
+  const baseMessages=Array.isArray(cached?.messages)?cached.messages:chatMessages;
   const combined=mergeChatMessagePages(baseMessages,result.messages||[]);
   chatMessagesCacheComplete=cached?.complete===true;
   const visibleCount=Math.max(100,chatMessages.length);
@@ -1645,7 +1645,7 @@ async function refreshLatestChatMessages(conversationId){
  if(chatMessagesConversationId!==conversationId||chatMessagesUid!==uid||activeChatConversation?.conversationId!==conversationId||currentUser?.uid!==uid)return;
  const cached=await chatHistoryCache.getMessages(uid,conversationId);
  const complete=cached?.complete===true;
- const baseMessages=complete?cached.messages:chatMessages;
+ const baseMessages=Array.isArray(cached?.messages)?cached.messages:chatMessages;
  const combined=mergeChatMessagePages(baseMessages,result.messages||[]);
  const visibleCount=Math.max(100,chatMessages.length);
  chatMessages=combined.slice(-visibleCount);
