@@ -170,7 +170,7 @@ export function createChatHistoryCache({
   async function clearUser(uid) {
     if (typeof uid !== "string" || !uid) return 0;
     const db = await database();
-    const prefix = `messages:${JSON.stringify([uid,`).slice(0, -1);
+    const prefix = `messages:${JSON.stringify([uid]).slice(0, -1)},`;
     const keys = new Set([...memory.keys()].filter(key => key.startsWith(prefix) || key === `conversations:${uid}`));
     if (db) {
       try {
