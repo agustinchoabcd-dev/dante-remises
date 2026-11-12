@@ -1206,9 +1206,12 @@ function renderChatOperatorMenu(){
   appendChatConversationGroup(menu,other);
  }else if(role==='operator'){
   appendChatRecipientGroup(menu,'Choferes',getChatDriverRecipients(),'driver');
-  appendChatConversationGroup(menu,chatConversations.filter(conversation=>conversation.kind!=='operator-driver'));
+  appendChatConversationGroup(menu,chatConversations.filter(conversation=>['passenger-operator','operator-support'].includes(conversation.kind)),'Pasajeros');
+  appendChatConversationGroup(menu,chatConversations.filter(conversation=>!['operator-driver','passenger-operator','operator-support'].includes(conversation.kind)));
  }else if(role==='driver'){
-  appendChatConversationGroup(menu,chatConversations);
+  appendChatConversationGroup(menu,chatConversations.filter(conversation=>conversation.kind==='passenger-driver'),'Pasajeros');
+  appendChatConversationGroup(menu,chatConversations.filter(conversation=>conversation.kind==='operator-driver'),'Operadores');
+  appendChatConversationGroup(menu,chatConversations.filter(conversation=>!['passenger-driver','operator-driver'].includes(conversation.kind)));
  }else if(role==='admin'){
   const drivers=getChatDriverRecipients();
   appendChatRecipientGroup(menu,'Choferes',drivers,'user');
