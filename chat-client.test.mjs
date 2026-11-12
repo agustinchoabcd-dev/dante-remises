@@ -473,3 +473,11 @@ test("drivers see only existing passenger/operator conversations grouped by coun
   assert.ok(html.includes("chatConversations.filter(conversation=>conversation.kind==='operator-driver'),'Operadores'"));
   assert.ok(html.includes("chatConversations.filter(conversation=>['passenger-operator','operator-support'].includes(conversation.kind)),'Pasajeros'"));
 });
+
+test("chat in-memory state resets when the authenticated UID changes", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("function ensureChatSessionForCurrentUser()"));
+  assert.ok(html.includes("if(chatSessionUid&&chatSessionUid!==uid)"));
+  assert.ok(html.includes("chatHistorySyncing=new Set()"));
+  assert.ok(html.includes("chatAttachmentUrls.clear()"));
+});
