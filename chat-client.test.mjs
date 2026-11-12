@@ -464,6 +464,7 @@ test("conversation and message indexes are paginated before being cached locally
   assert.ok(html.includes("api.listConversations(cursor)"));
   assert.ok(html.includes("while(hasMore&&cursor&&cursor!==lastCursor)"));
   assert.ok(html.includes("void prefetchChatConversationHistories()"));
+  assert.ok(html.includes("conversation.lastMessageAt") && html.includes("cached.lastSyncedAt"));
 });
 
 test("drivers see only existing passenger/operator conversations grouped by counterpart role", async () => {
