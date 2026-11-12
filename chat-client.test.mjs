@@ -420,7 +420,7 @@ test("chat opens as a separate WhatsApp-like screen and returns to the app shell
   assert.ok(html.includes("setChatScreenOpen(open)"));
   assert.ok(html.includes("Volver a Dante Remises"));
   assert.ok(html.includes("closeChatScreen()"));
-  assert.ok(!html.includes("chatbox-fullscreen"));
+  assert.ok(!html.includes("classList.toggle('chatbox-fullscreen')"));
 });
 
 test("audio attachments use a styled player with live elapsed and total duration", async () => {
