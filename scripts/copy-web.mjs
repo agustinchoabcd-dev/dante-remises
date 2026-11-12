@@ -8,6 +8,7 @@ const webAssets = [
   "media-cache.mjs",
   "role-resolver.mjs",
   "chat-client.mjs",
+  "chat-history-cache.mjs",
   "perf-monitor.mjs",
   "diagnostics-monitor.mjs",
   "availability-refresh.mjs",
