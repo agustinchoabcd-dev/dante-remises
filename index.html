@@ -1213,6 +1213,13 @@ function renderChatOperatorMenu(){
     button.textContent=operator.firstName+' · operador';menu.appendChild(button);
    });
   }
+  const previousOperatorChats=chatConversations.filter(conversation=>{
+   if(conversation.kind==='operator-support')return chatOperators.length===0;
+   if(conversation.kind!=='passenger-operator')return false;
+   const otherUid=Object.keys(conversation.participantUids||{}).find(uid=>uid!==currentUser?.uid);
+   return !chatOperators.some(operator=>operator.uid===otherUid);
+  });
+  appendChatConversationGroup(menu,previousOperatorChats,'Conversaciones anteriores');
   const other=chatConversations.filter(conversation=>
    !['passenger-driver','passenger-operator','operator-support'].includes(conversation.kind)
   );
@@ -1310,24 +1317,11 @@ async function renderChatPeerAvatar(conversation){
 }
 function renderChatConversationList(){
  const list=byId('chatConversationList');list.replaceChildren();
- const visible=currentRole?.role==='passenger'
-  ?chatConversations.filter(conversation=>{
-    if(conversation.kind==='operator-support')return chatOperators.length>0;
-    if(conversation.kind==='passenger-operator'){
-     const otherUid=Object.keys(conversation.participantUids||{}).find(uid=>uid!==currentUser?.uid);
-     return chatOperators.some(operator=>operator.uid===otherUid);
-    }
-    return true;
-   })
-  :chatConversations;
- if(!visible.length){
-  const empty=document.createElement('p');empty.className='hint';
-  empty.textContent=currentRole?.role==='passenger'&&chatConversations.length
-   ?'No hay operadores conectados. Podés iniciar un chat con un chofer.'
-   :'Todavía no tenés conversaciones.';
+ if(!chatConversations.length){
+  const empty=document.createElement('p');empty.className='hint';empty.textContent='Todavía no tenés conversaciones.';
   list.appendChild(empty);return;
  }
- visible.forEach(conversation=>{
+ chatConversations.forEach(conversation=>{
   const button=document.createElement('button');button.type='button';button.className='chat-conversation'+(conversation.conversationId===activeChatConversation?.conversationId?' active':'');button.dataset.conversationId=conversation.conversationId;
   const title=document.createElement('strong');title.textContent=conversationTitle(conversation);button.appendChild(title);
   const preview=document.createElement('small');preview.textContent=conversation.lastMessagePreview||'Sin mensajes todavía';button.appendChild(preview);list.appendChild(button);
