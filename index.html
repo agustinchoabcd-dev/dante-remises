@@ -41,6 +41,7 @@ body.chat-screen-open #chat .chat-history-toolbar{flex:0 0 auto!important;paddin
 body.chat-screen-open #chat .chatcompose{flex:0 0 auto!important;padding-bottom:max(12px,env(safe-area-inset-bottom))!important;padding-left:max(12px,env(safe-area-inset-left))!important;padding-right:max(12px,env(safe-area-inset-right))!important}
 body.chat-screen-open #chat .chat-peer-menu{position:fixed!important;top:calc(env(safe-area-inset-top) + 68px)!important;left:12px!important;right:12px!important;max-height:60dvh!important;overflow:auto!important}
 body.chat-screen-open #chat .chatbox,body.chat-screen-open #chat .chatbox *{transform:none!important}
+body.chat-screen-open .image-lightbox{z-index:10002!important}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -1709,6 +1710,7 @@ async function listAllChatConversations(api){
   (Array.isArray(page?.conversations)?page.conversations:[]).forEach(item=>{if(item?.conversationId)byId.set(item.conversationId,item)});
   cursor=page?.nextCursor||null;hasMore=Boolean(page?.hasMore);
  }
+ if(hasMore)throw new Error('No se pudo completar la paginación de conversaciones.');
  const conversations=[...byId.values()].sort((a,b)=>(Number(b.lastMessageAt)||0)-(Number(a.lastMessageAt)||0));
  return {conversations,complete:!hasMore};
 }
