@@ -1460,8 +1460,8 @@ function showLockedChatRecordingControls(){
  byId('chatCancelRecordingButton').classList.remove('hidden');
 }
 async function startChatAudioRecording(){
- if(!activeChatConversation?.conversationId){chatRecordingGestureMode='idle';chatRecordingHoldActive=false;notify('Primero abrí una conversación.');return}
- if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){chatRecordingGestureMode='idle';chatRecordingHoldActive=false;notify('Este dispositivo no admite grabación de audio desde el chat.');return}
+ if(!activeChatConversation?.conversationId){chatRecordingGestureMode='idle';chatRecordingHoldActive=false;byId('chatRecordingGestureBar').classList.add('hidden');notify('Primero abrí una conversación.');return}
+ if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){chatRecordingGestureMode='idle';chatRecordingHoldActive=false;byId('chatRecordingGestureBar').classList.add('hidden');notify('Este dispositivo no admite grabación de audio desde el chat.');return}
  chatRecordingAutoSend=true;chatRecordingRequestPending=true;
  try{
   const stream=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -1509,7 +1509,7 @@ async function startChatAudioRecording(){
    if(elapsed>=120_000&&recorder.state==='recording'){chatRecordingGestureMode='stopped';chatRecordingHoldActive=false;recorder.stop()}
   },1000);
  }catch(error){
-  releaseChatRecordingStream();chatMediaRecorder=null;chatRecordingRequestPending=false;chatRecordingHoldActive=false;chatRecordingAutoSend=false;chatRecordingGestureMode='idle';byId('chatRecordButton').classList.remove('recording');
+  releaseChatRecordingStream();chatMediaRecorder=null;chatRecordingRequestPending=false;chatRecordingHoldActive=false;chatRecordingAutoSend=false;chatRecordingGestureMode='idle';byId('chatRecordButton').classList.remove('recording');byId('chatRecordingGestureBar').classList.add('hidden');
   notify(error?.name==='NotAllowedError'?'No se concedió permiso para usar el micrófono.':'No se pudo iniciar la grabación de audio.');
   console.warn('Chat microphone request failed:',error);
  }
