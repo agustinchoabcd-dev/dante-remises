@@ -16,7 +16,9 @@ test("chat wallpaper survives the later immersive-chat stylesheet and is package
 
 test("chat image attachment invokes the native Android camera and gallery chooser", () => {
   assert.ok(html.includes('id="chatImageInput" type="file" accept="image/*" class="hidden"'));
-  assert.ok(html.includes("const selection=await chooseChatImage()"));
+  assert.ok(html.includes("try{selection=await chooseChatImage()}"));
+  assert.ok(html.includes("using the system file picker as fallback"));
+  assert.ok(html.includes("byId('chatImageInput').click();return"));
   assert.ok(html.includes("byId('chatAttachButton').addEventListener('click',openChatImagePicker)"));
   assert.ok(!html.includes('capture="environment"'));
   assert.ok(!html.includes("chatPhotoSourceMenu"));
@@ -34,6 +36,7 @@ test("voice gesture guide is inline with the microphone and supports full horizo
   assert.ok(html.includes("#chat .chat-recording-gesture-bar{position:absolute;left:12px;right:116px;top:50%"));
   assert.ok(html.includes("@keyframes chat-recording-bar-in"));
   assert.ok(html.includes("@keyframes chat-mic-recording-pulse"));
+  assert.ok(html.includes("@keyframes chat-lock-confirm"));
   assert.ok(html.includes("const horizontalLimit=Math.min(260,window.innerWidth*.7);const dx=Math.max(-horizontalLimit,Math.min(horizontalLimit,event.clientX-chatRecordingPointerStart.x));"));
 });
 
