@@ -39,6 +39,8 @@ test("voice recording supports hold-to-send, left-swipe cancellation and hands-f
   assert.match(html, /↑ para manos libres/);
   assert.match(html, /chatRecordingRequestPending=true/);
   assert.match(html, /chatRecordingRequestPending&&!chatMediaRecorder/);
+  assert.match(html, /const ready=chatMediaRecorder\?\.state==='recording'\|\|Boolean\(chatRecordedAudio\)/);
+  assert.match(html, /Preparando micrófono…/);
   assert.match(html, /chatSendRecordingButton'\)\.addEventListener\('click'/);
   assert.match(html, /chatMediaRecorder\?\.state==='recording'/);
 });
