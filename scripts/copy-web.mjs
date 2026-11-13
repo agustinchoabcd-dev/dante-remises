@@ -4,6 +4,7 @@ const sourceDirectory = new URL("../", import.meta.url);
 const destinationDirectory = new URL("../www/", import.meta.url);
 const webAssets = [
   "index.html",
+  "assets/chat-wallpaper.jpg",
   "service-worker.js",
   "media-cache.mjs",
   "role-resolver.mjs",
@@ -16,6 +17,7 @@ const webAssets = [
 ];
 
 await mkdir(destinationDirectory, { recursive: true });
+await mkdir(new URL("assets/", destinationDirectory), { recursive: true });
 
 for (const asset of webAssets) {
   await copyFile(
