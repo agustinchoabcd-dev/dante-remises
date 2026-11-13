@@ -1578,13 +1578,28 @@ async function compressChatImage(file){
   throw new Error('La fotografía supera el tamaño permitido.');
  }finally{bitmap.close?.()}
 }
-async function handleChatImageSelection(event){
- const file=event.target.files?.[0];event.target.value='';if(!file)return;
+async function processChatImageFile(file){
+ if(!file)return;
  try{const compressed=await compressChatImage(file);await sendChatAttachment(compressed,'image',compressed.name)}
  catch(error){notify(error.message||'No se pudo preparar la fotografía.')}
 }
-/* Sin capture ni selector propio: Android abre su selector de contenido del sistema. */
-byId('chatAttachButton').addEventListener('click',()=>byId('chatImageInput').click());
+async function handleChatImageSelection(event){
+ const file=event.target.files?.[0];event.target.value='';await processChatImageFile(file);
+}
+async function openChatImagePicker(){
+ try{
+  const selection=await chooseChatImage();
+  if(selection===null){byId('chatImageInput').click();return}
+  if(selection.cancelled)return;
+  if(typeof selection.base64!=='string'||!selection.base64)throw new Error('Android no devolvió una fotografía válida.');
+  const binary=atob(selection.base64),bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  const mimeType=typeof selection.mimeType==='string'&&selection.mimeType.startsWith('image/')?selection.mimeType:'image/jpeg';
+  const extension=mimeType==='image/png'?'png':mimeType==='image/webp'?'webp':'jpg';
+  await processChatImageFile(new File([bytes],'chat-photo.'+extension,{type:mimeType}));
+ }catch(error){notify(error.message||'No se pudo abrir el selector de fotografías.');console.warn('Android photo chooser failed:',error)}
+}
+byId('chatAttachButton').addEventListener('click',openChatImagePicker);
 byId('chatImageInput').addEventListener('change',handleChatImageSelection);
 byId('chatRecordButton').addEventListener('pointerdown',event=>{
  if(event.button!==undefined&&event.button!==0)return;
