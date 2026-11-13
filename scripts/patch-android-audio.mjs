@@ -71,7 +71,7 @@ let source = await readFile(activityPath, "utf8");
 const packageMatch = source.match(/^package\s+([A-Za-z0-9_.]+);/m);
 if (!packageMatch) throw new Error("No se pudo determinar el package de MainActivity.java.");
 const packageName = packageMatch[1];
-const providerMatch = manifest.match(/<provider\\b(?=[^>]*android:name="androidx\\.core\\.content\\.FileProvider")[\\s\\S]*?<\\/provider>/);
+const providerMatch = manifest.match(/<provider\b(?=[^>]*android:name="androidx\.core\.content\.FileProvider")[\s\S]*?<\/provider>/);
 if (!providerMatch) throw new Error("No se encontró el proveedor FileProvider requerido para la cámara.");
 let providerBlock = providerMatch[0];
 const expectedAuthority = packageName + ".dante.fileprovider";
@@ -80,10 +80,10 @@ if (/android:authorities="[^"]*"/.test(providerBlock)) {
 } else {
   providerBlock = providerBlock.replace("<provider", `<provider android:authorities="${expectedAuthority}"`);
 }
-const pathsMetadata = /<meta-data\\b(?=[^>]*android:name="android\\.support\\.FILE_PROVIDER_PATHS")[^>]*\\/>/;
+const pathsMetadata = /<meta-data\b(?=[^>]*android:name="android\.support\.FILE_PROVIDER_PATHS")[^>]*\/>/;
 const correctPathsMetadata = '<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/dante_file_paths" />';
 if (pathsMetadata.test(providerBlock)) providerBlock = providerBlock.replace(pathsMetadata, correctPathsMetadata);
-else providerBlock = providerBlock.replace("</provider>", `            ${correctPathsMetadata}\\n        </provider>`);
+else providerBlock = providerBlock.replace("</provider>", `            ${correctPathsMetadata}\n        </provider>`);
 manifest = manifest.replace(providerMatch[0], providerBlock);
 await writeFile(manifestPath, manifest, "utf8");
 console.log("FileProvider: autoridad y rutas temporales alineadas con el package Android real.");
