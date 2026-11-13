@@ -1454,8 +1454,9 @@ function cancelChatRecording(){
 }
 function showLockedChatRecordingControls(){
  byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatRecordingGestureBar').textContent='🔒 Grabación manos libres · tocá Enviar audio para terminar';
- byId('chatSendRecordingButton').textContent='Enviar audio';
- byId('chatSendRecordingButton').disabled=false;
+ const ready=chatMediaRecorder?.state==='recording'||Boolean(chatRecordedAudio);
+ byId('chatSendRecordingButton').textContent=ready?'Enviar audio':'Preparando micrófono…';
+ byId('chatSendRecordingButton').disabled=!ready;
  byId('chatSendRecordingButton').classList.remove('hidden');
  byId('chatCancelRecordingButton').classList.remove('hidden');
 }
