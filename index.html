@@ -324,6 +324,8 @@ body.chat-screen-open #chat .chat-input-shell{position:relative!important;transf
 body.chat-screen-open #chat .chat-camera-button{position:absolute!important;right:5px!important;top:50%!important;transform:translateY(-50%)!important;inset-inline-end:5px!important;margin:0!important;align-self:auto!important}
 body.chat-screen-open #chat .chatcompose{align-items:center!important;transform:none!important}
 #chat .chat-mic-button.recording{touch-action:none}
+#chat .chat-recording-gesture-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 14px;color:var(--accent);font-size:12px;font-weight:700;background:var(--surface-2);border-top:1px solid rgba(0,230,112,.18)}
+#chat .chat-recording-gesture-bar.hidden{display:none}
 </style>
 </head>
 <body>
@@ -452,6 +454,7 @@ body.chat-screen-open #chat .chatcompose{align-items:center!important;transform:
 <div class="chathead"><div class="chathead-main"><div class="chat-peer-avatar" id="chatPeerAvatar" aria-hidden="true">👤</div><div class="chathead-copy"><strong id="chatTitle">Elegí una conversación</strong><button type="button" id="chatPeerSelect" class="chat-peer-select hidden" aria-haspopup="true" aria-expanded="false"><span id="chatPeerSelectLabel">Elegí con quién hablar</span><span class="chat-peer-caret" aria-hidden="true">▼</span></button><div id="chatPeerMenu" class="chat-peer-menu hidden" role="menu" aria-label="Conversaciones y operadores"></div><div class="muted" style="color:#d5deea">Dante Remises · Santa Rosa de Calamuchita</div></div><button type="button" id="chatFullscreenButton" class="chat-fullscreen-button" aria-label="Expandir chat a pantalla completa" title="Pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg></button></div></div>
 <div class="chat-history-toolbar"><button class="secondary hidden" id="chatLoadOlderButton" type="button">Cargar mensajes anteriores</button></div><div class="messages" id="messages" aria-live="polite"><div class="msg">Todavía no hay una conversación abierta.</div></div>
 <span id="chatRecordingStatus" class="hint chat-recording-status" role="status"></span>
+<div id="chatRecordingGestureBar" class="chat-recording-gesture-bar hidden" aria-live="polite"><span>← Deslizá para cancelar</span><span>↑ o tocá para manos libres</span></div>
 <form class="chatcompose" id="chatForm"><div class="chat-input-shell"><input id="chatInput" placeholder="Escribí un mensaje…" autocomplete="off" maxlength="2000" required><button class="chat-camera-button" id="chatAttachButton" type="button" aria-label="Adjuntar fotografía" title="Adjuntar fotografía"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"/><circle cx="12" cy="13.5" r="3.5"/></svg></button></div><button class="chat-mic-button" id="chatRecordButton" type="button" aria-label="Mantener presionado para grabar audio" title="Mantené presionado para grabar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"/></svg></button><button class="primary" id="chatSendButton" type="submit">Enviar</button><input id="chatImageInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden"><input id="chatCameraInput" type="file" accept="image/*" capture="environment" class="hidden"><button class="primary hidden" id="chatSendRecordingButton" type="button">Enviar audio</button><button class="secondary hidden" id="chatCancelRecordingButton" type="button">Cancelar</button><audio id="chatRecordingPreview" class="chat-audio hidden" controls preload="none"></audio></form>
 <div class="chat-photo-source-menu hidden" id="chatPhotoSourceMenu" role="dialog" aria-modal="true" aria-label="Elegir origen de fotografía"><strong>Enviar una fotografía</strong><button type="button" id="chatTakePhotoButton">📷 Tomar una foto</button><button type="button" id="chatChoosePhotoButton">🖼️ Elegir desde galería</button><button type="button" class="secondary" id="chatClosePhotoSourceButton">Cancelar</button></div>
 </div>
@@ -1436,11 +1439,11 @@ function clearChatRecording(){
  byId('chatRecordingPreview').pause();byId('chatRecordingPreview').removeAttribute('src');byId('chatRecordingPreview').classList.add('hidden');
  byId('chatRecordButton').disabled=false;byId('chatRecordButton').classList.remove('recording');
  byId('chatSendRecordingButton').disabled=false;byId('chatSendRecordingButton').textContent='Enviar audio';byId('chatSendRecordingButton').classList.add('hidden');byId('chatCancelRecordingButton').classList.add('hidden');
- byId('chatRecordingStatus').textContent='';
+ byId('chatRecordingStatus').textContent='';byId('chatRecordingGestureBar').classList.add('hidden');
 }
 function cancelChatRecording(){
  chatRecordingGestureMode='cancelled';chatRecordingHoldActive=false;chatRecordingAutoSend=false;
- if(chatRecordingRequestPending&&!chatMediaRecorder){byId('chatRecordButton').classList.remove('recording');byId('chatSendRecordingButton').classList.add('hidden');byId('chatCancelRecordingButton').classList.add('hidden');byId('chatRecordingStatus').textContent='';return}
+ if(chatRecordingRequestPending&&!chatMediaRecorder){byId('chatRecordButton').classList.remove('recording');byId('chatSendRecordingButton').classList.add('hidden');byId('chatCancelRecordingButton').classList.add('hidden');byId('chatRecordingStatus').textContent='';byId('chatRecordingGestureBar').classList.add('hidden');return}
  if(chatMediaRecorder&&!chatRecordingFinalized){
   chatDiscardRecording=true;
   if(chatMediaRecorder.state==='recording'){try{chatMediaRecorder.stop()}catch{clearChatRecording()}}
@@ -1450,6 +1453,7 @@ function cancelChatRecording(){
  clearChatRecording();
 }
 function showLockedChatRecordingControls(){
+ byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatRecordingGestureBar').textContent='🔒 Grabación manos libres · tocá Enviar audio para terminar';
  byId('chatSendRecordingButton').textContent='Enviar audio';
  byId('chatSendRecordingButton').disabled=false;
  byId('chatSendRecordingButton').classList.remove('hidden');
@@ -1495,7 +1499,8 @@ async function startChatAudioRecording(){
    showLockedChatRecordingControls();
    byId('chatRecordingStatus').textContent='Grabando en manos libres · deslizá a la izquierda para cancelar';
   }else{
-   byId('chatRecordingStatus').textContent='Grabando · soltá para enviar · deslizá a la izquierda para cancelar';
+   byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatRecordingGestureBar').textContent='← Deslizá para cancelar · ↑ para manos libres';
+   byId('chatRecordingStatus').textContent='Grabando · soltá para enviar';
   }
   chatRecordingTimer=setInterval(()=>{
    const elapsed=Date.now()-chatRecordingStartedAt;
@@ -1511,7 +1516,7 @@ async function startChatAudioRecording(){
 }
 function stopChatAudioRecording(){
  if(chatRecordingGestureMode==='hold')chatRecordingGestureMode='stopped';
- chatRecordingHoldActive=false;
+ chatRecordingHoldActive=false;byId('chatRecordingGestureBar').classList.add('hidden');
  if(chatMediaRecorder?.state==='recording'){try{chatMediaRecorder.stop()}catch(error){console.warn('No se pudo detener la grabación:',error);cancelChatRecording()}}
 }
 async function sendChatAttachment(file,type,fileName){
@@ -1558,7 +1563,7 @@ byId('chatPhotoSourceMenu').addEventListener('click',event=>{if(event.target===b
 byId('chatRecordButton').addEventListener('pointerdown',event=>{
  if(event.button!==undefined&&event.button!==0)return;
  if(chatMediaRecorder?.state==='recording'||chatRecordingRequestPending)return;
- event.preventDefault();chatRecordingGestureMode='hold';chatRecordingHoldActive=true;chatDiscardRecording=false;
+ event.preventDefault();chatRecordingGestureMode='hold';chatRecordingHoldActive=true;chatDiscardRecording=false;byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatRecordingGestureBar').textContent='← Deslizá para cancelar · ↑ para manos libres';
  chatRecordingPointerId=event.pointerId;chatRecordingPointerStart={x:event.clientX,y:event.clientY,at:Date.now()};
  try{byId('chatRecordButton').setPointerCapture(event.pointerId)}catch{}
  void startChatAudioRecording();
@@ -1586,7 +1591,7 @@ byId('chatRecordButton').addEventListener('lostpointercapture',()=>{if(chatRecor
 byId('chatRecordButton').addEventListener('contextmenu',event=>event.preventDefault());
 byId('chatCancelRecordingButton').addEventListener('click',cancelChatRecording);
 byId('chatSendRecordingButton').addEventListener('click',async()=>{
- if(chatMediaRecorder?.state==='recording'){byId('chatSendRecordingButton').disabled=true;byId('chatSendRecordingButton').textContent='Enviando…';chatRecordingGestureMode='stopped';chatMediaRecorder.stop();return}
+ if(chatMediaRecorder?.state==='recording'){byId('chatSendRecordingButton').disabled=true;byId('chatSendRecordingButton').textContent='Enviando…';chatRecordingGestureMode='stopped';byId('chatRecordingGestureBar').classList.add('hidden');chatMediaRecorder.stop();return}
  if(!chatRecordedAudio)return;
  const mimeType=chatRecordedAudio.type.split(';')[0]||'audio/webm';
  const extension={'audio/webm':'webm','audio/ogg':'ogg','audio/mp4':'m4a','audio/mpeg':'mp3','audio/wav':'wav'}[mimeType]||'webm';
