@@ -12,6 +12,7 @@ on:
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
+      - 'chat-ui.test.mjs'
       - 'chat-client.mjs'
       - 'scripts/patch-android-audio.mjs'
       - 'media-cache.mjs'
@@ -81,6 +82,7 @@ jobs:
           node --check media-cache.mjs
           node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
+          node --test chat-ui.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
