@@ -26,6 +26,24 @@ test("chat image attachment invokes the native Android camera and gallery choose
   assert.ok(nativePatch.includes("FileProvider.getUriForFile"));
 });
 
+test("voice gesture guide is inline with the microphone and supports full horizontal drag with animation", () => {
+  const form = html.indexOf('<form class="chatcompose" id="chatForm">');
+  const guide = html.indexOf('id="chatRecordingGestureBar"');
+  const mic = html.indexOf('id="chatRecordButton"');
+  assert.ok(form >= 0 && guide > form && mic > guide);
+  assert.ok(html.includes("#chat .chat-recording-gesture-bar{position:absolute;left:12px;right:116px;top:50%"));
+  assert.ok(html.includes("@keyframes chat-recording-bar-in"));
+  assert.ok(html.includes("@keyframes chat-mic-recording-pulse"));
+  assert.ok(html.includes("const horizontalLimit=Math.min(260,window.innerWidth*.7);const dx=Math.max(-horizontalLimit,Math.min(horizontalLimit,event.clientX-chatRecordingPointerStart.x));"));
+});
+
+test("Android photo chooser always aligns FileProvider authority and path metadata with the actual app package", () => {
+  assert.ok(nativePatch.includes('const expectedAuthority = packageName + ".dante.fileprovider"'));
+  assert.ok(nativePatch.includes('android.support.FILE_PROVIDER_PATHS'));
+  assert.ok(nativePatch.includes('@xml/dante_file_paths'));
+  assert.ok(nativePatch.includes('call.reject("No se pudo abrir el selector de fotografías: "'));
+});
+
 test("chat messages render their sent time in 24-hour hour:minute format", () => {
   assert.ok(html.includes("function formatChatMessageTime(value)"));
   assert.ok(html.includes("toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})"));
