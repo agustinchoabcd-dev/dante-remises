@@ -490,7 +490,7 @@ body.chat-screen-open #chat .chatcompose{align-items:center!important;transform:
 <p class="footer hidden" id="appFooter">Dante Remises · Acceso de pasajeros por DNI · Acceso de personal por correo o DNI vinculado · Roles y estados sincronizados con Firebase.</p>
 </main><div class="image-lightbox hidden" id="imageLightbox" role="dialog" aria-modal="true" aria-label="Foto ampliada"><button type="button" class="lightbox-close" id="closeImageLightbox" aria-label="Cerrar">×</button><img id="lightboxImage" alt="Imagen ampliada"><div class="lightbox-caption" id="lightboxCaption"></div></div><div class="toast" id="toast" role="status"></div>
 <script type="module">
-import { getCurrentPosition, watchPosition, clearWatch, requestStartupPermissions, requestLocationPermission, isGeolocationAvailable } from "./native-bridge.js";
+import { getCurrentPosition, watchPosition, clearWatch, requestStartupPermissions, requestLocationPermission, isGeolocationAvailable, chooseChatImage } from "./native-bridge.js";
 import { performanceMonitor as perf } from "./perf-monitor.mjs";
 import { mediaCache, sha256 } from "./media-cache.mjs";
 import { createAvailabilityRefreshScheduler } from "./availability-refresh.mjs";
