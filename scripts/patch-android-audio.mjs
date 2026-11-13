@@ -71,6 +71,22 @@ let source = await readFile(activityPath, "utf8");
 const packageMatch = source.match(/^package\s+([A-Za-z0-9_.]+);/m);
 if (!packageMatch) throw new Error("No se pudo determinar el package de MainActivity.java.");
 const packageName = packageMatch[1];
+const providerMatch = manifest.match(/<provider\\b(?=[^>]*android:name="androidx\\.core\\.content\\.FileProvider")[\\s\\S]*?<\\/provider>/);
+if (!providerMatch) throw new Error("No se encontró el proveedor FileProvider requerido para la cámara.");
+let providerBlock = providerMatch[0];
+const expectedAuthority = packageName + ".dante.fileprovider";
+if (/android:authorities="[^"]*"/.test(providerBlock)) {
+  providerBlock = providerBlock.replace(/android:authorities="[^"]*"/, `android:authorities="${expectedAuthority}"`);
+} else {
+  providerBlock = providerBlock.replace("<provider", `<provider android:authorities="${expectedAuthority}"`);
+}
+const pathsMetadata = /<meta-data\\b(?=[^>]*android:name="android\\.support\\.FILE_PROVIDER_PATHS")[^>]*\\/>/;
+const correctPathsMetadata = '<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/dante_file_paths" />';
+if (pathsMetadata.test(providerBlock)) providerBlock = providerBlock.replace(pathsMetadata, correctPathsMetadata);
+else providerBlock = providerBlock.replace("</provider>", `            ${correctPathsMetadata}\\n        </provider>`);
+manifest = manifest.replace(providerMatch[0], providerBlock);
+await writeFile(manifestPath, manifest, "utf8");
+console.log("FileProvider: autoridad y rutas temporales alineadas con el package Android real.");
 const packageDirectory = path.dirname(activityPath);
 const pluginPath = path.join(packageDirectory, "DantePhotoChooserPlugin.java");
 const pluginSource = `package ${packageName};
@@ -135,7 +151,7 @@ public class DantePhotoChooserPlugin extends Plugin {
             startActivityForResult(call, chooser, "pickImageResult");
         } catch (Exception error) {
             cleanupTemporaryPhoto();
-            call.reject("No se pudo abrir el selector de fotografías.", error);
+            call.reject("No se pudo abrir el selector de fotografías: " + (error.getMessage() || error.getClass().getSimpleName()), error);
         }
     }
 
