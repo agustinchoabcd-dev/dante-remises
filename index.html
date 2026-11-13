@@ -327,6 +327,19 @@ body.chat-screen-open #chat .chatcompose{align-items:center!important;transform:
 #chat .chat-recording-gesture-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 14px;color:var(--accent);font-size:12px;font-weight:700;background:var(--surface-2);border-top:1px solid rgba(0,230,112,.18)}
 #chat .chat-recording-gesture-bar.hidden{display:none}
 </style>
+
+<style id="dante-chat-wallpaper">
+/* Papel tapiz local del chat: se comparte entre vista normal y pantalla completa. */
+#chat .messages{
+  background-color:var(--surface);
+  background-image:linear-gradient(rgba(0,0,0,.13),rgba(0,0,0,.13)),url("./assets/chat-wallpaper.jpg");
+  background-position:center center;
+  background-size:cover;
+  background-repeat:no-repeat;
+  background-attachment:scroll;
+}
+</style>
+
 </head>
 <body>
 <div id="startupScreen" class="startup-screen" role="status" aria-live="polite" aria-label="Iniciando Dante Remises">
