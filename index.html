@@ -333,13 +333,14 @@ body.chat-screen-open #chat .chatcompose{align-items:center!important;transform:
 #chat .chat-recording-gesture-bar svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #chat .chat-recording-gesture-bar .chat-gesture-instruction{flex:1;min-width:0;text-align:center;transition:opacity .16s}
 #chat .chat-recording-gesture-bar .chat-gesture-lock{display:flex;align-items:center;gap:5px;white-space:nowrap;opacity:.72;transition:color .2s,opacity .2s,transform .2s}
-#chat .chat-recording-gesture-bar.is-locked .chat-gesture-lock{color:#00a94f;opacity:1;transform:scale(1.06)}
+#chat .chat-recording-gesture-bar.is-locked .chat-gesture-lock{color:#00a94f;opacity:1;transform:scale(1.06);animation:chat-lock-confirm .32s cubic-bezier(.2,.8,.2,1)}
 #chat .chat-mic-button.is-dragging{position:relative;z-index:8;transform:translate3d(var(--chat-mic-drag-x,0px),var(--chat-mic-drag-y,0px),0) scale(1.08);transition:none}
 #chat .chat-mic-button{position:relative;z-index:7;touch-action:none;will-change:transform;transition:transform .24s cubic-bezier(.2,.8,.2,1),background .2s,box-shadow .2s}
 #chat .chat-mic-button.recording:not(.is-dragging){animation:chat-mic-recording-pulse 1.35s ease-in-out infinite}
 #chat .chat-mic-button.is-cancelling{background:#b0002b!important;color:#fff!important;box-shadow:0 0 0 7px rgba(255,35,75,.24),0 0 28px rgba(255,35,75,.55)!important;animation:none}
 @keyframes chat-recording-bar-in{from{opacity:0;transform:translate3d(-8px,-50%,0) scale(.96)}to{opacity:1;transform:translate3d(0,-50%,0) scale(1)}}
 @keyframes chat-mic-recording-pulse{0%,100%{box-shadow:0 0 0 3px rgba(185,28,28,.16),0 0 0 rgba(185,28,28,0)}50%{box-shadow:0 0 0 7px rgba(185,28,28,.1),0 0 20px rgba(185,28,28,.28)}}
+@keyframes chat-lock-confirm{0%{transform:scale(.82);opacity:.45}70%{transform:scale(1.18)}100%{transform:scale(1.06);opacity:1}}
 @media(prefers-reduced-motion:reduce){#chat .chat-recording-gesture-bar,#chat .chat-mic-button.recording:not(.is-dragging){animation:none!important}#chat .chat-mic-button{transition:none!important}}
 </style>
 
@@ -1592,17 +1593,19 @@ async function handleChatImageSelection(event){
  const file=event.target.files?.[0];event.target.value='';await processChatImageFile(file);
 }
 async function openChatImagePicker(){
+ let selection;
+ try{selection=await chooseChatImage()}
+ catch(error){console.warn('Android photo chooser failed; using the system file picker as fallback:',error);byId('chatImageInput').click();return}
+ if(selection===null){byId('chatImageInput').click();return}
+ if(selection.cancelled)return;
  try{
-  const selection=await chooseChatImage();
-  if(selection===null){byId('chatImageInput').click();return}
-  if(selection.cancelled)return;
   if(typeof selection.base64!=='string'||!selection.base64)throw new Error('Android no devolvió una fotografía válida.');
   const binary=atob(selection.base64),bytes=new Uint8Array(binary.length);
   for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
   const mimeType=typeof selection.mimeType==='string'&&selection.mimeType.startsWith('image/')?selection.mimeType:'image/jpeg';
   const extension=mimeType==='image/png'?'png':mimeType==='image/webp'?'webp':'jpg';
   await processChatImageFile(new File([bytes],'chat-photo.'+extension,{type:mimeType}));
- }catch(error){notify(error.message||'No se pudo abrir el selector de fotografías.');console.warn('Android photo chooser failed:',error)}
+ }catch(error){notify(error.message||'No se pudo procesar la fotografía seleccionada.');console.warn('Android photo selection failed:',error)}
 }
 byId('chatAttachButton').addEventListener('click',openChatImagePicker);
 byId('chatImageInput').addEventListener('change',handleChatImageSelection);
