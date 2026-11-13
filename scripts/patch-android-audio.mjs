@@ -36,7 +36,7 @@ if (!manifest.includes(providerMarker)) {
   const provider = `
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.dante.fileprovider"
+            android:authorities="com.danteremises.test.dante.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
