@@ -80,10 +80,10 @@ if (/android:authorities="[^"]*"/.test(providerBlock)) {
 } else {
   providerBlock = providerBlock.replace("<provider", `<provider android:authorities="${expectedAuthority}"`);
 }
-const pathsMetadata = /<meta-data\b(?=[^>]*android:name="android\.support\.FILE_PROVIDER_PATHS")[^>]*\/>/;
+const pathsMetadata = /<meta-data\\b(?=[^>]*android:name="android\\.support\\.FILE_PROVIDER_PATHS")[^>]*(?:\\/>|>[\\s\\S]*?<\\/meta-data>)/g;
 const correctPathsMetadata = '<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/dante_file_paths" />';
-if (pathsMetadata.test(providerBlock)) providerBlock = providerBlock.replace(pathsMetadata, correctPathsMetadata);
-else providerBlock = providerBlock.replace("</provider>", `            ${correctPathsMetadata}\n        </provider>`);
+providerBlock = providerBlock.replace(pathsMetadata, "");
+providerBlock = providerBlock.replace("</provider>", `            ${correctPathsMetadata}\\n        </provider>`);
 manifest = manifest.replace(providerMatch[0], providerBlock);
 await writeFile(manifestPath, manifest, "utf8");
 console.log("FileProvider: autoridad y rutas temporales alineadas con el package Android real.");
