@@ -1,10 +1,16 @@
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { LocalNotifications } from "@capacitor/local-notifications";
 
 const native = Capacitor.isNativePlatform();
+const DantePhotoChooser = registerPlugin("DantePhotoChooser");
 const watches = new Map();
 let nextWatchId = 1;
+
+export async function chooseChatImage() {
+  if (!native) return null;
+  return DantePhotoChooser.pickImage();
+}
 
 export function isGeolocationAvailable() {
   return native || !!navigator.geolocation;
