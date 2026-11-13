@@ -3,12 +3,21 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+const copyScript = await readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8");
 
-test("chat photo picker offers Android camera and gallery separately", () => {
-  assert.match(html, /id="chatCameraInput"[^>]*capture="environment"/);
-  assert.match(html, /id="chatImageInput"[^>]*accept="image\/jpeg,image\/png,image\/webp"/);
-  assert.match(html, /id="chatTakePhotoButton"/);
-  assert.match(html, /id="chatChoosePhotoButton"/);
+test("chat wallpaper survives the later immersive-chat stylesheet and is packaged locally", () => {
+  const immersiveRule = html.match(/#chat \.messages\{height:[\s\S]*?scroll-behavior:smooth;overscroll-behavior:contain\}/)?.[0] || "";
+  assert.match(immersiveRule, /background-image:[^;]*url\("\.\/assets\/chat-wallpaper\.jpg"\)/);
+  assert.match(immersiveRule, /background-position:center center/);
+  assert.match(immersiveRule, /background-size:cover/);
+  assert.match(copyScript, /"assets\/chat-wallpaper\.jpg"/);
+});
+
+test("chat image attachment opens the Android system content picker without a custom source menu", () => {
+  assert.match(html, /id="chatImageInput" type="file" accept="image\/\*" class="hidden"/);
+  assert.match(html, /byId\('chatAttachButton'\)\.addEventListener\('click',\(\)=>byId\('chatImageInput'\)\.click\(\)\)/);
+  assert.doesNotMatch(html, /capture="environment"/);
+  assert.doesNotMatch(html, /chatPhotoSourceMenu|chatTakePhotoButton|chatChoosePhotoButton/);
   assert.match(html, /function handleChatImageSelection\(event\)/);
 });
 
@@ -28,19 +37,23 @@ test("fullscreen chat keeps the camera button aligned to its input shell", () =>
   assert.match(html, /body\.chat-screen-open #chat \.chat-camera-button\{[^}]*transform:translateY\(-50%\)!important/);
 });
 
-test("voice recording supports hold-to-send, left-swipe cancellation and hands-free lock", () => {
-  assert.match(html, /addEventListener\('pointerdown'/);
-  assert.match(html, /dx<=-72/);
-  assert.match(html, /dy<=-72/);
-  assert.match(html, /elapsed<280/);
+test("voice recording visibly drags the microphone to a trash target and turns red before cancellation", () => {
+  assert.match(html, /id="chatRecordingTrashTarget"/);
+  assert.match(html, /id="chatRecordingGestureText"/);
+  assert.match(html, /overTrash=event\.clientX/);
+  assert.match(html, /classList\.toggle\('is-cancelling',overTrash\)/);
+  assert.match(html, /--chat-mic-drag-x/);
+  assert.match(html, /shouldCancel\)\{cancelChatRecording\(\)/);
+});
+
+test("voice recording locks hands-free with a visible lock and sends on release otherwise", () => {
+  assert.match(html, /dy<=-76/);
+  assert.match(html, /id="chatRecordingLockHint"/);
+  assert.match(html, /function showLockedChatRecordingControls\(\)/);
   assert.match(html, /chatRecordingGestureMode='locked'/);
-  assert.match(html, /id="chatRecordingGestureBar"/);
-  assert.match(html, /← Deslizá para cancelar/);
-  assert.match(html, /↑ para manos libres/);
+  assert.match(html, /function stopChatAudioRecording\(\)/);
+  assert.doesNotMatch(html, /elapsed<280/);
   assert.match(html, /chatRecordingRequestPending=true/);
   assert.match(html, /chatRecordingRequestPending&&!chatMediaRecorder/);
-  assert.match(html, /const ready=chatMediaRecorder\?\.state==='recording'\|\|Boolean\(chatRecordedAudio\)/);
-  assert.match(html, /Preparando micrófono…/);
   assert.match(html, /chatSendRecordingButton'\)\.addEventListener\('click'/);
-  assert.match(html, /chatMediaRecorder\?\.state==='recording'/);
 });
