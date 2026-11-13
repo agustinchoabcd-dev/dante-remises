@@ -151,7 +151,7 @@ public class DantePhotoChooserPlugin extends Plugin {
             startActivityForResult(call, chooser, "pickImageResult");
         } catch (Exception error) {
             cleanupTemporaryPhoto();
-            call.reject("No se pudo abrir el selector de fotografías: " + (error.getMessage() || error.getClass().getSimpleName()), error);
+            call.reject("No se pudo abrir el selector de fotografías: " + ((error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName())), error);
         }
     }
 
