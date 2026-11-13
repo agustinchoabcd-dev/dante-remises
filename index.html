@@ -324,8 +324,18 @@ body.chat-screen-open #chat .chat-input-shell{position:relative!important;transf
 body.chat-screen-open #chat .chat-camera-button{position:absolute!important;right:5px!important;top:50%!important;transform:translateY(-50%)!important;inset-inline-end:5px!important;margin:0!important;align-self:auto!important}
 body.chat-screen-open #chat .chatcompose{align-items:center!important;transform:none!important}
 #chat .chat-mic-button.recording{touch-action:none}
-#chat .chat-recording-gesture-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 14px;color:var(--accent);font-size:12px;font-weight:700;background:var(--surface-2);border-top:1px solid rgba(0,230,112,.18)}
+#chat .chat-recording-gesture-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:7px 14px;color:var(--accent);font-size:12px;font-weight:700;background:var(--surface-2);border-top:1px solid rgba(0,230,112,.18);transition:background .16s,color .16s,border-color .16s}
 #chat .chat-recording-gesture-bar.hidden{display:none}
+#chat .chat-recording-gesture-bar.is-cancelling{background:#a90025!important;color:#fff!important;border-color:#ff365d!important}
+#chat .chat-recording-gesture-bar .chat-gesture-trash{display:grid;place-items:center;flex:0 0 42px;width:42px;height:38px;border:1px solid currentColor;border-radius:12px;opacity:.8;transition:background .16s,transform .16s,opacity .16s}
+#chat .chat-recording-gesture-bar.is-cancelling .chat-gesture-trash{background:#fff;color:#c4002b;opacity:1;transform:scale(1.08)}
+#chat .chat-recording-gesture-bar svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#chat .chat-recording-gesture-bar .chat-gesture-instruction{flex:1;text-align:center}
+#chat .chat-recording-gesture-bar .chat-gesture-lock{display:flex;align-items:center;gap:5px;white-space:nowrap;opacity:.8}
+#chat .chat-recording-gesture-bar.is-locked .chat-gesture-lock{color:#00e676;opacity:1}
+#chat .chat-mic-button.is-dragging{position:relative;z-index:8;transform:translate3d(var(--chat-mic-drag-x,0px),var(--chat-mic-drag-y,0px),0) scale(1.06);transition:none}
+#chat .chat-mic-button.is-cancelling{background:#b0002b!important;color:#fff!important;box-shadow:0 0 0 6px rgba(255,35,75,.24),0 0 28px rgba(255,35,75,.55)!important}
+#chat .chat-mic-button{touch-action:none;will-change:transform}
 </style>
 
 <style id="dante-chat-wallpaper">
@@ -467,9 +477,12 @@ body.chat-screen-open #chat .chatcompose{align-items:center!important;transform:
 <div class="chathead"><div class="chathead-main"><div class="chat-peer-avatar" id="chatPeerAvatar" aria-hidden="true">👤</div><div class="chathead-copy"><strong id="chatTitle">Elegí una conversación</strong><button type="button" id="chatPeerSelect" class="chat-peer-select hidden" aria-haspopup="true" aria-expanded="false"><span id="chatPeerSelectLabel">Elegí con quién hablar</span><span class="chat-peer-caret" aria-hidden="true">▼</span></button><div id="chatPeerMenu" class="chat-peer-menu hidden" role="menu" aria-label="Conversaciones y operadores"></div><div class="muted" style="color:#d5deea">Dante Remises · Santa Rosa de Calamuchita</div></div><button type="button" id="chatFullscreenButton" class="chat-fullscreen-button" aria-label="Expandir chat a pantalla completa" title="Pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg></button></div></div>
 <div class="chat-history-toolbar"><button class="secondary hidden" id="chatLoadOlderButton" type="button">Cargar mensajes anteriores</button></div><div class="messages" id="messages" aria-live="polite"><div class="msg">Todavía no hay una conversación abierta.</div></div>
 <span id="chatRecordingStatus" class="hint chat-recording-status" role="status"></span>
-<div id="chatRecordingGestureBar" class="chat-recording-gesture-bar hidden" aria-live="polite"><span>← Deslizá para cancelar</span><span>↑ o tocá para manos libres</span></div>
-<form class="chatcompose" id="chatForm"><div class="chat-input-shell"><input id="chatInput" placeholder="Escribí un mensaje…" autocomplete="off" maxlength="2000" required><button class="chat-camera-button" id="chatAttachButton" type="button" aria-label="Adjuntar fotografía" title="Adjuntar fotografía"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"/><circle cx="12" cy="13.5" r="3.5"/></svg></button></div><button class="chat-mic-button" id="chatRecordButton" type="button" aria-label="Mantener presionado para grabar audio" title="Mantené presionado para grabar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"/></svg></button><button class="primary" id="chatSendButton" type="submit">Enviar</button><input id="chatImageInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden"><input id="chatCameraInput" type="file" accept="image/*" capture="environment" class="hidden"><button class="primary hidden" id="chatSendRecordingButton" type="button">Enviar audio</button><button class="secondary hidden" id="chatCancelRecordingButton" type="button">Cancelar</button><audio id="chatRecordingPreview" class="chat-audio hidden" controls preload="none"></audio></form>
-<div class="chat-photo-source-menu hidden" id="chatPhotoSourceMenu" role="dialog" aria-modal="true" aria-label="Elegir origen de fotografía"><strong>Enviar una fotografía</strong><button type="button" id="chatTakePhotoButton">📷 Tomar una foto</button><button type="button" id="chatChoosePhotoButton">🖼️ Elegir desde galería</button><button type="button" class="secondary" id="chatClosePhotoSourceButton">Cancelar</button></div>
+<div id="chatRecordingGestureBar" class="chat-recording-gesture-bar hidden" aria-live="polite">
+ <span class="chat-gesture-trash" id="chatRecordingTrashTarget" aria-label="Zona para cancelar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m3 3v7m6-7v7"/></svg></span>
+ <span class="chat-gesture-instruction" id="chatRecordingGestureText">Deslizá el micrófono hacia la basura para cancelar</span>
+ <span class="chat-gesture-lock" id="chatRecordingLockHint"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>↑ Bloquear</span></span>
+</div>
+<form class="chatcompose" id="chatForm"><div class="chat-input-shell"><input id="chatInput" placeholder="Escribí un mensaje…" autocomplete="off" maxlength="2000" required><button class="chat-camera-button" id="chatAttachButton" type="button" aria-label="Adjuntar fotografía" title="Adjuntar fotografía"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"/><circle cx="12" cy="13.5" r="3.5"/></svg></button></div><button class="chat-mic-button" id="chatRecordButton" type="button" aria-label="Mantener presionado para grabar audio" title="Mantené presionado para grabar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"/></svg></button><button class="primary" id="chatSendButton" type="submit">Enviar</button><input id="chatImageInput" type="file" accept="image/*" class="hidden"><button class="primary hidden" id="chatSendRecordingButton" type="button">Enviar audio</button><button class="secondary hidden" id="chatCancelRecordingButton" type="button">Cancelar</button><audio id="chatRecordingPreview" class="chat-audio hidden" controls preload="none"></audio></form>
 </div>
 <p class="hint" id="chatFooterNote">El chat permite enviar texto, fotografías y audios; la disponibilidad de adjuntos depende de la versión activa del servicio.</p>
 </div>
@@ -1452,11 +1465,11 @@ function clearChatRecording(){
  byId('chatRecordingPreview').pause();byId('chatRecordingPreview').removeAttribute('src');byId('chatRecordingPreview').classList.add('hidden');
  byId('chatRecordButton').disabled=false;byId('chatRecordButton').classList.remove('recording');
  byId('chatSendRecordingButton').disabled=false;byId('chatSendRecordingButton').textContent='Enviar audio';byId('chatSendRecordingButton').classList.add('hidden');byId('chatCancelRecordingButton').classList.add('hidden');
- byId('chatRecordingStatus').textContent='';byId('chatRecordingGestureBar').classList.add('hidden');
+ byId('chatRecordingStatus').textContent='';byId('chatRecordingGestureBar').classList.add('hidden');byId('chatRecordingGestureBar').classList.remove('is-locked','is-cancelling');resetChatRecordingDrag();
 }
 function cancelChatRecording(){
  chatRecordingGestureMode='cancelled';chatRecordingHoldActive=false;chatRecordingAutoSend=false;
- if(chatRecordingRequestPending&&!chatMediaRecorder){byId('chatRecordButton').classList.remove('recording');byId('chatSendRecordingButton').classList.add('hidden');byId('chatCancelRecordingButton').classList.add('hidden');byId('chatRecordingStatus').textContent='';byId('chatRecordingGestureBar').classList.add('hidden');return}
+ if(chatRecordingRequestPending&&!chatMediaRecorder){byId('chatRecordButton').classList.remove('recording');byId('chatSendRecordingButton').classList.add('hidden');byId('chatCancelRecordingButton').classList.add('hidden');byId('chatRecordingStatus').textContent='';byId('chatRecordingGestureBar').classList.add('hidden');byId('chatRecordingGestureBar').classList.remove('is-locked','is-cancelling');resetChatRecordingDrag();return}
  if(chatMediaRecorder&&!chatRecordingFinalized){
   chatDiscardRecording=true;
   if(chatMediaRecorder.state==='recording'){try{chatMediaRecorder.stop()}catch{clearChatRecording()}}
@@ -1465,8 +1478,12 @@ function cancelChatRecording(){
  }
  clearChatRecording();
 }
+function resetChatRecordingDrag(){
+ const button=byId('chatRecordButton');button.classList.remove('is-dragging','is-cancelling');button.style.removeProperty('--chat-mic-drag-x');button.style.removeProperty('--chat-mic-drag-y');
+ byId('chatRecordingGestureBar').classList.remove('is-cancelling');
+}
 function showLockedChatRecordingControls(){
- byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatRecordingGestureBar').textContent='🔒 Grabación manos libres · tocá Enviar audio para terminar';
+ byId('chatRecordingGestureBar').classList.remove('hidden','is-cancelling');byId('chatRecordingGestureBar').classList.add('is-locked');byId('chatRecordingGestureText').textContent='Grabación bloqueada · podés hablar sin mantener pulsado';byId('chatRecordingLockHint').lastElementChild.textContent='Bloqueado';
  const ready=chatMediaRecorder?.state==='recording'||Boolean(chatRecordedAudio);
  byId('chatSendRecordingButton').textContent=ready?'Enviar audio':'Preparando micrófono…';
  byId('chatSendRecordingButton').disabled=!ready;
@@ -1513,7 +1530,8 @@ async function startChatAudioRecording(){
    showLockedChatRecordingControls();
    byId('chatRecordingStatus').textContent='Grabando en manos libres · deslizá a la izquierda para cancelar';
   }else{
-   byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatRecordingGestureBar').textContent='← Deslizá para cancelar · ↑ para manos libres';
+   byId('chatRecordingGestureBar').classList.remove('hidden','is-locked','is-cancelling');byId('chatRecordingLockHint').lastElementChild.textContent='↑ Bloquear';
+   byId('chatRecordingGestureText').textContent='Deslizá el micrófono hacia la basura para cancelar';
    byId('chatRecordingStatus').textContent='Grabando · soltá para enviar';
   }
   chatRecordingTimer=setInterval(()=>{
@@ -1530,7 +1548,7 @@ async function startChatAudioRecording(){
 }
 function stopChatAudioRecording(){
  if(chatRecordingGestureMode==='hold')chatRecordingGestureMode='stopped';
- chatRecordingHoldActive=false;byId('chatRecordingGestureBar').classList.add('hidden');
+ chatRecordingHoldActive=false;byId('chatRecordingGestureBar').classList.add('hidden');byId('chatRecordingGestureBar').classList.remove('is-locked');resetChatRecordingDrag();
  if(chatMediaRecorder?.state==='recording'){try{chatMediaRecorder.stop()}catch(error){console.warn('No se pudo detener la grabación:',error);cancelChatRecording()}}
 }
 async function sendChatAttachment(file,type,fileName){
@@ -1560,48 +1578,54 @@ async function compressChatImage(file){
   throw new Error('La fotografía supera el tamaño permitido.');
  }finally{bitmap.close?.()}
 }
-function openChatPhotoSourceMenu(){byId('chatPhotoSourceMenu').classList.remove('hidden')}
-function closeChatPhotoSourceMenu(){byId('chatPhotoSourceMenu').classList.add('hidden')}
 async function handleChatImageSelection(event){
- const file=event.target.files?.[0];event.target.value='';closeChatPhotoSourceMenu();if(!file)return;
+ const file=event.target.files?.[0];event.target.value='';if(!file)return;
  try{const compressed=await compressChatImage(file);await sendChatAttachment(compressed,'image',compressed.name)}
  catch(error){notify(error.message||'No se pudo preparar la fotografía.')}
 }
-byId('chatAttachButton').addEventListener('click',openChatPhotoSourceMenu);
-byId('chatTakePhotoButton').addEventListener('click',()=>{closeChatPhotoSourceMenu();byId('chatCameraInput').click()});
-byId('chatChoosePhotoButton').addEventListener('click',()=>{closeChatPhotoSourceMenu();byId('chatImageInput').click()});
-byId('chatClosePhotoSourceButton').addEventListener('click',closeChatPhotoSourceMenu);
+/* Sin capture ni selector propio: Android abre su selector de contenido del sistema. */
+byId('chatAttachButton').addEventListener('click',()=>byId('chatImageInput').click());
 byId('chatImageInput').addEventListener('change',handleChatImageSelection);
-byId('chatCameraInput').addEventListener('change',handleChatImageSelection);
-byId('chatPhotoSourceMenu').addEventListener('click',event=>{if(event.target===byId('chatPhotoSourceMenu'))closeChatPhotoSourceMenu()});
 byId('chatRecordButton').addEventListener('pointerdown',event=>{
  if(event.button!==undefined&&event.button!==0)return;
  if(chatMediaRecorder?.state==='recording'||chatRecordingRequestPending)return;
- event.preventDefault();chatRecordingGestureMode='hold';chatRecordingHoldActive=true;chatDiscardRecording=false;byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatRecordingGestureBar').textContent='← Deslizá para cancelar · ↑ para manos libres';
- chatRecordingPointerId=event.pointerId;chatRecordingPointerStart={x:event.clientX,y:event.clientY,at:Date.now()};
+ event.preventDefault();chatRecordingGestureMode='hold';chatRecordingHoldActive=true;chatDiscardRecording=false;
+ byId('chatRecordingGestureBar').classList.remove('hidden','is-locked','is-cancelling');byId('chatRecordingLockHint').lastElementChild.textContent='↑ Bloquear';
+ byId('chatRecordingGestureText').textContent='Deslizá el micrófono hacia la basura para cancelar';
+ chatRecordingPointerId=event.pointerId;chatRecordingPointerStart={x:event.clientX,y:event.clientY,at:Date.now(),cancel:false};
  try{byId('chatRecordButton').setPointerCapture(event.pointerId)}catch{}
  void startChatAudioRecording();
 });
 byId('chatRecordButton').addEventListener('pointermove',event=>{
  if(chatRecordingGestureMode!=='hold'||event.pointerId!==chatRecordingPointerId||!chatRecordingPointerStart)return;
- const dx=event.clientX-chatRecordingPointerStart.x,dy=event.clientY-chatRecordingPointerStart.y;
- if(dx<=-72){event.preventDefault();cancelChatRecording();return}
- if(dy<=-72){event.preventDefault();chatRecordingGestureMode='locked';chatRecordingHoldActive=false;showLockedChatRecordingControls();byId('chatRecordingStatus').textContent='Grabando en manos libres · tocá Enviar audio para terminar';}
+ event.preventDefault();
+ const dx=Math.max(-Math.min(280,window.innerWidth*.76),Math.min(12,event.clientX-chatRecordingPointerStart.x));
+ const dy=Math.max(-150,Math.min(18,event.clientY-chatRecordingPointerStart.y));
+ const button=byId('chatRecordButton');button.classList.add('is-dragging');
+ button.style.setProperty('--chat-mic-drag-x',dx+'px');button.style.setProperty('--chat-mic-drag-y',dy+'px');
+ const trash=byId('chatRecordingTrashTarget').getBoundingClientRect();
+ const overTrash=event.clientX>=trash.left-12&&event.clientX<=trash.right+22&&event.clientY>=trash.top-18&&event.clientY<=trash.bottom+18;
+ chatRecordingPointerStart.cancel=overTrash;
+ byId('chatRecordingGestureBar').classList.toggle('is-cancelling',overTrash);
+ button.classList.toggle('is-cancelling',overTrash);
+ byId('chatRecordingGestureText').textContent=overTrash?'Soltá para cancelar el audio':'Deslizá el micrófono hacia la basura para cancelar';
+ if(dy<=-76&&!overTrash){
+  chatRecordingGestureMode='locked';chatRecordingHoldActive=false;chatRecordingPointerStart=null;chatRecordingPointerId=null;
+  resetChatRecordingDrag();showLockedChatRecordingControls();
+  byId('chatRecordingStatus').textContent='Grabando en manos libres · tocá Enviar audio para terminar';
+ }
 });
 byId('chatRecordButton').addEventListener('pointerup',event=>{
  event.preventDefault();if(event.pointerId!==chatRecordingPointerId||!chatRecordingPointerStart)return;
- const dx=event.clientX-chatRecordingPointerStart.x,dy=event.clientY-chatRecordingPointerStart.y,elapsed=Date.now()-chatRecordingPointerStart.at;
+ const shouldCancel=chatRecordingPointerStart.cancel;
+ chatRecordingPointerStart=null;chatRecordingPointerId=null;resetChatRecordingDrag();
  if(chatRecordingGestureMode==='hold'){
-  if(dx<=-72){cancelChatRecording();return}
-  if(dy<=-72||elapsed<280){
-   chatRecordingGestureMode='locked';chatRecordingHoldActive=false;showLockedChatRecordingControls();
-   byId('chatRecordingStatus').textContent='Grabando en manos libres · tocá Enviar audio para terminar';
-  }else stopChatAudioRecording();
+  if(shouldCancel){cancelChatRecording();return}
+  stopChatAudioRecording();
  }
- chatRecordingPointerStart=null;chatRecordingPointerId=null;
 });
-byId('chatRecordButton').addEventListener('pointercancel',cancelChatRecording);
-byId('chatRecordButton').addEventListener('lostpointercapture',()=>{if(chatRecordingGestureMode==='hold')stopChatAudioRecording()});
+byId('chatRecordButton').addEventListener('pointercancel',()=>{if(chatRecordingGestureMode==='hold')cancelChatRecording()});
+byId('chatRecordButton').addEventListener('lostpointercapture',()=>{if(chatRecordingGestureMode==='hold'&&chatRecordingPointerStart)cancelChatRecording()});
 byId('chatRecordButton').addEventListener('contextmenu',event=>event.preventDefault());
 byId('chatCancelRecordingButton').addEventListener('click',cancelChatRecording);
 byId('chatSendRecordingButton').addEventListener('click',async()=>{
@@ -2417,9 +2441,9 @@ html[data-theme="light"] #chat .card.panel{background:linear-gradient(145deg,#ff
 #chat .chat-peer-menu button:hover{background:var(--surface-2)}
 #chat .chat-history-toolbar{padding:12px 12px 0}
 #chat .chat-history-toolbar button{border-radius:999px;font-size:11px;padding:8px 14px}
-#chat .messages{height:clamp(290px,48vh,520px);padding:18px clamp(12px,3vw,22px);gap:12px;background:
- radial-gradient(ellipse at 0 0,rgba(0,238,112,.065),transparent 42%),
- radial-gradient(ellipse at 100% 100%,rgba(0,190,85,.045),transparent 42%),var(--surface);
+#chat .messages{height:clamp(290px,48vh,520px);padding:18px clamp(12px,3vw,22px);gap:12px;background-color:var(--surface);
+ background-image:linear-gradient(rgba(0,0,0,.10),rgba(0,0,0,.10)),url("./assets/chat-wallpaper.jpg");
+ background-position:center center;background-size:cover;background-repeat:no-repeat;
  scroll-behavior:smooth;overscroll-behavior:contain}
 #chat .msg{position:relative;max-width:min(82%,520px);padding:11px 15px;border-radius:17px 17px 17px 5px;border:1px solid rgba(0,238,112,.16);background:linear-gradient(145deg,#17271c,#101b14);color:#eafff1;line-height:1.48;box-shadow:0 5px 16px rgba(0,0,0,.16);animation:dante-message-in .28s cubic-bezier(.2,.8,.2,1) both;transform-origin:bottom left}
 #chat .msg.mine{align-self:flex-end;border-radius:17px 17px 5px 17px;border-color:rgba(0,255,130,.5);background:linear-gradient(135deg,#087b3d 0%,#00a94f 65%,#00c967 100%);color:#f4fff8;box-shadow:0 5px 18px rgba(0,190,80,.18),inset 0 1px rgba(255,255,255,.14);transform-origin:bottom right}
