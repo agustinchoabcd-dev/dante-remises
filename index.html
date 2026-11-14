@@ -1568,7 +1568,7 @@ function clearChatRecording(){
 }
 function cancelChatRecording(){
  chatRecordingGestureMode='cancelled';chatRecordingHoldActive=false;chatRecordingAutoSend=false;
- if(chatRecordingRequestPending&&!chatMediaRecorder){byId('chatRecordButton').classList.remove('recording');byId('chatSendRecordingButton').classList.add('hidden');byId('chatCancelRecordingButton').classList.add('hidden');byId('chatRecordingStatus').textContent='';byId('chatRecordingGestureBar').classList.add('hidden');byId('chatRecordingGestureBar').classList.remove('is-locked','is-cancelling');resetChatRecordingDrag();return}
+ if(chatRecordingRequestPending&&!chatMediaRecorder){byId('chatRecordButton').classList.remove('recording');byId('chatForm').classList.remove('is-recording','is-locked','is-uploading');byId('chatPauseRecordingButton').classList.add('hidden');byId('chatSendRecordingButton').classList.add('hidden');byId('chatCancelRecordingButton').classList.add('hidden');byId('chatRecordingStatus').textContent='';byId('chatRecordingGestureBar').classList.add('hidden');byId('chatRecordingGestureBar').classList.remove('is-locked','is-cancelling');resetChatRecordingDrag();return}
  if(chatMediaRecorder&&!chatRecordingFinalized){
   chatDiscardRecording=true;
   if(chatMediaRecorder.state==='recording'){try{chatMediaRecorder.stop()}catch{clearChatRecording()}}
