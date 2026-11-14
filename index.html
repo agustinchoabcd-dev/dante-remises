@@ -356,6 +356,37 @@ body.chat-screen-open #chat .chatcompose{align-items:center!important;transform:
 }
 </style>
 
+
+<style id="dante-chat-layout-fixes">
+/* Ajustes estrictos de maquetación: conservan paleta, tipografía e identidad Dante. */
+#chat .chat-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 8px;min-width:0}
+#chat .chat-section-heading h2{margin:0;min-width:0}
+#chat .chat-refresh-icon{width:40px;height:40px;min-width:40px;flex:0 0 40px;display:grid;place-items:center;padding:0;border-radius:50%}
+#chat .chat-refresh-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#chat .msg{padding:10px 13px 9px;overflow:hidden}
+#chat .msg-time{position:static;display:block;width:max-content;max-width:100%;margin:7px 0 0 auto;padding:0 2px 1px;line-height:1.35;opacity:.72;white-space:nowrap}
+#chat .chat-audio-player{width:min(310px,100%);min-width:0;max-width:100%;padding:10px 12px;gap:10px}
+#chat .chat-audio-track{min-width:0;flex:1 1 0}
+#chat .chat-audio-time{min-width:0;gap:10px;padding-inline:1px;line-height:1.35}
+#chat .chat-audio-time span{min-width:0;white-space:nowrap}
+#chat .chat-recording-gesture-bar.is-locked{position:relative;inset:auto;top:auto;left:auto;right:auto;z-index:1;order:-1;flex:1 1 100%;width:100%;min-width:0;min-height:44px;margin:0 0 2px;transform:none;animation:chat-recording-bar-in .22s ease both}
+#chat .chat-recording-gesture-bar.is-locked .chat-gesture-instruction{overflow-wrap:anywhere}
+#chat .chatcompose:has(#chatSendRecordingButton:not(.hidden)){flex-wrap:wrap;align-items:center;row-gap:9px}
+#chat .chatcompose:has(#chatSendRecordingButton:not(.hidden)) .chat-input-shell{flex:1 1 120px;min-width:0}
+#chat .chatcompose:has(#chatSendRecordingButton:not(.hidden)) #chatRecordButton{flex:0 0 45px}
+#chat .chatcompose:has(#chatSendRecordingButton:not(.hidden)) #chatSendRecordingButton,
+#chat .chatcompose:has(#chatSendRecordingButton:not(.hidden)) #chatCancelRecordingButton{flex:0 0 auto;min-height:42px;max-width:100%;white-space:nowrap}
+#chat .chat-mic-button.is-dragging{transform:translate3d(var(--chat-mic-drag-x,0px),var(--chat-mic-drag-y,0px),0) scale(1.08)!important;transition:none!important;z-index:12!important}
+body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(var(--chat-mic-drag-x,0px),var(--chat-mic-drag-y,0px),0) scale(1.08)!important;z-index:10003!important}
+@media(max-width:420px){
+ #chat .chat-recording-gesture-bar{left:8px;right:108px;gap:6px;padding:6px 8px;font-size:11px}
+ #chat .chat-recording-gesture-bar .chat-gesture-trash{flex-basis:32px;width:32px;height:34px}
+ #chat .chat-recording-gesture-bar .chat-gesture-lock{gap:3px;font-size:10px}
+ #chat .chatcompose:has(#chatSendRecordingButton:not(.hidden)) #chatSendRecordingButton,
+ #chat .chatcompose:has(#chatSendRecordingButton:not(.hidden)) #chatCancelRecordingButton{padding-inline:10px;font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){#chat .chat-mic-button.is-dragging{transition:none!important}}
+</style>
 </head>
 <body>
 <div id="startupScreen" class="startup-screen" role="status" aria-live="polite" aria-label="Iniciando Dante Remises">
@@ -472,11 +503,11 @@ body.chat-screen-open #chat .chatcompose{align-items:center!important;transform:
 <div class="card panel" id="appInfoCard" style="margin-top:16px"><h3>ℹ️ Info</h3><p class="muted">Información técnica de esta instalación de Dante Remises.</p><div class="note hidden" id="versionNote"><strong>Versión 0.6.1:</strong> mapa real, solicitudes de viaje y seguimiento GPS en primer plano. El GPS requiere permisos y que la aplicación permanezca abierta.</div><div class="build-info-list"><div><span>Versión HTML</span><strong id="infoHtmlVersion">0.6.1</strong></div><div><span>Versión de APK</span><strong id="infoApkVersion">No disponible en versión web</strong></div><div><span>Código de versión Android</span><strong id="infoApkVersionCode">—</strong></div><div><span>Compilación</span><strong id="infoBuildNumber">—</strong></div><div><span>Identificador de build</span><strong id="infoBuildRun">—</strong></div><div><span>Rama</span><strong id="infoBuildBranch">—</strong></div><div><span>Commit</span><strong id="infoBuildCommit">—</strong></div><div><span>Fecha de compilación (UTC)</span><strong id="infoBuildDate">—</strong></div><div><span>Paquete Android</span><strong id="infoAndroidPackage">com.danteremises.test</strong></div><div><span>Tipo de compilación</span><strong id="infoBuildType">Debug · pruebas</strong></div></div><p class="hint">Los datos de compilación se incorporan automáticamente al generar cada APK. En la versión web, los campos exclusivos de Android no están disponibles.</p></div>
 </section>
 <section id="chat" class="hidden">
-<h2>Mensajería</h2>
+<div class="chat-section-heading"><h2>Mensajería</h2><button class="secondary chat-refresh-icon" id="chatRefreshButton" type="button" aria-label="Actualizar conversaciones" title="Actualizar conversaciones"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.8-2L20 12M4 12l2.6 5a7 7 0 0 0 11.8-2"/></svg></button></div>
 <p class="muted" id="chatIntro">Conversaciones de pasajeros, choferes, operadores y administración.</p>
 <div class="card panel">
 <div class="field" id="chatRecipientField"><label for="contactChoice">¿Con quién querés hablar?</label><select id="contactChoice"></select></div>
-<div class="actions"><button class="primary" id="chatStartButton" type="button">Iniciar conversación</button><button class="secondary" id="chatRefreshButton" type="button">Actualizar</button></div>
+<div class="actions"><button class="primary" id="chatStartButton" type="button">Iniciar conversación</button></div>
 <p class="hint chat-status" id="chatStatus" role="status">Preparando mensajería…</p>
 <div id="chatConversationList" class="chat-conversation-list" aria-label="Conversaciones"></div>
 <div class="chatbox">
@@ -1452,7 +1483,7 @@ async function renderChatMessageAttachment(item,message,conversationId){
    audio.addEventListener('ended',()=>{audio.currentTime=0;updateTime()});audio.addEventListener('error',()=>player.classList.add('is-error'));
    toggle.addEventListener('click',()=>{if(audio.paused)void audio.play().catch(()=>player.classList.add('is-error'));else audio.pause()});
    progress.addEventListener('input',()=>{if(Number.isFinite(audio.duration)&&audio.duration>0){audio.currentTime=audio.duration*(Number(progress.value)/100);updateTime()}});
-   player.append(toggle,track,audio);item.appendChild(player);audio.load();updateTime();
+   player.append(toggle,track,audio);item.appendChild(player);const sentTime=item.querySelector('.msg-time');if(sentTime)item.appendChild(sentTime);audio.load();updateTime();
   }
  }catch(error){if(item.isConnected){status.textContent='No se pudo cargar el adjunto.';console.warn('No se pudo cargar un adjunto del chat:',error)}}
 }
