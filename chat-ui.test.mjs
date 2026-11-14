@@ -10,7 +10,8 @@ test("chat wallpaper survives the later immersive-chat stylesheet and is package
   const immersiveRule = html.match(/#chat \.messages\{height:[\s\S]*?scroll-behavior:smooth;overscroll-behavior:contain\}/)?.[0] || "";
   assert.ok(immersiveRule.includes('url("./assets/chat-wallpaper.jpg")'));
   assert.ok(immersiveRule.includes("background-position:center center"));
-  assert.ok(immersiveRule.includes("background-size:cover"));
+  assert.ok(immersiveRule.includes("background-size:contain"));
+  assert.ok(!immersiveRule.includes("background-size:cover"));
   assert.ok(copyScript.includes('"assets/chat-wallpaper.jpg"'));
 });
 
@@ -115,10 +116,21 @@ test("microphone drag transform remains enabled in fullscreen chat", () => {
 
 
 test("chat bubbles keep text, attachments and timestamps inside a flexible padded box", () => {
-  assert.ok(html.includes("#chat .msg{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;flex:0 1 auto;width:fit-content;min-width:0;max-width:min(88%,520px);padding:12px 14px"));
+  assert.ok(html.includes("#chat .msg{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;flex:0 0 auto;width:fit-content;min-width:0;max-width:min(88%,520px);padding:12px 14px"));
+  assert.ok(html.includes("overflow-wrap:anywhere;word-break:break-word;line-break:anywhere;overflow:visible"));
   assert.ok(html.includes("overflow-wrap:anywhere;word-break:break-word"));
   assert.ok(html.includes("#chat .msg-time{position:static;display:block;align-self:flex-end"));
   assert.ok(html.includes("#chat .msg .chat-audio-player{width:min(310px,100%)"));
+});
+
+test("compact chat keeps the composer pinned, preserves complete bubbles and hides technical filler", () => {
+  assert.ok(html.includes("#chat .chatcompose{position:sticky;bottom:0;z-index:6;display:flex;flex:0 0 auto"));
+  assert.ok(html.includes("body.chat-screen-open #chat .chatcompose{position:relative!important;z-index:2!important}"));
+  assert.ok(!html.includes("id=\"chatIntro\""));
+  assert.ok(!html.includes("Conversaciones de pasajeros, choferes, operadores y administración."));
+  assert.ok(!html.includes("Refresco de respaldo cada 7 segundos"));
+  assert.ok(!html.includes("se mantiene el refresco de respaldo cada 7 segundos"));
+  assert.ok(html.includes("refreshChatConversations(true)},7000)"));
 });
 
 test("voice recording hides the text composer fluidly and shows a live elapsed counter", () => {
