@@ -98,6 +98,14 @@ test("chat uses one green header at the top of both list and fullscreen layouts"
   assert.ok(html.includes('body.chat-screen-open #chat .chat-list-controls{display:none!important}'));
 });
 
+test("chat message text uses explicit sender and body elements without changing timestamp placement", () => {
+  assert.ok(html.includes("sender.className='msg-sender'"));
+  assert.ok(html.includes("body.className='msg-text';body.textContent=textValue"));
+  assert.ok(html.includes("#chat .msg .msg-sender{display:block;font-size:11px"));
+  assert.ok(html.includes("#chat .msg .msg-text{display:block;white-space:pre-wrap"));
+  assert.ok(html.includes("#chat .msg-time{position:static;display:block;align-self:flex-end"));
+});
+
 test("message timestamps flow below content instead of overlaying audio or text", () => {
   assert.ok(html.includes("#chat .msg-time{position:static;display:block"));
   assert.ok(html.includes("const sentTime=item.querySelector('.msg-time');if(sentTime)item.appendChild(sentTime)"));
