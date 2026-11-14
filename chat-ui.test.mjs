@@ -133,6 +133,8 @@ test("hands-free voice mode exposes pause, resume, cancel and send controls with
   assert.ok(html.includes("function toggleChatRecordingPause()"));
   assert.ok(html.includes("recorder.pause()"));
   assert.ok(html.includes("recorder.resume()"));
+  assert.ok(html.includes("chatMediaRecorder.state==='recording'||chatMediaRecorder.state==='paused'"));
+  assert.ok(html.includes("chatMediaRecorder?.state==='recording'||chatMediaRecorder?.state==='paused'"));
   assert.ok(html.includes("chatcompose.is-recording.is-locked #chatPauseRecordingButton"));
   assert.ok(html.includes("chatcompose.is-recording.is-locked #chatCancelRecordingButton"));
   assert.ok(html.includes("chatcompose.is-recording.is-locked #chatSendRecordingButton"));
