@@ -2,11 +2,14 @@ name: Client module tests
 
 on:
   push:
-    branches: [dante-test, cache-optimization]
+    branches: [dante-test, cache-optimization, parallax-optimization, chat-media-integration]
     paths:
       - 'chat-client.mjs'
+      - 'chat-history-cache.mjs'
+      - 'chat-history-cache.test.mjs'
       - 'chat-client.test.mjs'
       - 'index.html'
+      - 'chat-ui.test.mjs'
       - 'media-cache.mjs'
       - 'media-cache.test.mjs'
       - 'service-worker.js'
@@ -28,7 +31,7 @@ on:
       - 'scripts/copy-web.mjs'
       - '.github/workflows/chat-client-tests.yml'
   pull_request:
-    branches: [dante-test]
+    branches: [dante-test, parallax-optimization]
     paths:
       - 'chat-client.mjs'
       - 'chat-client.test.mjs'
@@ -57,6 +60,7 @@ jobs:
           node --check media-cache.mjs
           node --check service-worker.js
           node --check chat-client.mjs
+          node --check chat-history-cache.mjs
           node --check perf-monitor.mjs
           node --check diagnostics-monitor.mjs
           node --check availability-refresh.mjs
@@ -66,4 +70,4 @@ jobs:
           node -e "const fs=require('node:fs');const html=fs.readFileSync('index.html','utf8');const match=html.match(/<script type=\"module\">([\\s\\S]*?)<\\/script>/);if(!match)throw new Error('Inline module not found');fs.writeFileSync('/tmp/dante-index-inline.mjs',match[1]);"
           node --check /tmp/dante-index-inline.mjs
       - name: Run chat client tests
-        run: node --test media-cache.test.mjs chat-client.test.mjs perf-monitor.test.mjs diagnostics-monitor.test.mjs availability-refresh.test.mjs app-telemetry.test.mjs
+        run: node --test media-cache.test.mjs chat-client.test.mjs chat-history-cache.test.mjs perf-monitor.test.mjs diagnostics-monitor.test.mjs availability-refresh.test.mjs app-telemetry.test.mjs chat-ui.test.mjs

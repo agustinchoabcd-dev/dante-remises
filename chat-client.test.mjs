@@ -12,6 +12,7 @@ test("passenger chat exposes the connected-operator selector in the green chat h
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
   assert.ok(html.includes('id="chatPeerSelect"'));
   assert.ok(html.includes('id="chatPeerMenu"'));
+  assert.ok(html.includes('class="chat-peer-caret" aria-hidden="true">▼</span>'));
   assert.ok(html.includes("api.listOperators()"));
   assert.ok(html.includes("setInterval(sendOperatorPresence,10_000)"));
   assert.ok(html.includes("getProfilePhoto(otherUid)"));
@@ -26,6 +27,14 @@ test("chat composer exposes photo attachments and on-demand voice recording", as
   assert.ok(html.includes("navigator.mediaDevices.getUserMedia"));
   assert.ok(html.includes("api.sendAttachment"));
   assert.ok(html.includes("getAttachmentReadUrl"));
+  assert.ok(html.includes("attachment?.expiresAt"));
+  assert.ok(html.includes("Adjunto eliminado automáticamente después de 7 días."));
+});
+
+test("clears every private media cache entry when the authenticated account signs out", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("if(previousMediaUid&&!user){"));
+  assert.ok(html.includes("void mediaCache.clearPrivate(previousMediaUid)"));
 });
 
 function makeClient(fetchImpl, token = "firebase-test-token") {
@@ -391,4 +400,101 @@ test("retains the idempotency key when both immediate attempts have uncertain ou
   assert.equal(requestBodies[0].clientMessageId, "first-generated-id-123");
   assert.equal(requestBodies[1].clientMessageId, "first-generated-id-123");
   assert.equal(requestBodies[2].clientMessageId, "first-generated-id-123");
+});
+
+test("chat recipient menu groups drivers and only exposes connected operators", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('id="chatPeerSelect"'));
+  assert.ok(html.includes("appendChatRecipientGroup(menu,'Choferes'"));
+  assert.ok(html.includes("appendChatRecipientGroup(menu,'Operadores'") || html.includes("appendChatMenuHeading(menu,'Operadores')"));
+  assert.ok(html.includes("chatOperators.forEach(operator=>"));
+  assert.ok(html.includes("findChatConversationForUid(operator.uid)"));
+  assert.ok(html.includes("button.dataset.targetType=targetType"));
+  assert.ok(html.includes("selectChatConversation(conversation)"));
+});
+
+test("chat opens as a separate WhatsApp-like screen and returns to the app shell", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('id="chatFullscreenButton"'));
+  assert.ok(html.includes("body.chat-screen-open #chat"));
+  assert.ok(html.includes("setChatScreenOpen(open)"));
+  assert.ok(html.includes("Volver a Dante Remises"));
+  assert.ok(html.includes("closeChatScreen()"));
+  assert.ok(!html.includes("classList.toggle('chatbox-fullscreen')"));
+});
+
+test("audio attachments use a styled player with live elapsed and total duration", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("chat-audio-player"));
+  assert.ok(html.includes("loadedmetadata"));
+  assert.ok(html.includes("durationchange"));
+  assert.ok(html.includes("timeupdate"));
+  assert.ok(html.includes("chat-audio-progress"));
+});
+
+test("message rendering reuses existing DOM nodes instead of rebuilding the full chat on refresh", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("const existing=new Map([...box.children]"));
+  assert.ok(html.includes("item.dataset.messageId=id"));
+});
+
+test("chat stores complete histories per account and renders older pages from local cache", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('import { chatHistoryCache } from "./chat-history-cache.mjs"'));
+  assert.ok(html.includes("chatHistoryCache.putMessages(uid,conversationId,remoteMessages,{complete:true})"));
+  assert.ok(html.includes("chatHistoryCache.getMessages(uid,conversationId)"));
+  assert.ok(html.includes("async function prefetchChatConversationHistories()"));
+  assert.ok(html.includes("if(chatMessagesCacheComplete)"));
+  assert.ok(html.includes("all.slice(start,firstIndex)"));
+  assert.ok(html.includes("chatMessages=combined.slice(-visibleCount)"));
+});
+
+test("passenger and operator recipient menus include the four registered driver cars", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("function getChatDriverRecipients()"));
+  assert.ok(html.includes("const uid=driverUidForCar(car.id)"));
+  assert.ok(html.includes("return {uid,carId:car.id,name:known.name||car.driver,role:uid===ADMIN_UID?'admin':'driver'}"));
+  assert.ok(html.includes("appendChatRecipientGroup(menu,'Choferes',drivers,'driver')"));
+  assert.ok(html.includes("appendChatRecipientGroup(menu,'Choferes',getChatDriverRecipients(),'driver')"));
+});
+
+test("conversation and message indexes are paginated before being cached locally", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("async function listAllChatConversations(api)"));
+  assert.ok(html.includes("api.listConversations(cursor)"));
+  assert.ok(html.includes("while(hasMore&&cursor&&cursor!==lastCursor)"));
+  assert.ok(html.includes("void prefetchChatConversationHistories()"));
+  assert.ok(html.includes("conversation.lastMessageAt") && html.includes("cached.lastSyncedAt"));
+});
+
+test("drivers see only existing passenger/operator conversations grouped by counterpart role", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("chatConversations.filter(conversation=>conversation.kind==='passenger-driver'),'Pasajeros'"));
+  assert.ok(html.includes("chatConversations.filter(conversation=>conversation.kind==='operator-driver'),'Operadores'"));
+  assert.ok(html.includes("chatConversations.filter(conversation=>['passenger-operator','operator-support'].includes(conversation.kind)),'Pasajeros'"));
+});
+
+test("chat in-memory state resets when the authenticated UID changes", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("function ensureChatSessionForCurrentUser()"));
+  assert.ok(html.includes("if(chatSessionUid&&chatSessionUid!==uid)"));
+  assert.ok(html.includes("chatHistorySyncing=new Set()"));
+  assert.ok(html.includes("chatAttachmentUrls.clear()"));
+});
+
+test("passenger general chat defaults to the operator channel only when operators are connected", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("function getDefaultChatConversation()"));
+  assert.ok(html.includes("if(!chatOperators.length)return null"));
+  assert.ok(html.includes("await api.openConversation({target:'operators'})"));
+  assert.ok(html.includes("await ensurePassengerDefaultChat()"));
+});
+
+test("offline operators are excluded as new recipients but previous conversations remain accessible", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("chatOperators.forEach(operator=>"));
+  assert.ok(html.includes("const previousOperatorChats=chatConversations.filter"));
+  assert.ok(html.includes("appendChatConversationGroup(menu,previousOperatorChats,'Conversaciones anteriores')"));
+  assert.ok(html.includes("chatConversations.forEach(conversation=>"));
+  assert.ok(html.includes("chatOperators=[];renderChatOperatorMenu();renderChatConversationList()"));
 });
