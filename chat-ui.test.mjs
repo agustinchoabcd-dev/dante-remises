@@ -93,6 +93,7 @@ test("chat uses one green header at the top of both list and fullscreen layouts"
   assert.ok(section.includes('id="chatRefreshButton"'));
   assert.ok(section.includes('id="chatFullscreenButton"'));
   assert.ok(html.includes('padding: max(12px,env(safe-area-inset-top))'));
+  assert.ok(html.includes('viewport-fit=cover'));
   assert.ok(html.includes('body.chat-screen-open #chat .chat-list-controls{display:none!important}'));
 });
 
