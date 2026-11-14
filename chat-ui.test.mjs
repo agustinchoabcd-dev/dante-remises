@@ -83,3 +83,25 @@ test("voice recording locks hands-free with a visible lock and sends on release 
   assert.ok(html.includes("chatRecordingRequestPending&&!chatMediaRecorder"));
   assert.ok(html.includes("chatSendRecordingButton"));
 });
+
+
+test("chat message bubbles cannot shrink or clip their text and render sender/body separately", () => {
+  const critical = html.indexOf('id="dante-chat-critical-layout-fixes"');
+  const previousLayout = html.indexOf('id="dante-chat-layout-fixes"');
+  assert.ok(critical > previousLayout, "the corrective rules must win the CSS cascade");
+  assert.ok(html.includes("#chat .messages>.msg{flex:0 0 auto;height:auto;min-height:fit-content;max-height:none;overflow:visible"));
+  assert.ok(html.includes("sender.className='msg-sender'"));
+  assert.ok(html.includes("body.className='msg-text'"));
+  assert.ok(html.includes("display:block;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere"));
+});
+
+test("fullscreen chat hides the redundant section heading and keeps refresh beside the back control", () => {
+  const heading = html.match(/<div class="chat-section-heading">([\\s\\S]*?)<\\/div>/)?.[1] || "";
+  assert.doesNotMatch(heading, /chatRefreshButton/);
+  const chatHead = html.indexOf('<div class="chathead">');
+  const refresh = html.indexOf('id="chatRefreshButton"');
+  const fullscreen = html.indexOf('id="chatFullscreenButton"');
+  assert.ok(chatHead >= 0 && refresh > chatHead && fullscreen > refresh);
+  assert.ok(html.includes("body.chat-screen-open #chat .chat-section-heading{display:none!important}"));
+  assert.ok(html.includes('aria-label="Actualizar conversaciones"'));
+});
