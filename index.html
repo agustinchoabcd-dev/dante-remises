@@ -520,7 +520,7 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
  <span class="chat-gesture-trash" id="chatRecordingTrashTarget" aria-label="Zona para cancelar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m3 3v7m6-7v7"/></svg></span>
  <span class="chat-gesture-instruction" id="chatRecordingGestureText">Deslizá el micrófono hacia la basura para cancelar</span>
  <span class="chat-gesture-lock" id="chatRecordingLockHint"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>↑ Bloquear</span></span>
-</div><div class="chat-input-shell"><input id="chatInput" placeholder="Escribí un mensaje…" autocomplete="off" maxlength="2000" required><button class="chat-camera-button" id="chatAttachButton" type="button" aria-label="Adjuntar fotografía" title="Adjuntar fotografía"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"/><circle cx="12" cy="13.5" r="3.5"/></svg></button></div><button class="chat-mic-button" id="chatRecordButton" type="button" aria-label="Mantener presionado para grabar audio" title="Mantené presionado para grabar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"/></svg></button><button class="primary" id="chatSendButton" type="submit">Enviar</button><input id="chatImageInput" type="file" accept="image/*" class="hidden"><button class="primary hidden" id="chatSendRecordingButton" type="button">Enviar audio</button><button class="secondary hidden" id="chatCancelRecordingButton" type="button">Cancelar</button><audio id="chatRecordingPreview" class="chat-audio hidden" controls preload="none"></audio></form>
+</div><div class="chat-input-shell"><input id="chatInput" placeholder="Escribí un mensaje…" autocomplete="off" maxlength="2000" required><button class="chat-camera-button" id="chatAttachButton" type="button" aria-label="Adjuntar fotografía" title="Adjuntar fotografía"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"/><circle cx="12" cy="13.5" r="3.5"/></svg></button></div><button class="chat-mic-button" id="chatRecordButton" type="button" aria-label="Mantener presionado para grabar audio" title="Mantené presionado para grabar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"/></svg></button><button class="primary hidden" id="chatSendButton" type="submit" aria-label="Enviar mensaje" title="Enviar mensaje"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3.5 21 12 4 20.5 7.5 12 4 3.5Z"/><path d="M7.5 12H16"/></svg></button><input id="chatImageInput" type="file" accept="image/*" class="hidden"><button class="primary hidden" id="chatSendRecordingButton" type="button">Enviar audio</button><button class="secondary hidden" id="chatCancelRecordingButton" type="button">Cancelar</button><audio id="chatRecordingPreview" class="chat-audio hidden" controls preload="none"></audio></form>
 </div>
 <p class="hint" id="chatFooterNote">El chat permite enviar texto, fotografías y audios; la disponibilidad de adjuntos depende de la versión activa del servicio.</p>
 </div>
@@ -2079,20 +2079,27 @@ byId('chatConversationList').addEventListener('click',async event=>{
  const button=event.target.closest('[data-conversation-id]');if(!button)return;
  const conversation=chatConversations.find(c=>c.conversationId===button.dataset.conversationId);if(conversation)await selectChatConversation(conversation);
 });
+function updateChatComposerAction(){
+ const hasText=byId('chatInput').value.trim().length>0;
+ byId('chatRecordButton').classList.toggle('hidden',hasText);
+ byId('chatSendButton').classList.toggle('hidden',!hasText);
+}
+byId('chatInput').addEventListener('input',updateChatComposerAction);
+updateChatComposerAction();
 byId('chatForm').addEventListener('submit',async event=>{
  event.preventDefault();const input=byId('chatInput'),textValue=input.value.trim();if(!textValue)return;
  const api=getChatApiClient();
  if(!api){
   const mine=document.createElement('div');mine.className='msg mine';mine.textContent=textValue;byId('messages').appendChild(mine);
   const reply=document.createElement('div');reply.className='msg';reply.textContent='Mensaje de demostración guardado solamente en esta pantalla.';byId('messages').appendChild(reply);
-  input.value='';byId('messages').scrollTop=byId('messages').scrollHeight;return;
+  input.value='';updateChatComposerAction();byId('messages').scrollTop=byId('messages').scrollHeight;return;
  }
  if(!activeChatConversation?.conversationId){notify('Primero abrí o iniciá una conversación.');return}
  const button=byId('chatSendButton');button.disabled=true;
  try{
   const conversationId=activeChatConversation.conversationId;
   const result=await api.sendMessage({conversationId,text:textValue,clientMessageId:createClientMessageId()});
-  input.value='';
+  input.value='';updateChatComposerAction();
   if(result?.message?.messageId&&chatMessagesConversationId===conversationId){
    chatMessages=mergeChatMessagePages(chatMessages,[result.message]);
    renderChatMessages(chatMessages,'bottom');
@@ -3171,5 +3178,9 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
 #chat .chathead .chat-refresh-icon:active{background:#ffffff2b}
 #chat .chathead .chat-refresh-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 body.chat-screen-open #chat .chat-section-heading{display:none!important}
+#chat #chatSendButton{width:46px;height:46px;min-width:46px;min-height:46px;flex:0 0 46px;display:grid;place-items:center;padding:0;border:0;border-radius:50%;background:linear-gradient(135deg,#008b43,#00c968);color:#fff;box-shadow:0 2px 10px rgba(0,120,55,.24)}
+#chat #chatSendButton.hidden{display:none!important}
+#chat #chatSendButton svg{width:25px;height:25px;fill:currentColor;stroke:currentColor;stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
+#chat .chat-mic-button.hidden{display:none!important}
 </style>
 </body></html>
