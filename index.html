@@ -1729,8 +1729,8 @@ function renderChatMessages(messages,scrollMode='bottom'){
    let item=existing.get(id);
    if(!item){
     item=document.createElement('div');item.className='msg'+(message.senderUid===currentUser?.uid?' mine':'');item.dataset.messageId=id;
-    const sender=document.createElement('strong');sender.textContent=(message.senderUid===currentUser?.uid?'Vos':message.senderName||'Usuario')+': ';item.appendChild(sender);
-    const textValue=message.text||'';if(textValue&&textValue!=='📷 Foto'&&textValue!=='🎤 Audio')item.appendChild(document.createTextNode(textValue));
+    const sender=document.createElement('strong');sender.className='msg-sender';sender.textContent=(message.senderUid===currentUser?.uid?'Vos':message.senderName||'Usuario')+': ';item.appendChild(sender);
+    const textValue=message.text||'';if(textValue&&textValue!=='📷 Foto'&&textValue!=='🎤 Audio'){const body=document.createElement('span');body.className='msg-text';body.textContent=textValue;item.appendChild(body)}
     const sentTime=formatChatMessageTime(message.createdAt??message.sentAt??message.timestamp);if(sentTime){const time=document.createElement('time');time.className='msg-time';time.textContent=sentTime;item.appendChild(time)}
     if(message.attachmentExpired){const expired=document.createElement('small');expired.className='hint';expired.textContent='Adjunto eliminado automáticamente después de 7 días.';item.appendChild(expired)}
     else if(message.attachment&&['image','audio'].includes(message.type))void renderChatMessageAttachment(item,message,activeChatConversation?.conversationId);
@@ -3189,8 +3189,10 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
 #chat .chat-status:empty{display:none}
 #chat .chat-history-toolbar{flex:0 0 auto}
 #chat .messages{flex:1 1 auto;min-width:0;min-height:180px;max-width:100%;overflow-x:hidden;overflow-y:auto;padding-bottom:calc(90px + env(safe-area-inset-bottom))}
-#chat .msg{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;flex:0 0 auto;width:fit-content;min-width:0;max-width:min(88%,520px);padding:12px 14px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;line-break:anywhere;overflow:visible}
+#chat .msg{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;gap:3px;flex:0 0 auto;width:fit-content;min-width:0;max-width:min(88%,520px);padding:12px 14px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;line-break:anywhere;overflow:visible}
 #chat .msg>*{box-sizing:border-box;min-width:0;max-width:100%}
+#chat .msg .msg-sender{display:block;font-size:11px;line-height:1.25;font-weight:800;opacity:.78;letter-spacing:.01em}
+#chat .msg .msg-text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;line-height:1.45}
 #chat .msg-time{position:static;display:block;align-self:flex-end;width:max-content;max-width:100%;margin:7px 0 0 auto;padding:0 1px;line-height:1.3;white-space:nowrap;flex:0 0 auto}
 #chat .msg .chat-audio-player{width:min(310px,100%);min-width:0;max-width:100%}
 #chat .msg .chat-attachment-image{width:auto;max-width:100%;height:auto;max-height:220px;object-fit:contain}
