@@ -1505,7 +1505,7 @@ function cancelChatRecording(){
  if(chatRecordingRequestPending&&!chatMediaRecorder){byId('chatRecordButton').classList.remove('recording');byId('chatForm').classList.remove('is-recording','is-locked','is-uploading');byId('chatPauseRecordingButton').classList.add('hidden');byId('chatSendRecordingButton').classList.add('hidden');byId('chatCancelRecordingButton').classList.add('hidden');byId('chatRecordingStatus').textContent='';byId('chatRecordingGestureBar').classList.add('hidden');byId('chatRecordingGestureBar').classList.remove('is-locked','is-cancelling');resetChatRecordingDrag();return}
  if(chatMediaRecorder&&!chatRecordingFinalized){
   chatDiscardRecording=true;
-  if(chatMediaRecorder.state==='recording'){try{chatMediaRecorder.stop()}catch{clearChatRecording()}}
+  if(chatMediaRecorder.state==='recording'||chatMediaRecorder.state==='paused'){try{chatMediaRecorder.stop()}catch{clearChatRecording()}}
   releaseChatRecordingStream();
   return;
  }
@@ -1599,7 +1599,7 @@ async function startChatAudioRecording(){
 function stopChatAudioRecording(){
  if(chatRecordingGestureMode==='hold')chatRecordingGestureMode='stopped';
  chatRecordingHoldActive=false;byId('chatRecordingGestureText').textContent='Enviando audio…';byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatForm').classList.add('is-recording','is-uploading');byId('chatRecordingGestureBar').classList.remove('is-locked');byId('chatPauseRecordingButton').classList.add('hidden');resetChatRecordingDrag();
- if(chatMediaRecorder?.state==='recording'){try{chatMediaRecorder.stop()}catch(error){console.warn('No se pudo detener la grabación:',error);cancelChatRecording()}}
+ if(chatMediaRecorder?.state==='recording'||chatMediaRecorder?.state==='paused'){try{chatMediaRecorder.stop()}catch(error){console.warn('No se pudo detener la grabación:',error);cancelChatRecording()}}
 }
 async function sendChatAttachment(file,type,fileName){
  const conversationId=activeChatConversation?.conversationId,api=getChatApiClient();
@@ -1697,7 +1697,7 @@ byId('chatRecordButton').addEventListener('contextmenu',event=>event.preventDefa
 byId('chatCancelRecordingButton').addEventListener('click',cancelChatRecording);
 byId('chatPauseRecordingButton').addEventListener('click',toggleChatRecordingPause);
 byId('chatSendRecordingButton').addEventListener('click',async()=>{
- if(chatMediaRecorder?.state==='recording'){byId('chatSendRecordingButton').disabled=true;byId('chatSendRecordingButton').textContent='Enviando…';chatRecordingGestureMode='stopped';byId('chatRecordingGestureText').textContent='Enviando audio…';byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatForm').classList.add('is-recording','is-locked','is-uploading');byId('chatPauseRecordingButton').classList.add('hidden');chatMediaRecorder.stop();return}
+ if(chatMediaRecorder?.state==='recording'||chatMediaRecorder?.state==='paused'){byId('chatSendRecordingButton').disabled=true;byId('chatSendRecordingButton').textContent='Enviando…';chatRecordingGestureMode='stopped';byId('chatRecordingGestureText').textContent='Enviando audio…';byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatForm').classList.add('is-recording','is-locked','is-uploading');byId('chatPauseRecordingButton').classList.add('hidden');chatMediaRecorder.stop();return}
  if(!chatRecordedAudio)return;
  const mimeType=chatRecordedAudio.type.split(';')[0]||'audio/webm';
  const extension={'audio/webm':'webm','audio/ogg':'ogg','audio/mp4':'m4a','audio/mpeg':'mp3','audio/wav':'wav'}[mimeType]||'webm';
