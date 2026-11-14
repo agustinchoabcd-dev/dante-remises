@@ -9,6 +9,7 @@ on:
       - cache-optimization
       - parallax-optimization
       - chat-media-integration
+      - chat-ui-fixes-4b564f
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
