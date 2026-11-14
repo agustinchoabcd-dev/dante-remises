@@ -1555,6 +1555,7 @@ async function startChatAudioRecording(){
   chatMediaRecorder=recorder;chatAudioChunks=[];chatDiscardRecording=false;chatRecordingFinalized=false;chatRecordingStartedAt=Date.now();chatRecordingPausedAt=0;chatRecordingPausedTotal=0;byId('chatRecordingElapsed').textContent='0:00';
   recorder.addEventListener('dataavailable',event=>{if(event.data?.size)chatAudioChunks.push(event.data)});
   recorder.addEventListener('stop',()=>{
+   if(chatRecordingPausedAt){chatRecordingPausedTotal+=Date.now()-chatRecordingPausedAt;chatRecordingPausedAt=0}
    releaseChatRecordingStream();byId('chatRecordButton').classList.remove('recording');
    if(chatDiscardRecording){clearChatRecording();return}
    byId('chatForm').classList.add('is-recording','is-locked','is-uploading');byId('chatRecordingGestureBar').classList.remove('hidden');byId('chatRecordingGestureText').textContent='Enviando audio…';byId('chatRecordingLockHint').classList.add('hidden');byId('chatPauseRecordingButton').classList.add('hidden');
