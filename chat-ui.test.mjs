@@ -124,7 +124,7 @@ test("microphone drag transform remains enabled in fullscreen chat", () => {
 
 
 test("chat bubbles keep text, attachments and timestamps inside a flexible padded box", () => {
-  assert.ok(html.includes("#chat .msg{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;flex:0 0 auto;width:fit-content;min-width:0;max-width:min(88%,520px);padding:12px 14px"));
+  assert.ok(html.includes("#chat .msg{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;gap:3px;flex:0 0 auto;width:fit-content;min-width:0;max-width:min(88%,520px);padding:12px 14px"));
   assert.ok(html.includes("overflow-wrap:anywhere;word-break:break-word;line-break:anywhere;overflow:visible"));
   assert.ok(html.includes("overflow-wrap:anywhere;word-break:break-word"));
   assert.ok(html.includes("#chat .msg-time{position:static;display:block;align-self:flex-end"));
