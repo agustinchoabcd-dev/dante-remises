@@ -390,6 +390,7 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
 
 <style id="dante-chat-layout-final">
 /* Estructura definitiva del chat: cabecera única, burbujas fluidas y compositor por estados. */
+@keyframes chat-recording-inline-in{from{opacity:0;transform:translateX(-6px) scale(.98)}to{opacity:1;transform:none}}
 #chat{min-width:0}
 #chat .card.panel{max-width:900px;margin-inline:auto;padding:0;overflow:hidden}
 #chat .chatbox{display:flex;flex-direction:column;min-width:0;overflow:hidden}
@@ -411,10 +412,11 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
 #chat .msg .chat-attachment-image{width:auto;max-width:100%;height:auto;max-height:220px;object-fit:contain}
 #chat .chat-recording-status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 #chat .chatcompose{position:relative;display:flex;align-items:center;flex-wrap:nowrap;gap:8px;min-width:0;padding:10px max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));}
-#chat .chat-input-shell{flex:1 1 auto;min-width:0}
-#chat .chatcompose.is-recording .chat-input-shell,
-#chat .chatcompose.is-recording #chatSendButton{display:none!important}
-#chat .chatcompose.is-recording .chat-recording-gesture-bar{position:relative;inset:auto;top:auto;left:auto;right:auto;transform:none;order:0;display:flex;flex:1 1 0;min-width:0;width:auto;min-height:48px;margin:0;padding:6px 8px;gap:6px;animation:chat-recording-bar-in .18s ease both}
+#chat .chat-input-shell{flex:1 1 auto;min-width:0;overflow:hidden;transition:flex-basis .2s ease,width .2s ease,opacity .16s ease,transform .2s ease,padding .2s ease,border-width .2s ease}
+#chat .chatcompose #chatSendButton{transition:flex-basis .2s ease,width .2s ease,opacity .16s ease,padding .2s ease}
+#chat .chatcompose.is-recording .chat-input-shell{flex:0 1 0;width:0;max-width:0;min-width:0;padding:0;border-width:0;opacity:0;transform:translateX(-8px);pointer-events:none}
+#chat .chatcompose.is-recording #chatSendButton{flex:0 1 0;width:0;min-width:0;padding-inline:0;opacity:0;overflow:hidden;pointer-events:none}
+#chat .chatcompose.is-recording .chat-recording-gesture-bar{position:relative;inset:auto;top:auto;left:auto;right:auto;transform:none;order:0;display:flex;flex:1 1 0;min-width:0;width:auto;min-height:48px;margin:0;padding:6px 8px;gap:6px;animation:chat-recording-inline-in .18s ease both}
 #chat .chat-recording-elapsed{flex:0 0 auto;min-width:35px;text-align:center;font-variant-numeric:tabular-nums;font-size:13px;font-weight:800;white-space:nowrap}
 #chat .chatcompose.is-recording .chat-gesture-instruction{min-width:0;overflow-wrap:anywhere;font-size:11px;line-height:1.2}
 #chat .chatcompose.is-recording .chat-gesture-lock{flex:0 0 auto;font-size:10px}
@@ -435,7 +437,7 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
 body.chat-screen-open #chat .chat-list-controls{display:none!important}
 body.chat-screen-open #chat .card.panel{padding:0!important}
 body.chat-screen-open #chat .chathead{padding-top:max(12px,env(safe-area-inset-top))!important}
-body.chat-screen-open #chat .chat-footer-note{display:none!important}
+body.chat-screen-open #chat #chatFooterNote{display:none!important}
 @media(max-width:420px){
  #chat .chathead{gap:8px;padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
  #chat .chathead-actions{gap:5px}
@@ -573,7 +575,7 @@ body.chat-screen-open #chat .chat-footer-note{display:none!important}
 <div class="chatbox">
 <div class="chathead"><div class="chathead-main"><div class="chat-peer-avatar" id="chatPeerAvatar" aria-hidden="true">👤</div><div class="chathead-copy"><strong id="chatTitle">Elegí una conversación</strong><button type="button" id="chatPeerSelect" class="chat-peer-select hidden" aria-haspopup="true" aria-expanded="false"><span id="chatPeerSelectLabel">Elegí con quién hablar</span><span class="chat-peer-caret" aria-hidden="true">▼</span></button><div id="chatPeerMenu" class="chat-peer-menu hidden" role="menu" aria-label="Conversaciones y operadores"></div><div class="muted" style="color:#d5deea">Dante Remises · Santa Rosa de Calamuchita</div></div><div class="chathead-actions"><button class="chat-refresh-icon" id="chatRefreshButton" type="button" aria-label="Actualizar conversaciones" title="Actualizar conversaciones"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.6 9a7 7 0 0 1 11.8-2L20 12M4 12l2.6 5a7 7 0 0 0 11.8-2"/></svg></button><button type="button" id="chatFullscreenButton" class="chat-fullscreen-button" aria-label="Expandir chat a pantalla completa" title="Pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg></button></div></div>
 <div class="chat-list-controls"><p class="muted" id="chatIntro">Conversaciones de pasajeros, choferes, operadores y administración.</p><div class="field" id="chatRecipientField"><label for="contactChoice">¿Con quién querés hablar?</label><select id="contactChoice"></select></div><div class="actions"><button class="primary" id="chatStartButton" type="button">Iniciar conversación</button></div><p class="hint chat-status" id="chatStatus" role="status">Preparando mensajería…</p><div id="chatConversationList" class="chat-conversation-list" aria-label="Conversaciones"></div></div>
-<div class="chat-history-toolbar"><button class="secondary hidden" id="chatLoadOlderButton" type="button">Cargar mensajes anteriores</button></div><div class="messages" id="messages" aria-live="polite"><div class="msg">Todavía no hay una conversación abierta.</div>
+<div class="chat-history-toolbar"><button class="secondary hidden" id="chatLoadOlderButton" type="button">Cargar mensajes anteriores</button></div><div class="messages" id="messages" aria-live="polite"><div class="msg">Todavía no hay una conversación abierta.</div></div>
 <span id="chatRecordingStatus" class="hint chat-recording-status" role="status"></span>
 <form class="chatcompose" id="chatForm"><div id="chatRecordingGestureBar" class="chat-recording-gesture-bar hidden" aria-live="polite">
  <span class="chat-gesture-trash" id="chatRecordingTrashTarget" aria-label="Zona para cancelar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m3 3v7m6-7v7"/></svg></span>
