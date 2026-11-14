@@ -83,3 +83,26 @@ test("voice recording locks hands-free with a visible lock and sends on release 
   assert.ok(html.includes("chatRecordingRequestPending&&!chatMediaRecorder"));
   assert.ok(html.includes("chatSendRecordingButton"));
 });
+
+
+test("chat refresh action is a compact icon aligned with the section heading", () => {
+  assert.ok(html.includes('class="chat-section-heading"'));
+  assert.ok(html.includes('class="secondary chat-refresh-icon" id="chatRefreshButton"'));
+  assert.ok(!html.includes('<button class="secondary" id="chatRefreshButton" type="button">Actualizar</button>'));
+});
+
+test("message timestamps flow below content instead of overlaying audio or text", () => {
+  assert.ok(html.includes("#chat .msg-time{position:static;display:block"));
+  assert.ok(html.includes("const sentTime=item.querySelector('.msg-time');if(sentTime)item.appendChild(sentTime)"));
+  assert.ok(html.includes("#chat .chat-audio-player{width:min(310px,100%)"));
+});
+
+test("hands-free recording controls use a separate wrapping row and do not collide with the gesture bar", () => {
+  assert.ok(html.includes("#chat .chat-recording-gesture-bar.is-locked{position:relative;inset:auto"));
+  assert.ok(html.includes("#chat .chatcompose:has(#chatSendRecordingButton:not(.hidden)){flex-wrap:wrap"));
+  assert.ok(html.includes("#chat .chatcompose:has(#chatSendRecordingButton:not(.hidden)) #chatCancelRecordingButton"));
+});
+
+test("microphone drag transform remains enabled in fullscreen chat", () => {
+  assert.ok(html.includes("body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(var(--chat-mic-drag-x,0px),var(--chat-mic-drag-y,0px),0) scale(1.08)!important"));
+});
