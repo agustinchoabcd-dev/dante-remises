@@ -96,7 +96,9 @@ test("chat message bubbles cannot shrink or clip their text and render sender/bo
 });
 
 test("fullscreen chat hides the redundant section heading and keeps refresh beside the back control", () => {
-  const heading = html.match(/<div class="chat-section-heading">([\\s\\S]*?)<\\/div>/)?.[1] || "";
+  const headingStart = html.indexOf('<div class="chat-section-heading">');
+  const headingEnd = html.indexOf("</div>", headingStart);
+  const heading = headingStart >= 0 && headingEnd > headingStart ? html.slice(headingStart, headingEnd) : "";
   assert.doesNotMatch(heading, /chatRefreshButton/);
   const chatHead = html.indexOf('<div class="chathead">');
   const refresh = html.indexOf('id="chatRefreshButton"');
