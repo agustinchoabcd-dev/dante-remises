@@ -388,73 +388,7 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
 @media(prefers-reduced-motion:reduce){#chat .chat-mic-button.is-dragging{transition:none!important}}
 </style>
 
-<style id="dante-chat-layout-final">
-/* Estructura definitiva del chat: cabecera única, burbujas fluidas y compositor por estados. */
-@keyframes chat-recording-inline-in{from{opacity:0;transform:translateX(-6px) scale(.98)}to{opacity:1;transform:none}}
-#chat{min-width:0}
-#chat .card.panel{max-width:900px;margin-inline:auto;padding:0;overflow:hidden}
-#chat .chatbox{display:flex;flex-direction:column;min-width:0;overflow:hidden}
-#chat .chathead{position:relative;flex:0 0 auto;min-width:0;padding: max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 14px max(14px,env(safe-area-inset-left));border-radius:0}
-#chat .chathead-main{width:100%;min-width:0}
-#chat .chathead-copy{min-width:0;overflow-wrap:anywhere}
-#chat .chathead-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
-#chat .chathead-actions button{width:40px;height:40px;min-width:40px;flex:0 0 40px;padding:0;display:grid;place-items:center;border:1px solid #ffffff55;border-radius:11px;background:#ffffff12;color:#fff}
-#chat .chathead-actions button:active{background:#ffffff2b}
-#chat .chathead-actions svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-#chat .chat-list-controls{display:grid;gap:8px;min-width:0;padding:12px}
-#chat #chatIntro{margin:0;color:var(--muted);font-size:13px}
-#chat .chat-history-toolbar{flex:0 0 auto}
-#chat .messages{flex:1 1 auto;min-width:0;min-height:180px;max-width:100%;overflow-x:hidden;overflow-y:auto}
-#chat .msg{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;flex:0 1 auto;width:fit-content;min-width:0;max-width:min(88%,520px);padding:12px 14px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;line-break:anywhere;overflow:hidden}
-#chat .msg>*{box-sizing:border-box;min-width:0;max-width:100%}
-#chat .msg-time{position:static;display:block;align-self:flex-end;width:max-content;max-width:100%;margin:7px 0 0 auto;padding:0 1px;line-height:1.3;white-space:nowrap;flex:0 0 auto}
-#chat .msg .chat-audio-player{width:min(310px,100%);min-width:0;max-width:100%}
-#chat .msg .chat-attachment-image{width:auto;max-width:100%;height:auto;max-height:220px;object-fit:contain}
-#chat .chat-recording-status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-#chat .chatcompose{position:relative;display:flex;align-items:center;flex-wrap:nowrap;gap:8px;min-width:0;padding:10px max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));}
-#chat .chat-input-shell{flex:1 1 auto;min-width:0;overflow:hidden;transition:flex-basis .2s ease,width .2s ease,opacity .16s ease,transform .2s ease,padding .2s ease,border-width .2s ease}
-#chat .chatcompose #chatSendButton{transition:flex-basis .2s ease,width .2s ease,opacity .16s ease,padding .2s ease}
-#chat .chatcompose.is-recording .chat-input-shell{flex:0 1 0;width:0;max-width:0;min-width:0;padding:0;border-width:0;opacity:0;transform:translateX(-8px);pointer-events:none}
-#chat .chatcompose.is-recording #chatSendButton{flex:0 1 0;width:0;min-width:0;padding-inline:0;opacity:0;overflow:hidden;pointer-events:none}
-#chat .chatcompose.is-recording .chat-recording-gesture-bar{position:relative;inset:auto;top:auto;left:auto;right:auto;transform:none;order:0;display:flex;flex:1 1 0;min-width:0;width:auto;min-height:48px;margin:0;padding:6px 8px;gap:6px;animation:chat-recording-inline-in .18s ease both}
-#chat .chat-recording-elapsed{flex:0 0 auto;min-width:35px;text-align:center;font-variant-numeric:tabular-nums;font-size:13px;font-weight:800;white-space:nowrap}
-#chat .chatcompose.is-recording .chat-gesture-instruction{min-width:0;overflow-wrap:anywhere;font-size:11px;line-height:1.2}
-#chat .chatcompose.is-recording .chat-gesture-lock{flex:0 0 auto;font-size:10px}
-#chat .chatcompose.is-recording #chatRecordButton{flex:0 0 46px;width:46px;height:46px}
-#chat .chatcompose.is-recording.is-locked{flex-wrap:wrap;align-items:center;row-gap:8px}
-#chat .chatcompose.is-recording.is-locked .chat-recording-gesture-bar{order:-1;flex:1 1 100%;width:100%;min-height:44px;margin:0}
-#chat .chatcompose.is-recording.is-locked #chatRecordButton{display:none!important}
-#chat .chatcompose.is-recording.is-locked #chatPauseRecordingButton,
-#chat .chatcompose.is-recording.is-locked #chatCancelRecordingButton,
-#chat .chatcompose.is-recording.is-locked #chatSendRecordingButton{display:inline-flex!important;align-items:center;justify-content:center;flex:1 1 0;min-width:0;min-height:44px;max-width:100%;padding:10px 12px;white-space:nowrap}
-#chat .chatcompose.is-recording.is-locked #chatSendRecordingButton{flex:1.3 1 0}
-#chat .chatcompose.is-recording.is-locked #chatPauseRecordingButton.is-paused{background:#fff0c2;color:#754b00}
-#chat .chatcompose.is-recording.is-locked #chatRecordingPreview:not(.hidden){flex:1 1 100%;max-width:100%;min-width:0}
-#chat .chatcompose.is-recording.is-locked .chat-recording-gesture-bar.is-locked .chat-gesture-instruction{font-size:12px}
-#chat .chatcompose.is-recording.is-locked .chat-gesture-lock{opacity:1}
-#chat .chatcompose.is-recording.is-uploading .chat-gesture-lock{display:none}
-#chat #chatFooterNote{margin:0;padding:8px 12px 12px}
-body.chat-screen-open #chat .chat-list-controls{display:none!important}
-body.chat-screen-open #chat .card.panel{padding:0!important}
-body.chat-screen-open #chat .chathead{padding-top:max(12px,env(safe-area-inset-top))!important}
-body.chat-screen-open #chat #chatFooterNote{display:none!important}
-@media(max-width:420px){
- #chat .chathead{gap:8px;padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
- #chat .chathead-actions{gap:5px}
- #chat .chathead-actions button{width:36px;height:36px;min-width:36px;flex-basis:36px}
- #chat .chat-peer-avatar{width:40px;height:40px;flex-basis:40px}
- #chat .msg{max-width:92%;padding:11px 12px}
- #chat .chatcompose{gap:6px;padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right))}
- #chat .chatcompose.is-recording .chat-gesture-trash{width:30px;height:32px;flex-basis:30px}
- #chat .chatcompose.is-recording .chat-gesture-instruction{display:none}
- #chat .chatcompose.is-recording .chat-recording-elapsed{min-width:38px}
- #chat .chatcompose.is-recording .chat-gesture-lock{font-size:10px}
- #chat .chatcompose.is-recording.is-locked #chatPauseRecordingButton,
- #chat .chatcompose.is-recording.is-locked #chatCancelRecordingButton,
- #chat .chatcompose.is-recording.is-locked #chatSendRecordingButton{padding-inline:8px;font-size:12px}
-}
-@media(prefers-reduced-motion:reduce){#chat .chat-recording-gesture-bar,#chat .chat-mic-button{animation:none!important;transition:none!important}}
-</style>
+
 </head>
 <body>
 <div id="startupScreen" class="startup-screen" role="status" aria-live="polite" aria-label="Iniciando Dante Remises">
@@ -3237,4 +3171,71 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
 })();
 </script>
 
+<style id="dante-chat-layout-final">
+/* Estructura definitiva del chat: cabecera única, burbujas fluidas y compositor por estados. */
+@keyframes chat-recording-inline-in{from{opacity:0;transform:translateX(-6px) scale(.98)}to{opacity:1;transform:none}}
+#chat{min-width:0}
+#chat .card.panel{max-width:900px;margin-inline:auto;padding:0;overflow:hidden}
+#chat .chatbox{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+#chat .chathead{position:relative;flex:0 0 auto;min-width:0;padding: max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 14px max(14px,env(safe-area-inset-left));border-radius:0}
+#chat .chathead-main{width:100%;min-width:0}
+#chat .chathead-copy{min-width:0;overflow-wrap:anywhere}
+#chat .chathead-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+#chat .chathead-actions button{width:40px;height:40px;min-width:40px;flex:0 0 40px;padding:0;display:grid;place-items:center;border:1px solid #ffffff55;border-radius:11px;background:#ffffff12;color:#fff}
+#chat .chathead-actions button:active{background:#ffffff2b}
+#chat .chathead-actions svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#chat .chat-list-controls{display:grid;gap:8px;min-width:0;padding:12px}
+#chat #chatIntro{margin:0;color:var(--muted);font-size:13px}
+#chat .chat-history-toolbar{flex:0 0 auto}
+#chat .messages{flex:1 1 auto;min-width:0;min-height:180px;max-width:100%;overflow-x:hidden;overflow-y:auto}
+#chat .msg{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;flex:0 1 auto;width:fit-content;min-width:0;max-width:min(88%,520px);padding:12px 14px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;line-break:anywhere;overflow:hidden}
+#chat .msg>*{box-sizing:border-box;min-width:0;max-width:100%}
+#chat .msg-time{position:static;display:block;align-self:flex-end;width:max-content;max-width:100%;margin:7px 0 0 auto;padding:0 1px;line-height:1.3;white-space:nowrap;flex:0 0 auto}
+#chat .msg .chat-audio-player{width:min(310px,100%);min-width:0;max-width:100%}
+#chat .msg .chat-attachment-image{width:auto;max-width:100%;height:auto;max-height:220px;object-fit:contain}
+#chat .chat-recording-status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+#chat .chatcompose{position:relative;display:flex;align-items:center;flex-wrap:nowrap;gap:8px;min-width:0;padding:10px max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));}
+#chat .chat-input-shell{flex:1 1 auto;min-width:0;overflow:hidden;transition:flex-basis .2s ease,width .2s ease,opacity .16s ease,transform .2s ease,padding .2s ease,border-width .2s ease}
+#chat .chatcompose #chatSendButton{transition:flex-basis .2s ease,width .2s ease,opacity .16s ease,padding .2s ease}
+#chat .chatcompose.is-recording .chat-input-shell{flex:0 1 0;width:0;max-width:0;min-width:0;padding:0;border-width:0;opacity:0;transform:translateX(-8px);pointer-events:none}
+#chat .chatcompose.is-recording #chatSendButton{flex:0 1 0;width:0;min-width:0;padding-inline:0;opacity:0;overflow:hidden;pointer-events:none}
+#chat .chatcompose.is-recording .chat-recording-gesture-bar{position:relative;inset:auto;top:auto;left:auto;right:auto;transform:none;order:0;display:flex;flex:1 1 0;min-width:0;width:auto;min-height:48px;margin:0;padding:6px 8px;gap:6px;animation:chat-recording-inline-in .18s ease both}
+#chat .chat-recording-elapsed{flex:0 0 auto;min-width:35px;text-align:center;font-variant-numeric:tabular-nums;font-size:13px;font-weight:800;white-space:nowrap}
+#chat .chatcompose.is-recording .chat-gesture-instruction{min-width:0;overflow-wrap:anywhere;font-size:11px;line-height:1.2}
+#chat .chatcompose.is-recording .chat-gesture-lock{flex:0 0 auto;font-size:10px}
+#chat .chatcompose.is-recording #chatRecordButton{flex:0 0 46px;width:46px;height:46px}
+#chat .chatcompose.is-recording.is-locked{flex-wrap:wrap;align-items:center;row-gap:8px}
+#chat .chatcompose.is-recording.is-locked .chat-recording-gesture-bar{order:-1;flex:1 1 100%;width:100%;min-height:44px;margin:0}
+#chat .chatcompose.is-recording.is-locked #chatRecordButton{display:none!important}
+#chat .chatcompose.is-recording.is-locked #chatPauseRecordingButton,
+#chat .chatcompose.is-recording.is-locked #chatCancelRecordingButton,
+#chat .chatcompose.is-recording.is-locked #chatSendRecordingButton{display:inline-flex!important;align-items:center;justify-content:center;flex:1 1 0;min-width:0;min-height:44px;max-width:100%;padding:10px 12px;white-space:nowrap}
+#chat .chatcompose.is-recording.is-locked #chatSendRecordingButton{flex:1.3 1 0}
+#chat .chatcompose.is-recording.is-locked #chatPauseRecordingButton.is-paused{background:#fff0c2;color:#754b00}
+#chat .chatcompose.is-recording.is-locked #chatRecordingPreview:not(.hidden){flex:1 1 100%;max-width:100%;min-width:0}
+#chat .chatcompose.is-recording.is-locked .chat-recording-gesture-bar.is-locked .chat-gesture-instruction{font-size:12px}
+#chat .chatcompose.is-recording.is-locked .chat-gesture-lock{opacity:1}
+#chat .chatcompose.is-recording.is-uploading .chat-gesture-lock{display:none}
+#chat #chatFooterNote{margin:0;padding:8px 12px 12px}
+body.chat-screen-open #chat .chat-list-controls{display:none!important}
+body.chat-screen-open #chat .card.panel{padding:0!important}
+body.chat-screen-open #chat .chathead{padding-top:max(12px,env(safe-area-inset-top))!important}
+body.chat-screen-open #chat #chatFooterNote{display:none!important}
+@media(max-width:420px){
+ #chat .chathead{gap:8px;padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+ #chat .chathead-actions{gap:5px}
+ #chat .chathead-actions button{width:36px;height:36px;min-width:36px;flex-basis:36px}
+ #chat .chat-peer-avatar{width:40px;height:40px;flex-basis:40px}
+ #chat .msg{max-width:92%;padding:11px 12px}
+ #chat .chatcompose{gap:6px;padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right))}
+ #chat .chatcompose.is-recording .chat-gesture-trash{width:30px;height:32px;flex-basis:30px}
+ #chat .chatcompose.is-recording .chat-gesture-instruction{display:none}
+ #chat .chatcompose.is-recording .chat-recording-elapsed{min-width:38px}
+ #chat .chatcompose.is-recording .chat-gesture-lock{font-size:10px}
+ #chat .chatcompose.is-recording.is-locked #chatPauseRecordingButton,
+ #chat .chatcompose.is-recording.is-locked #chatCancelRecordingButton,
+ #chat .chatcompose.is-recording.is-locked #chatSendRecordingButton{padding-inline:8px;font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){#chat .chat-recording-gesture-bar,#chat .chat-mic-button{animation:none!important;transition:none!important}}
+</style>
 </body></html>
