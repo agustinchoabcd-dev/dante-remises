@@ -134,6 +134,7 @@ test("chat bubbles keep text, attachments and timestamps inside a flexible padde
 test("compact chat keeps the composer pinned, preserves complete bubbles and hides technical filler", () => {
   assert.ok(html.includes("#chat .chatcompose{position:fixed;left:50%;bottom:0;transform:translateX(-50%);z-index:10001;display:flex;flex:0 0 auto"));
   assert.ok(html.includes("padding-bottom:calc(90px + env(safe-area-inset-bottom))"));
+  assert.ok(html.includes("#chat .card.panel,#chat .chatbox{transform:none!important;transition:none!important}"));
   assert.ok(html.includes("body.chat-screen-open #chat .chatcompose{position:relative!important;left:auto!important;bottom:auto!important;transform:none!important;width:auto!important;z-index:2!important}"));
   assert.ok(!html.includes("id=\"chatIntro\""));
   assert.ok(!html.includes("Conversaciones de pasajeros, choferes, operadores y administración."));
