@@ -107,3 +107,19 @@ test("fullscreen chat hides the redundant section heading and keeps refresh besi
   assert.ok(html.includes("body.chat-screen-open #chat .chat-section-heading{display:none!important}"));
   assert.ok(html.includes('aria-label="Actualizar conversaciones"'));
 });
+
+
+test("chat composer switches between microphone and arrow send button based on trimmed text", () => {
+  const formStart = html.indexOf('<form class="chatcompose" id="chatForm">');
+  const formEnd = html.indexOf('</form>', formStart);
+  const form = html.slice(formStart, formEnd);
+  assert.ok(form.includes('id="chatRecordButton"'));
+  assert.ok(form.includes('id="chatSendButton" type="submit" aria-label="Enviar mensaje"'));
+  assert.match(form, /id="chatSendButton"[^>]*class="primary hidden"/);
+  assert.ok(form.includes('<path d="M4 3.5 21 12 4 20.5 7.5 12 4 3.5Z"'));
+  assert.ok(html.includes("function updateChatComposerAction()"));
+  assert.ok(html.includes("byId('chatInput').addEventListener('input',updateChatComposerAction)"));
+  assert.ok(html.includes("byId('chatRecordButton').classList.toggle('hidden',hasText)"));
+  assert.ok(html.includes("byId('chatSendButton').classList.toggle('hidden',!hasText)"));
+  assert.ok(html.includes("input.value='';updateChatComposerAction()"));
+});
