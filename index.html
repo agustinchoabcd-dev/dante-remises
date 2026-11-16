@@ -623,7 +623,7 @@ async function syncDriverPushRegistration(user,role){
   const idToken=await user.getIdToken();
   const result=await registerDriverPushDevice({apiBaseUrl:CHAT_API_BASE_URL,idToken,token,appVersion:window.DANTE_BUILD_INFO?.htmlVersion||'0.6.1'});
   diagnostics.mark('trip.push.registration',{result:result.registered?'success':'unknown',carId:role.role==='admin'?'144':String(role.carId||'')});
-  if(byId('driverTripAlertStatus'))if(byId('driverTripAlertStatus'))byId('driverTripAlertStatus').textContent='Este dispositivo quedó registrado para recibir solicitudes.';if(byId('adminTripAlertStatus'))byId('adminTripAlertStatus').textContent='Este dispositivo quedó registrado para recibir solicitudes.';
+  if(byId('driverTripAlertStatus'))byId('driverTripAlertStatus').textContent='Este dispositivo quedó registrado para recibir solicitudes.';if(byId('adminTripAlertStatus'))byId('adminTripAlertStatus').textContent='Este dispositivo quedó registrado para recibir solicitudes.';
  }catch(error){
   diagnostics.mark('trip.push.registration.error',{status:error?.status||0,code:error?.code||error?.message||error?.name||'Error'});
   if(byId('driverTripAlertStatus'))byId('driverTripAlertStatus').textContent='No se pudo registrar este dispositivo para alertas remotas. Revisá la conexión y los permisos.';if(byId('adminTripAlertStatus'))byId('adminTripAlertStatus').textContent='No se pudo registrar este dispositivo para alertas remotas. Revisá la conexión y los permisos.';
@@ -736,15 +736,17 @@ async function setStatus(id,status,minutes=null,indefinite=false){
 window.quickSet=(id,status)=>{if(!currentUser||currentRole?.role!=='admin'){notify('Solo Agustín, administrador, puede gestionar todos los coches.');return}if(status==='libre')setStatus(id,'libre');else if(status==='ocupado')setStatus(id,'ocupado',30);else setStatus(id,'fuera',null,true)}
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 byId('settingsGearButton').addEventListener('click',()=>showView('configuracion'));
-byId('enableDriverTripOverlay')?.addEventListener('click',async()=>{
-byId('enableAdminTripOverlay')?.addEventListener('click',async()=>{if(!isNativePlatform()){notify('La tarjeta flotante sólo está disponible en la APK Android.');return}try{if(await canDrawTripOverlay()){byId('adminTripAlertStatus').textContent='Permiso de tarjeta flotante concedido.';notify('La tarjeta flotante ya está habilitada.');return}const result=await requestTripOverlayPermission();byId('adminTripAlertStatus').textContent=result?.granted?'Permiso de tarjeta flotante concedido.':'Concedé el permiso en Android y volvé a Dante Remises.'}catch(error){console.warn(error);notify('Android no pudo abrir el permiso de tarjeta flotante.')}});
+async function configureTripOverlay(statusId){
  if(!isNativePlatform()){notify('La tarjeta flotante sólo está disponible en la APK Android.');return}
  try{
-  if(await canDrawTripOverlay()){byId('driverTripAlertStatus').textContent='Permiso de tarjeta flotante concedido.';notify('La tarjeta flotante ya está habilitada.');return}
-  await requestTripOverlayPermission();
-  byId('driverTripAlertStatus').textContent='Concedé el permiso en Android y volvé a Dante Remises.';
+  if(await canDrawTripOverlay()){byId(statusId).textContent='Permiso de tarjeta flotante concedido.';notify('La tarjeta flotante ya está habilitada.');return}
+  const result=await requestTripOverlayPermission();
+  const granted=result?.granted===true||await canDrawTripOverlay();
+  byId(statusId).textContent=granted?'Permiso de tarjeta flotante concedido.':'Concedé el permiso en Android y volvé a Dante Remises.';
  }catch(error){console.warn(error);notify('Android no pudo abrir el permiso de tarjeta flotante.')}
-});
+}
+byId('enableDriverTripOverlay')?.addEventListener('click',()=>configureTripOverlay('driverTripAlertStatus'));
+byId('enableAdminTripOverlay')?.addEventListener('click',()=>configureTripOverlay('adminTripAlertStatus'));
 
 let selectedPassengerDriver=null,realMap=null,originPoint=null,destinationPoint=null,mapPickMode=null,routeLayer=null,selectedCarMarker=null,liveLocationUnsub=null,passengerTripUnsub=null,driverInboxUnsub=null,driverPresenceUnsub=null,driverConnectionUnsub=null,driverPresenceRef=null,driverWatchId=null,driverLocationWriteAt=0,activeTripId=null,activeTripData=null;
 let driverPresenceGeneration=0;
@@ -1109,7 +1111,7 @@ async function restoreDriverActiveTrip(){
   const carRef=ref(db,'cars/'+carId),carSnapshot=await get(carRef);
   if(version!==activeTripRestoreVersion||currentUser?.uid!==uid)return;
   const car=carSnapshot.val()||{},tripId=car.activeTripId||null;
-  if(!tripId){activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden');return}
+  if(!tripId){activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');return}
   const tripSnapshot=await get(ref(db,'trips/'+tripId)),trip=tripSnapshot.val();
   if(version!==activeTripRestoreVersion||currentUser?.uid!==uid)return;
   if(!trip){activeTripId=tripId;activeTripData=null;byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML='<strong>No se pudo recuperar el viaje activo.</strong><div class="hint">El coche conserva una referencia a un viaje, pero no se encontró su registro. No se liberó el coche automáticamente para evitar perder información.</div>';return}
@@ -1152,7 +1154,7 @@ async function processPendingTripAction(){
   await handleDriverTripDecision(pending.tripId,pending.action);
  }catch(error){console.warn('No se pudo procesar la acción nativa del viaje:',error?.name||'Error')}
 }
-window.addEventListener('focus',()=>{void processPendingTripAction()});
+window.addEventListener('focus',()=>{void processPendingTripAction();if(currentUser&&['driver','admin'].includes(currentRole?.role))void syncDriverPushRegistration(currentUser,currentRole)});
 async function handleDriverTripDecision(id,decision){
  const carId=currentRole?.carId||'144',tripSnap=await get(ref(db,'trips/'+id)),trip=tripSnap.val();
  if(!trip||trip.status!=='requested'){await dismissNativeTripAlert();notify('La solicitud ya no está disponible.');return}
@@ -2330,8 +2332,9 @@ onAuthStateChanged(auth,async user=>{
  if(user&&currentRole.role==='admin'){try{const profSnap=await get(ref(db,'profiles'));const profiles=profSnap.val()||{};const entries=Object.values(profiles);byId('passengerList').innerHTML=entries.length?entries.map(p=>`<div class="choice-card"><strong>${esc((p.name||'')+' '+(p.lastName||''))}</strong><div class="muted">DNI: ${esc(p.dni||'—')} · Teléfono: ${esc(p.phone||'No informado')}</div></div>`).join(''):'Todavía no hay pasajeros registrados.'; }catch(e){byId('passengerList').textContent='No se pudieron consultar los perfiles. Revisá las reglas de Firebase.'}}
  perf.mark('auth.admin-profiles-stage.done');
  if(user&&!remoteReady&&currentRole.role==='admin'){try{const snap=await get(carsRef);const data=snap.val()||{};for(const x of initial){if(!data[x.id]){await update(ref(db,'cars/'+x.id),{driver:x.driver,model:x.model,status:'libre',until:null,indefinite:false,updatedAt:Date.now()})}}}catch(err){console.error(err);notify('No se pudo inicializar la base. Revisá las reglas de Firebase.')}}
+ byId('adminTripAlertPanel')?.classList.toggle('hidden',currentRole?.role!=='admin');
  if(currentRole?.role==='operator')showView('central');else if(currentRole?.role==='driver')showView('chofer');else if(currentRole?.role==='admin')showView('central');else if(currentRole?.role==='passenger'){if(passengerPhotoReady)showView('pasajero');else showPassengerOnboarding();}
- if(user&&['driver','admin'].includes(currentRole.role)){void syncDriverPushRegistration(user,currentRole);listenDriverInbox();await restoreDriverActiveTrip();startDriverGps();byId('adminTripAlertPanel')?.classList.toggle('hidden',currentRole.role!=='admin');void processPendingTripAction()}else{stopDriverGps();if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}}
+ if(user&&['driver','admin'].includes(currentRole.role)){void syncDriverPushRegistration(user,currentRole);listenDriverInbox();await restoreDriverActiveTrip();startDriverGps();void processPendingTripAction()}else{stopDriverGps();if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}}
  perf.mark('auth.trip-restore-stage.done');
  render('auth-complete');
  perf.mark('auth.callback.done');
