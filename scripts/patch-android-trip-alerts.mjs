@@ -40,6 +40,7 @@ await copyJava(nativeRoot);
 
 for (const permission of [
   "android.permission.POST_NOTIFICATIONS",
+  "android.permission.VIBRATE",
   "android.permission.SYSTEM_ALERT_WINDOW",
   "android.permission.FOREGROUND_SERVICE",
   "android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
@@ -48,7 +49,10 @@ for (const permission of [
     manifest = manifest.replace(/<manifest\b[^>]*>/, match => match + '\n    <uses-permission android:name="' + permission + '" />');
   }
 }
-if (!manifest.includes('android:name=".DantePushApplication"')) {
+const applicationTag = manifest.match(/<application\\b[^>]*>/)?.[0] || "";
+if (!applicationTag) throw new Error("No se encontró el elemento application del manifest.");
+if (!applicationTag.includes('android:name=".DantePushApplication"')) {
+  if (/android:name=/.test(applicationTag)) throw new Error("El manifest ya declara otra Application; no se reemplazará automáticamente.");
   manifest = manifest.replace("<application", '<application android:name=".DantePushApplication"');
 }
 const components = `
