@@ -466,7 +466,7 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
 <section id="chofer" class="hidden">
 <h2>Mi espacio de personal</h2><p class="muted">Gestioná tu estado. Agustín también puede administrar los estados de todos los coches desde la Central.</p>
 <div class="card panel" id="driverControls" style="margin-top:12px">
-<div id="roleSummary" class="hint"></div><div id="driverStatus"></div><div class="divider"></div><h3>Solicitudes de viaje</h3><div class="request" id="driverTripAlertSettings"><strong>Alertas de solicitudes</strong><div class="hint">Permití que Dante Remises muestre una tarjeta flotante sobre otras aplicaciones cuando llegue un viaje.</div><div class="actions"><button class="secondary" id="enableDriverTripOverlay" type="button">Configurar tarjeta flotante</button></div><div class="hint" id="driverTripAlertStatus">La notificación remota se configura al iniciar sesión desde Android.</div></div><div id="driverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="driverActiveTrip" class="request hidden"></div><div class="driver-location-note" id="driverGpsStatus">La ubicación GPS todavía no está activa.</div>
+<div id="roleSummary" class="hint"></div><div id="driverStatus"></div><div class="divider"></div><h3>Solicitudes de viaje</h3><div class="request" id="driverTripAlertSettings"><strong>Alertas de solicitudes</strong><div class="hint">Permití que Dante Remises muestre una tarjeta flotante sobre otras aplicaciones cuando llegue un viaje.</div><div class="actions"><button class="secondary" id="enableDriverNotifications" type="button">Activar notificaciones</button><button class="secondary" id="enableDriverTripOverlay" type="button">Configurar tarjeta flotante</button></div><div class="hint" id="driverTripAlertStatus">La notificación remota se configura al iniciar sesión desde Android.</div></div><div id="driverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="driverActiveTrip" class="request hidden"></div><div class="driver-location-note" id="driverGpsStatus">La ubicación GPS todavía no está activa.</div>
 <div class="divider"></div>
 <div class="field"><label for="busyDuration">Duración de “Ocupado”</label><select id="busyDuration"><option value="5">5 minutos</option><option value="10">10 minutos</option><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="120">2 horas</option><option value="240">4 horas</option><option value="480">8 horas</option></select></div>
 <button class="primary" id="setBusy">Ocupado durante el plazo elegido</button>
@@ -477,7 +477,7 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
 <section id="central" class="hidden">
 <h2>Central de Dante Remises</h2><p class="muted" id="centralDescription">Panel de administración y operación.</p>
 <div class="card panel"><strong>Sesión</strong><div id="centralAuthStatus" class="hint">Sesión cerrada.</div></div>
-<div class="card panel hidden" id="adminTripAlertPanel" style="margin-top:12px"><h3>Solicitudes de viaje · coche 144</h3><p class="muted">Alertas remotas y solicitudes entrantes para el coche del administrador.</p><div class="actions"><button class="secondary" id="enableAdminTripOverlay" type="button">Configurar tarjeta flotante</button></div><div class="hint" id="adminTripAlertStatus">La notificación remota se configura al iniciar sesión desde Android.</div><div id="adminDriverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="adminDriverActiveTrip" class="request hidden"></div></div>
+<div class="card panel hidden" id="adminTripAlertPanel" style="margin-top:12px"><h3>Solicitudes de viaje · coche 144</h3><p class="muted">Alertas remotas y solicitudes entrantes para el coche del administrador.</p><div class="actions"><button class="secondary" id="enableAdminNotifications" type="button">Activar notificaciones</button><button class="secondary" id="enableAdminTripOverlay" type="button">Configurar tarjeta flotante</button></div><div class="hint" id="adminTripAlertStatus">La notificación remota se configura al iniciar sesión desde Android.</div><div id="adminDriverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="adminDriverActiveTrip" class="request hidden"></div></div>
 <div class="grid" id="centralCars"></div>
 <div class="card panel hidden" id="passengerAdmin" style="margin-top:16px"><h3>Pasajeros registrados</h3><p class="muted">Información visible únicamente para Agustín, administrador total.</p><div id="passengerList" class="muted">Cargando registros…</div></div>
 </section>
@@ -529,7 +529,7 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
 <p class="footer hidden" id="appFooter">Dante Remises · Acceso de pasajeros por DNI · Acceso de personal por correo o DNI vinculado · Roles y estados sincronizados con Firebase.</p>
 </main><div class="image-lightbox hidden" id="imageLightbox" role="dialog" aria-modal="true" aria-label="Foto ampliada"><button type="button" class="lightbox-close" id="closeImageLightbox" aria-label="Cerrar">×</button><img id="lightboxImage" alt="Imagen ampliada"><div class="lightbox-caption" id="lightboxCaption"></div></div><div class="toast" id="toast" role="status"></div>
 <script type="module">
-import { getCurrentPosition, watchPosition, clearWatch, requestStartupPermissions, requestLocationPermission, isGeolocationAvailable, chooseChatImage, isNativePlatform, getTripAlertToken, canDrawTripOverlay, requestTripOverlayPermission, getPendingTripAction, clearPendingTripAction, stopTripAlert } from "./native-bridge.js";
+import { getCurrentPosition, watchPosition, clearWatch, requestStartupPermissions, requestLocationPermission, isGeolocationAvailable, chooseChatImage, isNativePlatform, getTripAlertToken, canDrawTripOverlay, requestTripOverlayPermission, canPostTripNotifications, openTripNotificationSettings, getPendingTripAction, clearPendingTripAction, stopTripAlert } from "./native-bridge.js";
 import { registerDriverPushDevice, unregisterDriverPushDevice, notifyDriverForTrip } from "./trip-alerts-client.mjs";
 import { performanceMonitor as perf } from "./perf-monitor.mjs";
 import { mediaCache, sha256 } from "./media-cache.mjs";
@@ -623,7 +623,10 @@ async function syncDriverPushRegistration(user,role){
   const idToken=await user.getIdToken();
   const result=await registerDriverPushDevice({apiBaseUrl:CHAT_API_BASE_URL,idToken,token,appVersion:window.DANTE_BUILD_INFO?.htmlVersion||'0.6.1'});
   diagnostics.mark('trip.push.registration',{result:result.registered?'success':'unknown',carId:role.role==='admin'?'144':String(role.carId||'')});
-  if(byId('driverTripAlertStatus'))byId('driverTripAlertStatus').textContent='Este dispositivo quedó registrado para recibir solicitudes.';if(byId('adminTripAlertStatus'))byId('adminTripAlertStatus').textContent='Este dispositivo quedó registrado para recibir solicitudes.';
+  const notificationPermission=await canPostTripNotifications().catch(()=>({granted:false}));
+   const registrationStatus=notificationPermission.granted?'Dispositivo registrado. Notificaciones Android habilitadas.':'Dispositivo registrado, pero Android tiene desactivadas las notificaciones; activalas para conservar la prioridad alta de FCM.';
+   if(byId('driverTripAlertStatus'))byId('driverTripAlertStatus').textContent=registrationStatus;
+   if(byId('adminTripAlertStatus'))byId('adminTripAlertStatus').textContent=registrationStatus;
  }catch(error){
   diagnostics.mark('trip.push.registration.error',{status:error?.status||0,code:error?.code||error?.message||error?.name||'Error'});
   if(byId('driverTripAlertStatus'))byId('driverTripAlertStatus').textContent='No se pudo registrar este dispositivo para alertas remotas. Revisá la conexión y los permisos.';if(byId('adminTripAlertStatus'))byId('adminTripAlertStatus').textContent='No se pudo registrar este dispositivo para alertas remotas. Revisá la conexión y los permisos.';
@@ -736,6 +739,16 @@ async function setStatus(id,status,minutes=null,indefinite=false){
 window.quickSet=(id,status)=>{if(!currentUser||currentRole?.role!=='admin'){notify('Solo Agustín, administrador, puede gestionar todos los coches.');return}if(status==='libre')setStatus(id,'libre');else if(status==='ocupado')setStatus(id,'ocupado',30);else setStatus(id,'fuera',null,true)}
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 byId('settingsGearButton').addEventListener('click',()=>showView('configuracion'));
+async function configureTripNotifications(statusId){
+ if(!isNativePlatform()){notify('Las notificaciones remotas se configuran en la APK Android.');return}
+ try{
+  const result=await openTripNotificationSettings();
+  const granted=result?.granted===true||(await canPostTripNotifications()).granted;
+  byId(statusId).textContent=granted?'Notificaciones Android habilitadas.':'Activá las notificaciones de Dante Remises en los ajustes de Android.';
+ }catch(error){console.warn(error);notify('Android no pudo abrir los ajustes de notificaciones.')}
+}
+byId('enableDriverNotifications')?.addEventListener('click',()=>configureTripNotifications('driverTripAlertStatus'));
+byId('enableAdminNotifications')?.addEventListener('click',()=>configureTripNotifications('adminTripAlertStatus'));
 async function configureTripOverlay(statusId){
  if(!isNativePlatform()){notify('La tarjeta flotante sólo está disponible en la APK Android.');return}
  try{
