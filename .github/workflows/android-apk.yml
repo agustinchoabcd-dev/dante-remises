@@ -14,6 +14,7 @@ on:
       - 'scripts/patch-android-audio.mjs'
       - 'scripts/patch-android-trip-alerts.mjs'
       - 'android-native/**'
+      - 'firebase/google-services.json'
       - 'trip-alerts-client.mjs'
   push:
     branches:
@@ -291,10 +292,14 @@ jobs:
           FIREBASE_ANDROID_CONFIG_JSON: ${{ secrets.FIREBASE_ANDROID_CONFIG_JSON }}
         run: |
           set -euo pipefail
-          if [ -z "${FIREBASE_ANDROID_CONFIG_JSON:-}" ]; then
-            echo "::warning::FIREBASE_ANDROID_CONFIG_JSON is not configured; the APK will build without remote trip push registration."
-          else
+          if [ -n "${FIREBASE_ANDROID_CONFIG_JSON:-}" ]; then
             printf '%s' "$FIREBASE_ANDROID_CONFIG_JSON" > android/app/google-services.json
+          elif [ -f firebase/google-services.json ]; then
+            cp firebase/google-services.json android/app/google-services.json
+          else
+            echo "::warning::Add FIREBASE_ANDROID_CONFIG_JSON or firebase/google-services.json; the APK will build without remote trip push registration."
+          fi
+          if [ -f android/app/google-services.json ]; then
             python3 -m json.tool android/app/google-services.json > /dev/null
           fi
 
