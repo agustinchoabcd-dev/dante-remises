@@ -124,3 +124,8 @@ export async function clearPendingTripAction() {
   if (!native) return;
   await DanteTripAlerts.clearPendingTripAction();
 }
+
+export async function stopTripAlert() {
+  if (!native) return;
+  await DanteTripAlerts.stopAlert();
+}
