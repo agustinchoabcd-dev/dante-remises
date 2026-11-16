@@ -49,7 +49,7 @@ for (const permission of [
     manifest = manifest.replace(/<manifest\b[^>]*>/, match => match + '\n    <uses-permission android:name="' + permission + '" />');
   }
 }
-const applicationTag = manifest.match(/<application\\b[^>]*>/)?.[0] || "";
+const applicationTag = manifest.match(/<application\b[^>]*>/)?.[0] || "";
 if (!applicationTag) throw new Error("No se encontró el elemento application del manifest.");
 if (!applicationTag.includes('android:name=".DantePushApplication"')) {
   if (/android:name=/.test(applicationTag)) throw new Error("El manifest ya declara otra Application; no se reemplazará automáticamente.");
