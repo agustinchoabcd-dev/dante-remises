@@ -6,9 +6,19 @@ on:
   push:
     branches:
       - dante-test
+      - cache-optimization
+      - parallax-optimization
+      - chat-media-integration
+      - chat-ui-fixes-4b564f
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
+      - 'chat-ui.test.mjs'
+      - 'chat-client.mjs'
+      - 'scripts/patch-android-audio.mjs'
+      - 'media-cache.mjs'
+      - 'service-worker.js'
+      - 'scripts/copy-web.mjs'
 
 permissions:
   contents: read
@@ -69,7 +79,11 @@ jobs:
           Path("/tmp/dante-audio-system.mjs").write_text(scripts[0], encoding="utf-8")
           PY
           node --check /tmp/dante-audio-system.mjs
+          node --check chat-client.mjs
+          node --check media-cache.mjs
+          node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
+          node --test chat-ui.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
@@ -249,8 +263,13 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
-      - name: Enable Android WebView startup audio
+      - name: Enable Android WebView startup audio and microphone capture permissions
         run: node scripts/patch-android-audio.mjs
+
+      - name: Verify Android microphone permissions
+        run: |
+          grep -Fq 'android.permission.RECORD_AUDIO' android/app/src/main/AndroidManifest.xml
+          grep -Fq 'android.permission.MODIFY_AUDIO_SETTINGS' android/app/src/main/AndroidManifest.xml
 
       - name: Use Maven Central mirror for Kotlin compiler artifacts
         run: |
