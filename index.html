@@ -796,7 +796,8 @@ byId('requestSelectedDriver').addEventListener('click',async()=>{
   try{
    const pushResult=await notifyDriverForTrip({apiBaseUrl:CHAT_API_BASE_URL,idToken:await currentUser.getIdToken(),tripId});
    diagnostics.mark('trip.push.requested',{tripId,accepted:Number(pushResult.pushAccepted)||0,registered:pushResult.deviceRegistered===true});
-   if(Number(pushResult.pushAccepted)>0)notify('Solicitud registrada. El servicio de notificaciones aceptó el aviso; todavía no confirma que el teléfono lo haya mostrado.');
+   if(Number(pushResult.pushAccepted)>0||pushResult.duplicate===true)notify('Solicitud registrada. El servicio de notificaciones aceptó el aviso; todavía no confirma que el teléfono lo haya mostrado.');
+   else if(pushResult.dispatchInProgress===true)notify('Solicitud registrada. El aviso al dispositivo ya se está procesando.');
    else notify('Solicitud registrada, pero el chofer todavía no tiene un dispositivo push confirmado.');
   }catch(pushError){
    diagnostics.mark('trip.push.request.error',{tripId,status:pushError?.status||0,code:pushError?.code||pushError?.name||'Error'});
