@@ -3,6 +3,18 @@ run-name: Android APK · ${{ github.ref_name }} · ${{ github.sha }}
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - trip-request-alerts
+    paths:
+      - '.github/workflows/android-apk.yml'
+      - 'index.html'
+      - 'scripts/native-bridge.js'
+      - 'scripts/build-native-bridge.mjs'
+      - 'scripts/patch-android-audio.mjs'
+      - 'scripts/patch-android-trip-alerts.mjs'
+      - 'android-native/**'
+      - 'trip-alerts-client.mjs'
   push:
     branches:
       - dante-test
@@ -17,6 +29,8 @@ on:
       - 'chat-ui.test.mjs'
       - 'chat-client.mjs'
       - 'trip-alerts-client.mjs'
+      - 'scripts/native-bridge.js'
+      - 'scripts/build-native-bridge.mjs'
       - 'scripts/patch-android-audio.mjs'
       - 'scripts/patch-android-trip-alerts.mjs'
       - 'android-native/**'
