@@ -1114,15 +1114,15 @@ async function restoreDriverActiveTrip(){
   if(!tripId){activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');return}
   const tripSnapshot=await get(ref(db,'trips/'+tripId)),trip=tripSnapshot.val();
   if(version!==activeTripRestoreVersion||currentUser?.uid!==uid)return;
-  if(!trip){activeTripId=tripId;activeTripData=null;byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML='<strong>No se pudo recuperar el viaje activo.</strong><div class="hint">El coche conserva una referencia a un viaje, pero no se encontró su registro. No se liberó el coche automáticamente para evitar perder información.</div>';return}
+  if(!trip){activeTripId=tripId;activeTripData=null;byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML='<strong>No se pudo recuperar el viaje activo.</strong><div class="hint">El coche conserva una referencia a un viaje, pero no se encontró su registro. No se liberó el coche automáticamente para evitar perder información.</div>';if(byId('adminDriverActiveTrip')){byId('adminDriverActiveTrip').classList.remove('hidden');byId('adminDriverActiveTrip').textContent='No se pudo recuperar el viaje activo del coche 144. El coche no se liberó automáticamente.'}return}
   if(['accepted','in_progress'].includes(trip.status)){renderDriverActiveTrip(trip,tripId);startDriverGps();return}
   if(['completed','cancelled','rejected'].includes(trip.status)){
    const cleanup=await runTransaction(carRef,current=>{if(!current||current.activeTripId!==tripId)return;current.status='libre';current.until=null;current.indefinite=false;current.activeTripId=null;current.updatedAt=Date.now();return current});
    if(version!==activeTripRestoreVersion||currentUser?.uid!==uid)return;
    if(cleanup.committed){cars[carId].status='libre';cars[carId].until=null;cars[carId].indefinite=false;cars[carId].activeTripId=null}
-   activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden');render('trip-restore-missing');return;
+   activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');render('trip-restore-missing');return;
   }
-  activeTripId=tripId;activeTripData=trip;byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML='<strong>Solicitud vinculada pendiente de recuperar.</strong><div class="hint">El registro todavía no está aceptado; no se habilitó finalizar viaje.</div>';
+  activeTripId=tripId;activeTripData=trip;byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML='<strong>Solicitud vinculada pendiente de recuperar.</strong><div class="hint">El registro todavía no está aceptado; no se habilitó finalizar viaje.</div>';if(byId('adminDriverActiveTrip')){byId('adminDriverActiveTrip').classList.remove('hidden');byId('adminDriverActiveTrip').textContent='Hay una solicitud vinculada pendiente de recuperar para el coche 144.'}
  }catch(error){console.error('No se pudo recuperar el viaje activo:',error);if(version===activeTripRestoreVersion&&currentUser?.uid===uid){byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML='<strong>No se pudo consultar el viaje activo.</strong><div class="hint">Revisá la conexión. El estado del coche no se modificó.</div>'}}
 }
 function listenDriverInbox(){
