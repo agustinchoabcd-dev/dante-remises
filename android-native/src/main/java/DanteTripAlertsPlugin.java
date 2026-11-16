@@ -65,8 +65,20 @@ public class DanteTripAlertsPlugin extends Plugin {
     @ActivityCallback private void notificationSettingsResult(PluginCall call, ActivityResult result) {
         if (call == null) return;
         JSObject value = new JSObject();
+        boolean granted = NotificationManagerCompat.from(getContext()).areNotificationsEnabled();
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            granted = granted && ContextCompat.checkSelfPermission(
+                getContext(), android.Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED;
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            android.app.NotificationManager manager =
+                (android.app.NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            android.app.NotificationChannel channel = manager.getNotificationChannel("trip_requests");
+            granted = granted && (channel == null || channel.getImportance() != android.app.NotificationManager.IMPORTANCE_NONE);
+        }
         value.put("opened", true);
-        value.put("granted", NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
+        value.put("granted", granted);
         call.resolve(value);
     }
 
