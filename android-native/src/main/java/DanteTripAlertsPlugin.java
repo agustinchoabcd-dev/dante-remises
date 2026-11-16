@@ -1,5 +1,8 @@
 package __PACKAGE__;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.provider.Settings;
@@ -33,6 +36,38 @@ public class DanteTripAlertsPlugin extends Plugin {
         } catch (Exception error) {
             call.reject("Firebase Cloud Messaging no está inicializado.", error);
         }
+    }
+
+    @PluginMethod public void canPostNotifications(PluginCall call) {
+        boolean granted = NotificationManagerCompat.from(getContext()).areNotificationsEnabled();
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            granted = granted && ContextCompat.checkSelfPermission(
+                getContext(), android.Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED;
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            android.app.NotificationManager manager =
+                (android.app.NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            android.app.NotificationChannel channel = manager.getNotificationChannel("trip_requests");
+            granted = granted && (channel == null || channel.getImportance() != android.app.NotificationManager.IMPORTANCE_NONE);
+        }
+        JSObject result = new JSObject();
+        result.put("granted", granted);
+        call.resolve(result);
+    }
+
+    @PluginMethod public void openNotificationSettings(PluginCall call) {
+        Intent intent = new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+        intent.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
+        startActivityForResult(call, intent, "notificationSettingsResult");
+    }
+
+    @ActivityCallback private void notificationSettingsResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        JSObject value = new JSObject();
+        value.put("opened", true);
+        value.put("granted", NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
+        call.resolve(value);
     }
 
     @PluginMethod public void canDrawOverlays(PluginCall call) {
