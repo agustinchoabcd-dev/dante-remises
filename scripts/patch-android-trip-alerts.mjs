@@ -109,7 +109,7 @@ if (!main.includes(pluginRegistration)) {
 }
 
 if (!main.includes("savePendingTripAction(getIntent())")) {
-  main = main.replace("super.onCreate(savedInstanceState);", "super.onCreate(savedInstanceState);\\n        savePendingTripAction(getIntent());");
+  main = main.replace("super.onCreate(savedInstanceState);", "super.onCreate(savedInstanceState);\n        savePendingTripAction(getIntent());");
 }
 if (!main.includes("private void savePendingTripAction(")) {
   const helper = `
