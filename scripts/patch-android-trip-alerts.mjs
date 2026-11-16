@@ -58,7 +58,6 @@ const components = `
         <service android:name=".DanteTripAlertService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-visible alert for incoming passenger ride requests; the driver can accept or reject." />
         </service>
-        <receiver android:name=".DanteTripActionReceiver" android:exported="false" />
 `;
 if (!manifest.includes('android:name=".DanteFirebaseMessagingService"')) {
   manifest = manifest.replace("</application>", components + "\n    </application>");
@@ -107,6 +106,34 @@ if (!main.includes(pluginRegistration)) {
     if (!marker.test(main)) throw new Error("No se encontró super.onCreate en MainActivity.");
     main = main.replace(marker, (match, indent) => indent + pluginRegistration + "\n" + match);
   }
+}
+
+if (!main.includes("savePendingTripAction(getIntent())")) {
+  main = main.replace("super.onCreate(savedInstanceState);", "super.onCreate(savedInstanceState);\\n        savePendingTripAction(getIntent());");
+}
+if (!main.includes("private void savePendingTripAction(")) {
+  const helper = `
+    private void savePendingTripAction(android.content.Intent intent) {
+        if (intent == null) return;
+        String action = intent.getStringExtra("danteTripAction");
+        String tripId = intent.getStringExtra("danteTripId");
+        if (tripId == null || tripId.isEmpty() ||
+            !("accept".equals(action) || "reject".equals(action))) return;
+        getSharedPreferences("dante_trip_alerts", MODE_PRIVATE).edit()
+            .putString("pending_action", action)
+            .putString("pending_trip_id", tripId)
+            .apply();
+        stopService(new android.content.Intent(this, DanteTripAlertService.class));
+    }
+
+    @Override
+    public void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        savePendingTripAction(intent);
+    }
+`;
+  main = main.replace(/\\s*}\\s*$/, "\\n" + helper + "}\\n");
 }
 await writeFile(activityPath, main, "utf8");
 
