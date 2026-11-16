@@ -742,8 +742,8 @@ byId('settingsGearButton').addEventListener('click',()=>showView('configuracion'
 async function configureTripNotifications(statusId){
  if(!isNativePlatform()){notify('Las notificaciones remotas se configuran en la APK Android.');return}
  try{
-  const result=await openTripNotificationSettings();
-  const granted=result?.granted===true||(await canPostTripNotifications()).granted;
+  await openTripNotificationSettings();
+  const granted=(await canPostTripNotifications()).granted;
   byId(statusId).textContent=granted?'Notificaciones Android habilitadas.':'Activá las notificaciones de Dante Remises en los ajustes de Android.';
  }catch(error){console.warn(error);notify('Android no pudo abrir los ajustes de notificaciones.')}
 }
