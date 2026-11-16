@@ -103,6 +103,16 @@ export async function getTripAlertToken() {
   return typeof result?.token === "string" ? result.token : null;
 }
 
+export async function canPostTripNotifications() {
+  if (!native) return { granted: false };
+  return DanteTripAlerts.canPostNotifications();
+}
+
+export async function openTripNotificationSettings() {
+  if (!native) return { opened: false, granted: false };
+  return DanteTripAlerts.openNotificationSettings();
+}
+
 export async function canDrawTripOverlay() {
   if (!native) return false;
   const result = await DanteTripAlerts.canDrawOverlays();
