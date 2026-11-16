@@ -24,6 +24,7 @@ on:
       - 'availability-refresh.test.mjs'
       - 'trip-alerts-client.mjs'
       - 'trip-alerts-client.test.mjs'
+      - 'scripts/native-bridge.js'
       - 'scripts/copy-web.mjs'
       - 'app-telemetry.mjs'
       - 'app-telemetry.test.mjs'
@@ -33,7 +34,7 @@ on:
       - 'scripts/copy-web.mjs'
       - '.github/workflows/chat-client-tests.yml'
   pull_request:
-    branches: [dante-test, parallax-optimization]
+    branches: [main, dante-test, parallax-optimization]
     paths:
       - 'chat-client.mjs'
       - 'chat-client.test.mjs'
