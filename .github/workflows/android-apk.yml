@@ -35,6 +35,7 @@ on:
       - 'scripts/patch-android-audio.mjs'
       - 'scripts/patch-android-trip-alerts.mjs'
       - 'android-native/**'
+      - 'firebase/google-services.json'
       - 'media-cache.mjs'
       - 'service-worker.js'
       - 'scripts/copy-web.mjs'
