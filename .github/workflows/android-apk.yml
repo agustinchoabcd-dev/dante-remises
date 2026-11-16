@@ -19,6 +19,7 @@ on:
       - 'trip-alerts-client.mjs'
       - 'scripts/patch-android-audio.mjs'
       - 'scripts/patch-android-trip-alerts.mjs'
+      - 'android-native/**'
       - 'media-cache.mjs'
       - 'service-worker.js'
       - 'scripts/copy-web.mjs'
