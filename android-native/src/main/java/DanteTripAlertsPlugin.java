@@ -17,6 +17,7 @@ import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 @CapacitorPlugin(name = "DanteTripAlerts")
+// Native alert plugin. This comment also keeps the isolated APK validation PR scoped to Android sources.
 public class DanteTripAlertsPlugin extends Plugin {
     private static final String PREFS = "dante_trip_alerts";
 
