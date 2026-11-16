@@ -133,7 +133,7 @@ if (!main.includes("private void savePendingTripAction(")) {
         savePendingTripAction(intent);
     }
 `;
-  main = main.replace(/\\s*}\\s*$/, "\\n" + helper + "}\\n");
+  main = main.replace(/\s*}\s*$/, "\n" + helper + "}\n");
 }
 await writeFile(activityPath, main, "utf8");
 
