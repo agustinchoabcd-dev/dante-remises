@@ -4,6 +4,7 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 
 const native = Capacitor.isNativePlatform();
 const DantePhotoChooser = registerPlugin("DantePhotoChooser");
+const DanteTripAlerts = registerPlugin("DanteTripAlerts");
 const watches = new Map();
 let nextWatchId = 1;
 
@@ -90,4 +91,36 @@ export async function requestStartupPermissions() {
   } catch (error) {
     console.warn("Permiso de notificaciones no concedido:", error);
   }
+}
+
+export function isNativePlatform() {
+  return native;
+}
+
+export async function getTripAlertToken() {
+  if (!native) return null;
+  const result = await DanteTripAlerts.getToken();
+  return typeof result?.token === "string" ? result.token : null;
+}
+
+export async function canDrawTripOverlay() {
+  if (!native) return false;
+  const result = await DanteTripAlerts.canDrawOverlays();
+  return result?.granted === true;
+}
+
+export async function requestTripOverlayPermission() {
+  if (!native) return { opened: false, granted: false };
+  return DanteTripAlerts.requestOverlayPermission();
+}
+
+export async function getPendingTripAction() {
+  if (!native) return null;
+  const result = await DanteTripAlerts.getPendingTripAction();
+  return result?.tripId ? result : null;
+}
+
+export async function clearPendingTripAction() {
+  if (!native) return;
+  await DanteTripAlerts.clearPendingTripAction();
 }
