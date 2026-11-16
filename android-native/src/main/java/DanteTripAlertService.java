@@ -239,10 +239,11 @@ public class DanteTripAlertService extends Service {
     }
 
     private static PendingIntent actionPendingIntent(Context context, String tripId, String action) {
-        Intent intent = new Intent(context, DanteTripActionReceiver.class);
+        Intent intent = new Intent(context, MainActivity.class);
         intent.putExtra("danteTripAction", action);
         intent.putExtra("danteTripId", tripId);
-        return PendingIntent.getBroadcast(context, tripId.hashCode() ^ action.hashCode(), intent,
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        return PendingIntent.getActivity(context, tripId.hashCode() ^ action.hashCode(), intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
