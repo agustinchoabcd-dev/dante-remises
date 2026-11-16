@@ -477,6 +477,7 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
 <section id="central" class="hidden">
 <h2>Central de Dante Remises</h2><p class="muted" id="centralDescription">Panel de administración y operación.</p>
 <div class="card panel"><strong>Sesión</strong><div id="centralAuthStatus" class="hint">Sesión cerrada.</div></div>
+<div class="card panel hidden" id="adminTripAlertPanel" style="margin-top:12px"><h3>Solicitudes de viaje · coche 144</h3><p class="muted">Alertas remotas y solicitudes entrantes para el coche del administrador.</p><div class="actions"><button class="secondary" id="enableAdminTripOverlay" type="button">Configurar tarjeta flotante</button></div><div class="hint" id="adminTripAlertStatus">La notificación remota se configura al iniciar sesión desde Android.</div><div id="adminDriverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="adminDriverActiveTrip" class="request hidden"></div></div>
 <div class="grid" id="centralCars"></div>
 <div class="card panel hidden" id="passengerAdmin" style="margin-top:16px"><h3>Pasajeros registrados</h3><p class="muted">Información visible únicamente para Agustín, administrador total.</p><div id="passengerList" class="muted">Cargando registros…</div></div>
 </section>
@@ -622,10 +623,10 @@ async function syncDriverPushRegistration(user,role){
   const idToken=await user.getIdToken();
   const result=await registerDriverPushDevice({apiBaseUrl:CHAT_API_BASE_URL,idToken,token,appVersion:window.DANTE_BUILD_INFO?.htmlVersion||'0.6.1'});
   diagnostics.mark('trip.push.registration',{result:result.registered?'success':'unknown',carId:role.role==='admin'?'144':String(role.carId||'')});
-  if(byId('driverTripAlertStatus'))byId('driverTripAlertStatus').textContent='Este dispositivo quedó registrado para recibir solicitudes.';
+  if(byId('driverTripAlertStatus'))if(byId('driverTripAlertStatus'))byId('driverTripAlertStatus').textContent='Este dispositivo quedó registrado para recibir solicitudes.';if(byId('adminTripAlertStatus'))byId('adminTripAlertStatus').textContent='Este dispositivo quedó registrado para recibir solicitudes.';
  }catch(error){
   diagnostics.mark('trip.push.registration.error',{status:error?.status||0,code:error?.code||error?.message||error?.name||'Error'});
-  if(byId('driverTripAlertStatus'))byId('driverTripAlertStatus').textContent='No se pudo registrar este dispositivo para alertas remotas. Revisá la conexión y los permisos.';
+  if(byId('driverTripAlertStatus'))byId('driverTripAlertStatus').textContent='No se pudo registrar este dispositivo para alertas remotas. Revisá la conexión y los permisos.';if(byId('adminTripAlertStatus'))byId('adminTripAlertStatus').textContent='No se pudo registrar este dispositivo para alertas remotas. Revisá la conexión y los permisos.';
   console.warn('No se pudo registrar el dispositivo para alertas de viajes:',error?.status||error?.code||error?.name||'Error');
  }
 }
@@ -736,6 +737,7 @@ window.quickSet=(id,status)=>{if(!currentUser||currentRole?.role!=='admin'){noti
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 byId('settingsGearButton').addEventListener('click',()=>showView('configuracion'));
 byId('enableDriverTripOverlay')?.addEventListener('click',async()=>{
+byId('enableAdminTripOverlay')?.addEventListener('click',async()=>{if(!isNativePlatform()){notify('La tarjeta flotante sólo está disponible en la APK Android.');return}try{if(await canDrawTripOverlay()){byId('adminTripAlertStatus').textContent='Permiso de tarjeta flotante concedido.';notify('La tarjeta flotante ya está habilitada.');return}const result=await requestTripOverlayPermission();byId('adminTripAlertStatus').textContent=result?.granted?'Permiso de tarjeta flotante concedido.':'Concedé el permiso en Android y volvé a Dante Remises.'}catch(error){console.warn(error);notify('Android no pudo abrir el permiso de tarjeta flotante.')}});
  if(!isNativePlatform()){notify('La tarjeta flotante sólo está disponible en la APK Android.');return}
  try{
   if(await canDrawTripOverlay()){byId('driverTripAlertStatus').textContent='Permiso de tarjeta flotante concedido.';notify('La tarjeta flotante ya está habilitada.');return}
@@ -1094,8 +1096,10 @@ async function registerDriverPresence(user,role){
 function renderDriverActiveTrip(trip,id){
  activeTripId=id;activeTripData=trip;
  const startButton=trip.status==='accepted'?'<button class="primary" id="startTripButton">Iniciar viaje</button>':'';
- byId('driverActiveTrip').classList.remove('hidden');
- byId('driverActiveTrip').innerHTML='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Destino: '+esc(trip.destination?.label||'')+'</div><div class="actions"><button class="secondary" id="openTripChatButton">Chat con pasajero</button>'+startButton+'<button class="secondary" id="finishTripButton">Finalizar viaje</button></div>';
+ const html='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Destino: '+esc(trip.destination?.label||'')+'</div><div class="actions"><button class="secondary" id="openTripChatButton">Chat con pasajero</button>'+startButton+'<button class="secondary" id="finishTripButton">Finalizar viaje</button></div>';
+ byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML=html;
+ const adminBox=byId('adminDriverActiveTrip');
+ if(adminBox){adminBox.classList.remove('hidden');adminBox.innerHTML='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Destino: '+esc(trip.destination?.label||'')+'</div><div class="hint">Usá “Mi espacio de personal” para iniciar o finalizar el viaje.</div>';}
 }
 async function restoreDriverActiveTrip(){
  const user=currentUser,role=currentRole;
@@ -1119,7 +1123,25 @@ async function restoreDriverActiveTrip(){
   activeTripId=tripId;activeTripData=trip;byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML='<strong>Solicitud vinculada pendiente de recuperar.</strong><div class="hint">El registro todavía no está aceptado; no se habilitó finalizar viaje.</div>';
  }catch(error){console.error('No se pudo recuperar el viaje activo:',error);if(version===activeTripRestoreVersion&&currentUser?.uid===uid){byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML='<strong>No se pudo consultar el viaje activo.</strong><div class="hint">Revisá la conexión. El estado del coche no se modificó.</div>'}}
 }
-function listenDriverInbox(){if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}const carId=currentRole?.carId||'144';driverInboxUnsub=onValue(ref(db,'tripInbox/'+carId),async snap=>{const entries=Object.values(snap.val()||{});const pending=entries.filter(x=>x.status==='requested');byId('driverTripInbox').innerHTML='';if(!pending.length){byId('driverTripInbox').textContent='No hay solicitudes pendientes.';return}for(const item of pending){const tripSnap=await get(ref(db,'trips/'+item.tripId));const t=tripSnap.val();if(!t||t.status!=='requested')continue;const el=document.createElement('div');el.className='trip-request';const origin=t.origin?.label||'Origen sin nombre',dest=t.destination?.label||'Destino sin nombre';el.innerHTML=`<strong>Solicitud de ${esc(t.passengerName||'Pasajero')}</strong><div class="hint">Desde: ${esc(origin)}</div><div class="hint">Hasta: ${esc(dest)}</div><div class="actions"><button class="secondary" data-open-driver-trip-chat="${esc(t.tripId)}">Chat con pasajero</button><button class="primary" data-accept-trip="${esc(t.tripId)}">Aceptar viaje</button><button class="danger" data-reject-trip="${esc(t.tripId)}">Rechazar</button></div>`;byId('driverTripInbox').appendChild(el)}} ,err=>{console.error(err);byId('driverTripInbox').textContent='No se pudieron cargar solicitudes. Revisá las reglas de Firebase.'})}
+function listenDriverInbox(){
+ if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}
+ const carId=currentRole?.carId||'144';
+ const targets=[byId('driverTripInbox')];
+ if(currentRole?.role==='admin'&&byId('adminDriverTripInbox'))targets.push(byId('adminDriverTripInbox'));
+ driverInboxUnsub=onValue(ref(db,'tripInbox/'+carId),async snap=>{
+  const entries=Object.values(snap.val()||{}),pending=entries.filter(x=>x.status==='requested');
+  targets.forEach(target=>target.innerHTML='');
+  if(!pending.length){targets.forEach(target=>target.textContent='No hay solicitudes pendientes.');return}
+  for(const item of pending){
+   const tripSnap=await get(ref(db,'trips/'+item.tripId)),t=tripSnap.val();
+   if(!t||t.status!=='requested')continue;
+   const el=document.createElement('div');el.className='trip-request';
+   const origin=t.origin?.label||'Origen sin nombre',dest=t.destination?.label||'Destino sin nombre';
+   el.innerHTML=`<strong>Solicitud de ${esc(t.passengerName||'Pasajero')}</strong><div class="hint">Desde: ${esc(origin)}</div><div class="hint">Hasta: ${esc(dest)}</div><div class="actions"><button class="secondary" data-open-driver-trip-chat="${esc(t.tripId)}">Chat con pasajero</button><button class="primary" data-accept-trip="${esc(t.tripId)}">Aceptar viaje</button><button class="danger" data-reject-trip="${esc(t.tripId)}">Rechazar</button></div>`;
+   targets.forEach((target,index)=>target.appendChild(index===0?el:el.cloneNode(true)));
+  }
+ },err=>{console.error(err);targets.forEach(target=>target.textContent='No se pudieron cargar solicitudes. Revisá las reglas de Firebase.')});
+}
 async function dismissNativeTripAlert(){try{await stopTripAlert()}catch(error){console.warn('No se pudo detener la alerta nativa:',error?.name||'Error')}}
 async function processPendingTripAction(){
  if(!isNativePlatform()||!currentUser||!['driver','admin'].includes(currentRole?.role))return;
@@ -1153,7 +1175,8 @@ async function handleDriverTripDecision(id,decision){
  }catch(err){console.error(err);notify('No se pudo aceptar el viaje. Revisá las reglas de Firebase.')}
 }
 byId('driverTripInbox').addEventListener('click',async e=>{const accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]');const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;if(!id)return;await handleDriverTripDecision(id,reject?'reject':'accept')});
-byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='openTripChatButton'&&activeTripId){await openDriverTripChat(activeTripId)}if(e.target.id==='startTripButton'&&activeTripId){try{await update(ref(db,'trips/'+activeTripId),{status:'in_progress',startedAt:Date.now(),updatedAt:Date.now()});activeTripData={...activeTripData,status:'in_progress'};renderDriverActiveTrip(activeTripData,activeTripId);notify('Viaje iniciado.')}catch(err){console.error(err);notify('No se pudo iniciar el viaje.')}}if(e.target.id==='finishTripButton'&&activeTripId){const id=activeTripId,carId=currentRole?.carId||'144';try{await update(ref(db,'trips/'+id),{status:'completed',completedAt:Date.now(),updatedAt:Date.now()});const carTx=await runTransaction(ref(db,'cars/'+carId),current=>{if(!current||current.activeTripId!==id)return;current.status='libre';current.until=null;current.indefinite=false;current.activeTripId=null;current.updatedAt=Date.now();return current});if(!carTx.committed)throw new Error('El coche ya no tiene asociado este viaje.');await remove(ref(db,'trips/'+id+'/driverLocation'));activeTripId=null;activeTripData=null;stopDriverGps();byId('driverActiveTrip').classList.add('hidden');startDriverGps();notify('Viaje finalizado. El coche volvió a estar Libre.')}catch(err){console.error(err);notify('No se pudo finalizar el viaje.')}}});
+byId('adminDriverTripInbox')?.addEventListener('click',async e=>{const accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]'),chat=e.target.closest('[data-open-driver-trip-chat]');if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat)});
+byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='openTripChatButton'&&activeTripId){await openDriverTripChat(activeTripId)}if(e.target.id==='startTripButton'&&activeTripId){try{await update(ref(db,'trips/'+activeTripId),{status:'in_progress',startedAt:Date.now(),updatedAt:Date.now()});activeTripData={...activeTripData,status:'in_progress'};renderDriverActiveTrip(activeTripData,activeTripId);notify('Viaje iniciado.')}catch(err){console.error(err);notify('No se pudo iniciar el viaje.')}}if(e.target.id==='finishTripButton'&&activeTripId){const id=activeTripId,carId=currentRole?.carId||'144';try{await update(ref(db,'trips/'+id),{status:'completed',completedAt:Date.now(),updatedAt:Date.now()});const carTx=await runTransaction(ref(db,'cars/'+carId),current=>{if(!current||current.activeTripId!==id)return;current.status='libre';current.until=null;current.indefinite=false;current.activeTripId=null;current.updatedAt=Date.now();return current});if(!carTx.committed)throw new Error('El coche ya no tiene asociado este viaje.');await remove(ref(db,'trips/'+id+'/driverLocation'));activeTripId=null;activeTripData=null;stopDriverGps();byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');startDriverGps();notify('Viaje finalizado. El coche volvió a estar Libre.')}catch(err){console.error(err);notify('No se pudo finalizar el viaje.')}}});
 byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
 byId('setFree').addEventListener('click',()=>setStatus(activeDriver,'libre'));
@@ -2308,7 +2331,7 @@ onAuthStateChanged(auth,async user=>{
  perf.mark('auth.admin-profiles-stage.done');
  if(user&&!remoteReady&&currentRole.role==='admin'){try{const snap=await get(carsRef);const data=snap.val()||{};for(const x of initial){if(!data[x.id]){await update(ref(db,'cars/'+x.id),{driver:x.driver,model:x.model,status:'libre',until:null,indefinite:false,updatedAt:Date.now()})}}}catch(err){console.error(err);notify('No se pudo inicializar la base. Revisá las reglas de Firebase.')}}
  if(currentRole?.role==='operator')showView('central');else if(currentRole?.role==='driver')showView('chofer');else if(currentRole?.role==='admin')showView('central');else if(currentRole?.role==='passenger'){if(passengerPhotoReady)showView('pasajero');else showPassengerOnboarding();}
- if(user&&['driver','admin'].includes(currentRole.role)){void syncDriverPushRegistration(user,currentRole);listenDriverInbox();await restoreDriverActiveTrip();startDriverGps();void processPendingTripAction()}else{stopDriverGps();if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}}
+ if(user&&['driver','admin'].includes(currentRole.role)){void syncDriverPushRegistration(user,currentRole);listenDriverInbox();await restoreDriverActiveTrip();startDriverGps();byId('adminTripAlertPanel')?.classList.toggle('hidden',currentRole.role!=='admin');void processPendingTripAction()}else{stopDriverGps();if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}}
  perf.mark('auth.trip-restore-stage.done');
  render('auth-complete');
  perf.mark('auth.callback.done');
