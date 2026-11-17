@@ -95,3 +95,9 @@ test("accepted trips navigate from the driver's live location to pickup, then fr
   assert.match(html, /activeTripData\.status==='accepted'&&driverNavigationMode==='pickup'/);
   assert.match(html, /latestDriverPosition=loc;updateDriverNavigationPosition\(loc\)/);
 });
+
+
+test("pickup distance refreshes as the driver's GPS position changes", () => {
+  assert.match(html, /class="trip-pickup-line"/);
+  assert.match(html, /pickupLine\.textContent=driverTripStreet\(activeTripData\.origin\?\.label\)\+' '\+formatTripDistance\(tripDistanceMeters\(location,activeTripData\.origin\)\)/);
+});
