@@ -94,8 +94,7 @@ test("accepted trips navigate from the driver's live location to pickup, then fr
   assert.match(html, /renderDriverTripMap\(trip,id,trip\.status==='accepted'\?'pickup':'passenger','driverTripMap'\)/);
   assert.match(html, /requestDriverRoadRoute\(live,origin\)/);
   assert.match(html, /requestDriverRoadRoute\(origin,destination\)/);
-  assert.match(html, /animateDriverRouteArrow\(routeAB,'#ffd43b','#e53935'\)/);
-  assert.match(html, /animateDriverRouteArrow\(routeBC,'#176b3a','#8ce99a'\)/);
+  assert.match(html, /animateDriverRouteArrow\(routeAB,routeBC\)/);
   assert.match(html, /driverNavigationMode==='pickup'\|\|driverNavigationMode==='preview'/);
   assert.match(html, /latestDriverPosition=loc;updateDriverNavigationPosition\(loc\)/);
 });
@@ -128,9 +127,9 @@ test("driver trip summary shows street-and-number lines with separate A-B and B-
 
 test("A-B and B-C route layers use separate gradients and looping triangular arrows", () => {
   assert.match(html, /function addDriverGradientRoute\(route,startColor,endColor,segmentId\)/);
-  assert.match(html, /function animateDriverRouteArrow\(route,startColor,endColor/);
-  assert.match(html, /'#ffd43b','#e53935'/);
-  assert.match(html, /'#176b3a','#8ce99a'/);
+  assert.match(html, /function animateDriverRouteArrow\(routeAB,routeBC/);
+  assert.match(html, /startColor:'#ffd43b',endColor:'#e53935'/);
+  assert.match(html, /startColor:'#176b3a',endColor:'#8ce99a'/);
   assert.match(html, /requestAnimationFrame\(step\)/);
   assert.match(html, /prefers-reduced-motion: reduce/);
   assert.match(html, /function stopDriverNavigationAnimations\(\)/);
@@ -152,4 +151,14 @@ test("driver trip map marks A, B and C and labels each segment by its endpoints"
   assert.match(html, /Punto A · Tu ubicación GPS/);
   assert.match(html, /Punto B · Recogida/);
   assert.match(html, /Punto C · Destino/);
+});
+
+
+test("one triangular arrow traverses A-B and then B-C sequentially before looping", () => {
+  const animation = html.match(/function animateDriverRouteArrow\(routeAB,routeBC[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(animation, /const segments=\[/);
+  assert.match(animation, /segmentIndex=Math\.min\(segments\.length-1,Math\.floor\(elapsed\/duration\)\)/);
+  assert.match(animation, /driverNavigationArrowAnimations\.push\(animation\)/);
+  assert.equal((animation.match(/L\.marker\(/g) || []).length, 1);
+  assert.match(html, /Una flecha recorre A→B y luego B→C en loop/);
 });
