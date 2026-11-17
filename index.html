@@ -1186,7 +1186,6 @@ function formatLocationAddress(result){
  const road=address.road||address.pedestrian||address.residential||address.highway||address.street||address.path||address.footway||'';
  const number=address.house_number||'';
  if(road)return (road+' '+number).trim();
- const first=String(result?.display_name||result?.name||'').split(',').map(part=>part.trim()).filter(Boolean)[0]||'';
  return '';
 }
 async function reverseGeocodeTripPoint(point){
@@ -1368,10 +1367,10 @@ async function refreshDriverPickupRoadDistance(trip,location){
  }
 }
 function updateDriverNavigationPosition(location){
- if(!validTripCoordinate(location)||!activeTripData)return;
- const point=[Number(location.lat),Number(location.lon)];
+ if(!validTripCoordinate(location))return;
  driverPendingTripsById.forEach(trip=>{if(driverTripPreviewId===trip.tripId&&driverTripMapTripId===trip.tripId)return;void refreshDriverPickupRoadDistance(trip,location)});
  if(!activeTripData)return;
+ const point=[Number(location.lat),Number(location.lon)];
  if(!driverTripMapInstance||driverTripMapTripId!==activeTripId&&activeTripData.status!=='requested')return;
  if(driverNavigationDriverMarker)driverNavigationDriverMarker.setLatLng(point);else driverNavigationDriverMarker=L.marker(point,{icon:driverTripPointIcon('A','#ffd43b')}).addTo(driverTripMapInstance).bindPopup('Punto A · Tu ubicación GPS');
  if(!driverTripMapInstance.getBounds().contains(point))driverTripMapInstance.panTo(point,{animate:true,duration:.3});
