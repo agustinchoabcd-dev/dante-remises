@@ -794,7 +794,7 @@ async function ensureDriverTripAlertPermissions(){
 
 let selectedPassengerDriver=null,realMap=null,originPoint=null,destinationPoint=null,mapPickMode=null,routeLayer=null,selectedCarMarker=null,liveLocationUnsub=null,passengerTripUnsub=null,driverInboxUnsub=null,driverPresenceUnsub=null,driverConnectionUnsub=null,driverPresenceRef=null,driverWatchId=null,driverLocationWriteAt=0,activeTripId=null,activeTripData=null;
 let driverTripMapInstance=null,driverTripMapTripId=null,processingNativeTripAction=false;
-let latestDriverPosition=null,driverTripPreviewId=null,driverNavigationMode='preview',driverNavigationDriverMarker=null,driverNavigationPickupMarker=null,driverNavigationDestinationMarker=null,driverNavigationRouteLayer=null,driverNavigationLastRouteOrigin=null,driverNavigationRouteVersion=0;
+let latestDriverPosition=null,driverTripPreviewId=null,driverNavigationMode='preview',driverNavigationDriverMarker=null,driverNavigationPickupMarker=null,driverNavigationDestinationMarker=null,driverNavigationRouteLayer=null,driverNavigationLastRouteOrigin=null,driverNavigationRouteVersion=0,driverPickupDistanceOrigin=null,driverPickupDistanceRequestVersion=0;
 let driverPresenceGeneration=0;
 const carMarkers={};
 function choosePassengerDriver(id){const c=cars[id];if(!c||!c.online||c.status!=='libre'){notify('Ese chofer ya no está disponible.');render('invalid-driver-selection');return}selectedPassengerDriver=id;byId('passengerDriverScreen').classList.add('hidden');byId('passengerTripScreen').classList.remove('hidden');byId('selectedDriverCard').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${esc(c.driver)}</div><div class="model">Coche ${c.id} · ${esc(c.model)}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;byId('requestResult').classList.add('hidden');byId('requestResult').textContent='';originPoint=null;destinationPoint=null;byId('origin').value='';byId('destination').value='';if(realMap){if(routeLayer){realMap.removeLayer(routeLayer);routeLayer=null}if(window.originMarker){realMap.removeLayer(window.originMarker);window.originMarker=null}if(window.destinationMarker){realMap.removeLayer(window.destinationMarker);window.destinationMarker=null}}initRealMap();watchSelectedDriver(id);}
@@ -1168,15 +1168,18 @@ function driverTripCardMarkup(trip,id,expanded=false){
  const destination=String(trip.destination?.label||'Destino sin nombre').trim().split(',').map(part=>part.trim()).filter(Boolean)[0]||'Destino sin nombre';
  const finalDistance=formatTripDistance(tripDistanceMeters(trip.origin,trip.destination));
  const stops=Array.isArray(trip.stops)?trip.stops.map(stop=>typeof stop==='string'?stop:stop?.label||stop?.address||'').filter(Boolean):[];
- const itinerary=stops.length?'Paradas: '+stops.join(' · ')+' · Destino: '+destination+' ('+finalDistance+')':'Destino: '+destination+' ('+finalDistance+')';
+ const distanceMarkup='<span class="trip-destination-distance">'+esc(finalDistance)+'</span>';
+ const itinerary=stops.length?'Paradas: '+esc(stops.join(' · '))+' · Destino: '+esc(destination)+' ('+distanceMarkup+')':'Destino: '+esc(destination)+' ('+distanceMarkup+')';
  const map=expanded?'<div id="driverTripMapPreview-'+esc(id)+'" class="real-map" style="height:230px" aria-label="Mapa del recorrido solicitado"></div><div id="driverTripMapStatusPreview-'+esc(id)+'" class="hint">Cargando recorrido…</div>':'';
- return '<strong>Solicitud · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="trip-route-summary"><strong class="trip-pickup-line">'+esc(pickup)+' ('+esc(pickupDistance)+')</strong><div class="hint">'+esc(itinerary)+'</div></div>'+map+'<div class="actions"><button class="secondary" data-open-driver-trip-chat="'+esc(id)+'">Chat</button>'+(expanded?'<button class="secondary" data-collapse-trip="'+esc(id)+'">Ocultar mapa</button>':'<button class="secondary" data-view-trip="'+esc(id)+'">Ver viaje</button>')+'<button class="primary" data-accept-trip="'+esc(id)+'">Aceptar viaje</button><button class="danger" data-reject-trip="'+esc(id)+'">Rechazar</button></div>';
+ return '<strong>Solicitud · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="trip-route-summary"><strong class="trip-pickup-line">'+esc(pickup)+' ('+esc(pickupDistance)+')</strong><div class="hint">'+itinerary+'</div></div>'+map+'<div class="actions"><button class="secondary" data-open-driver-trip-chat="'+esc(id)+'">Chat</button>'+(expanded?'<button class="secondary" data-collapse-trip="'+esc(id)+'">Ocultar mapa</button>':'<button class="secondary" data-view-trip="'+esc(id)+'">Ver viaje</button>')+'<button class="primary" data-accept-trip="'+esc(id)+'">Aceptar viaje</button><button class="danger" data-reject-trip="'+esc(id)+'">Rechazar</button></div>';
 }
 function renderDriverTripPreview(trip,id){
  driverTripPreviewId=id;activeTripData=trip;showView('chofer');byId('driverActiveTrip').classList.add('hidden');
  listenDriverInbox();
 }
 function renderDriverTripMap(trip,id,mode='preview',containerId='driverTripMap'){
+ driverTripMapTripId=id;
+ if(mode==='preview'){driverPickupDistanceOrigin=null;driverPickupDistanceRequestVersion++;}
  const draw=async()=>{
   const node=byId(containerId);if(!node||!window.L)return;
   if(driverTripMapInstance){try{driverTripMapInstance.remove()}catch{}driverTripMapInstance=null}
@@ -1188,11 +1191,13 @@ function renderDriverTripMap(trip,id,mode='preview',containerId='driverTripMap')
   if(validTripCoordinate(origin)){const point=[Number(origin.lat),Number(origin.lon)];points.push(point);driverNavigationPickupMarker=L.marker(point).addTo(driverTripMapInstance).bindPopup('Punto de recogida')}
   if(validTripCoordinate(destination)){const point=[Number(destination.lat),Number(destination.lon)];points.push(point);driverNavigationDestinationMarker=L.marker(point).addTo(driverTripMapInstance).bindPopup('Destino del pasajero')}
   if(validTripCoordinate(latestDriverPosition)){const point=[Number(latestDriverPosition.lat),Number(latestDriverPosition.lon)];points.push(point);driverNavigationDriverMarker=L.marker(point).addTo(driverTripMapInstance).bindPopup('Tu ubicación')}
-  if(points.length>1)driverTripMapInstance.fitBounds(L.latLngBounds(points).pad(.2));
+  const boundsPoints=(mode==='pickup'?[latestDriverPosition,origin]:[origin,destination]).filter(validTripCoordinate).map(point=>[Number(point.lat),Number(point.lon)]);
+  if(boundsPoints.length>1)driverTripMapInstance.fitBounds(L.latLngBounds(boundsPoints).pad(.2));
+  if(mode==='preview'&&validTripCoordinate(latestDriverPosition))void refreshDriverPickupRoadDistance(trip,latestDriverPosition);
   await drawDriverNavigationRoute();
   setTimeout(()=>driverTripMapInstance?.invalidateSize(),180);
  };
- setTimeout(()=>{if(driverTripMapTripId===id||!driverTripMapTripId)void draw()},100);
+ setTimeout(()=>{if(driverTripMapTripId===id)void draw()},100);
 }
 async function drawDriverNavigationRoute(){
  const trip=activeTripData;if(!trip||!driverTripMapInstance)return;
@@ -1211,8 +1216,29 @@ async function drawDriverNavigationRoute(){
   if(driverNavigationRouteLayer)driverTripMapInstance.removeLayer(driverNavigationRouteLayer);
   driverNavigationRouteLayer=L.geoJSON({type:'Feature',geometry:route.geometry,properties:{}},{style:{color:'#168447',weight:6,opacity:.88}}).addTo(driverTripMapInstance);
   driverNavigationLastRouteOrigin={lat:Number(start.lat),lon:Number(start.lon)};
+  if(driverNavigationMode==='preview'){
+   const card=Array.from(document.querySelectorAll('[data-trip-card]')).find(element=>element.dataset.tripCard===trip.tripId);
+   const destinationDistance=card?.querySelector('.trip-destination-distance');
+   if(destinationDistance)destinationDistance.textContent=formatTripDistance(route.distance);
+  }
   if(status)status.textContent=(pickupMode?'Navegación al punto de recogida':'Navegación del pasajero')+' · '+formatTripDistance(route.distance)+' · '+Math.max(1,Math.round(route.duration/60))+' min estimados.';
  }catch(error){console.warn('No se pudo calcular la ruta de navegación:',error);if(status)status.textContent='No se pudo calcular la ruta. Se mantienen los puntos del recorrido en el mapa.'}
+}
+async function refreshDriverPickupRoadDistance(trip,location){
+ if(!validTripCoordinate(location)||!validTripCoordinate(trip?.origin))return;
+ const moved=tripDistanceMeters(driverPickupDistanceOrigin,location);
+ if(moved!==null&&moved<75)return;
+ driverPickupDistanceOrigin={lat:Number(location.lat),lon:Number(location.lon)};
+ const version=++driverPickupDistanceRequestVersion;
+ try{
+  const coords=[location,trip.origin].map(point=>Number(point.lon)+','+Number(point.lat)).join(';');
+  const response=await fetch(`https://us1.locationiq.com/v1/directions/driving/${coords}?key=${encodeURIComponent(LOCATIONIQ_KEY)}&overview=false&steps=false`);
+  if(!response.ok)throw new Error('Directions '+response.status);
+  const data=await response.json(),route=data.routes?.[0];if(!route||version!==driverPickupDistanceRequestVersion)return;
+  const card=Array.from(document.querySelectorAll('[data-trip-card]')).find(element=>element.dataset.tripCard===trip.tripId);
+  const pickupLine=card?.querySelector('.trip-pickup-line');
+  if(pickupLine)pickupLine.textContent=driverTripStreet(trip.origin?.label)+' ('+formatTripDistance(route.distance)+')';
+ }catch(error){console.warn('No se pudo calcular la distancia vial hasta la recogida:',error)}
 }
 function updateDriverNavigationPosition(location){
  if(!validTripCoordinate(location)||!driverTripMapInstance||!activeTripData||driverTripMapTripId!==activeTripId&&activeTripData.status!=='requested')return;
@@ -1221,8 +1247,10 @@ function updateDriverNavigationPosition(location){
   const card=Array.from(document.querySelectorAll('[data-trip-card]')).find(element=>element.dataset.tripCard===activeTripData.tripId);
   const pickupLine=card?.querySelector('.trip-pickup-line');
   if(pickupLine)pickupLine.textContent=driverTripStreet(activeTripData.origin?.label)+' ('+formatTripDistance(tripDistanceMeters(location,activeTripData.origin))+')';
+  void refreshDriverPickupRoadDistance(activeTripData,location);
  }
  if(driverNavigationDriverMarker)driverNavigationDriverMarker.setLatLng(point);else driverNavigationDriverMarker=L.marker(point).addTo(driverTripMapInstance).bindPopup('Tu ubicación');
+ if(!driverTripMapInstance.getBounds().contains(point))driverTripMapInstance.panTo(point,{animate:true,duration:.3});
  if(activeTripData.status==='accepted'&&driverNavigationMode==='pickup'){
   const moved=tripDistanceMeters(driverNavigationLastRouteOrigin,location);
   if(moved===null||moved>=40)void drawDriverNavigationRoute();
