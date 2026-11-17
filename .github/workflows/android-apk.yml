@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
+      - main
       - trip-request-alerts
       - trip-alerts-corrections
     paths:
