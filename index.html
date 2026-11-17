@@ -1314,7 +1314,7 @@ function renderDriverTripMap(trip,id,mode='preview',containerId='driverTripMap')
   L.tileLayer(`https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`,{maxZoom:20,attribution:'© OpenStreetMap · LocationIQ'}).addTo(driverTripMapInstance);
   if(validTripCoordinate(origin))driverNavigationPickupMarker=L.marker([Number(origin.lat),Number(origin.lon)],{icon:driverTripPointIcon('#e53935','Inicio')}).addTo(driverTripMapInstance).bindPopup('Inicio');
   if(validTripCoordinate(destination))driverNavigationDestinationMarker=L.marker([Number(destination.lat),Number(destination.lon)],{icon:driverTripPointIcon('#8ce99a','Fin')}).addTo(driverTripMapInstance).bindPopup('Fin');
-  if(validTripCoordinate(latestDriverPosition))driverNavigationDriverMarker=L.marker([Number(latestDriverPosition.lat),Number(latestDriverPosition.lon)],{icon:driverTripPointIcon('#ffd43b')}).addTo(driverTripMapInstance).bindPopup('Ubicación del chofer');
+  if(validTripCoordinate(latestDriverPosition))driverNavigationDriverMarker=L.marker([Number(latestDriverPosition.lat),Number(latestDriverPosition.lon)],{icon:driverTripPointIcon('#ffd43b')}) .addTo(driverTripMapInstance);
   const boundsPoints=[latestDriverPosition,origin,destination].filter(validTripCoordinate).map(point=>[Number(point.lat),Number(point.lon)]);
   if(boundsPoints.length>1)driverTripMapInstance.fitBounds(L.latLngBounds(boundsPoints).pad(.2));
   driverNavigationRouteLayer=L.layerGroup().addTo(driverTripMapInstance);
