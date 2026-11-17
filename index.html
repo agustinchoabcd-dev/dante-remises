@@ -1333,7 +1333,7 @@ async function requestDriverRoadRoute(start,end){
 async function drawDriverNavigationRoute(){
  const trip=activeTripData;if(!trip||!driverTripMapInstance)return;
  const requestVersion=++driverNavigationRouteVersion,statusId=driverNavigationMode==='preview'?'driverTripMapStatusPreview-'+trip.tripId:'driverTripMapStatus',status=byId(statusId);
- if(status)status.textContent='Calculando los tramos A→B y B→C…';
+ if(status)status.textContent='Calculando las rutas hasta Inicio y Fin…';
  stopDriverNavigationAnimations();if(driverNavigationRouteLayer){try{driverTripMapInstance.removeLayer(driverNavigationRouteLayer)}catch{}}
  driverNavigationRouteLayer=L.layerGroup().addTo(driverTripMapInstance);
  const live=latestDriverPosition,origin=trip.origin,destination=trip.destination;
@@ -1364,7 +1364,7 @@ async function drawDriverNavigationRoute(){
   if(distance&&approx!==null)distance.textContent='≈ '+formatTripDistance(approx);
  }
  animateDriverRouteArrow(routeAB,routeBC,routeVisualAB,routeVisualBC);
- if(status){const parts=[];if(routeAB)parts.push('A→B '+formatTripDistance(routeAB.distance));if(routeBC)parts.push('B→C '+formatTripDistance(routeBC.distance));status.textContent=parts.length?parts.join(' · ')+' · Una flecha recorre A→B y luego B→C en loop.':'No se pudo calcular una o ambas rutas; se mantienen los puntos del viaje.'}
+ if(status){const parts=[];if(routeAB)parts.push('Hasta Inicio: '+formatTripDistance(routeAB.distance));if(routeBC)parts.push('Inicio a Fin: '+formatTripDistance(routeBC.distance));status.textContent=parts.length?parts.join(' · ')+' · Recorrido animado continuo.':'No se pudo calcular una o ambas rutas; se mantienen los puntos del viaje.'}
 }
 async function refreshDriverPickupRoadDistance(trip,location){
  if(!validTripCoordinate(location)||!validTripCoordinate(trip?.origin))return;
