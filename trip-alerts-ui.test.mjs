@@ -73,3 +73,25 @@ test("viewing and accepting a driver trip show its pickup and destination map", 
   assert.match(html, /Punto de recogida del pasajero/);
   assert.match(html, /data-preview-accept/);
 });
+
+
+test("trip preview expands the existing inbox card instead of creating a duplicate active-trip card", () => {
+  assert.match(html, /driverTripPreviewId=id;activeTripData=trip;showView\('chofer'\);byId\('driverActiveTrip'\)\.classList\.add\('hidden'\)/);
+  assert.match(html, /el\.dataset\.tripCard=t\.tripId/);
+  assert.match(html, /driverTripCardMarkup\(t,t\.tripId,expanded\)/);
+});
+
+test("driver trip cards show pickup distance and passenger destination distance in compact form", () => {
+  assert.match(html, /function tripDistanceMeters\(a,b\)/);
+  assert.match(html, /function formatTripDistance\(meters\)/);
+  assert.match(html, /driverTripStreet\(trip\.origin\?\.label\)/);
+  assert.match(html, /Destino: '\+destination\+' \('\+finalDistance\+'\)/);
+  assert.match(html, /Paradas: '\+stops\.join\(' · '\)/);
+});
+
+test("accepted trips navigate from the driver's live location to pickup, then from pickup to destination", () => {
+  assert.match(html, /renderDriverTripMap\(trip,id,trip\.status==='accepted'\?'pickup':'passenger','driverTripMap'\)/);
+  assert.match(html, /const pickupMode=driverNavigationMode==='pickup',start=pickupMode\?latestDriverPosition:trip\.origin,end=pickupMode\?trip\.origin:trip\.destination/);
+  assert.match(html, /activeTripData\.status==='accepted'&&driverNavigationMode==='pickup'/);
+  assert.match(html, /latestDriverPosition=loc;updateDriverNavigationPosition\(loc\)/);
+});
