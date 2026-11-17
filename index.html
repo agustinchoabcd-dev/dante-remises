@@ -1309,7 +1309,7 @@ function listenDriverInbox(){
     const el=document.createElement('div');el.className='trip-request';el.dataset.tripCard=t.tripId;
     const expanded=index===0&&driverTripPreviewId===t.tripId;
     el.innerHTML=driverTripCardMarkup(t,t.tripId,expanded);target.appendChild(el);
-    if(index===0){void refreshDriverDestinationRoadDistance(t);if(validTripCoordinate(latestDriverPosition))void refreshDriverPickupRoadDistance(t,latestDriverPosition);}
+    if(index===0){if(!expanded)void refreshDriverDestinationRoadDistance(t);if(validTripCoordinate(latestDriverPosition))void refreshDriverPickupRoadDistance(t,latestDriverPosition);}
     if(expanded)renderDriverTripMap(t,t.tripId,'preview','driverTripMapPreview-'+t.tripId);
    });
   }
