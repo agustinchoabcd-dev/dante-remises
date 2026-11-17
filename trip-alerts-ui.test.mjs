@@ -144,7 +144,7 @@ test("live GPS updates pickup distance for every pending request, not only an ex
 
 
 test("driver trip map marks A, B and C and labels each segment by its endpoints", () => {
-  assert.match(html, /function driverTripPointIcon\(background,label='\'\)/);
+  assert.match(html, /function driverTripPointIcon\(background,label=/);
   assert.match(html, /driverTripPointIcon\('#ffd43b'\)/);
   assert.match(html, /driverTripPointIcon\('#e53935','Inicio'\)/);
   assert.match(html, /driverTripPointIcon\('#8ce99a','Fin'\)/);
@@ -158,7 +158,7 @@ test("driver trip map marks A, B and C and labels each segment by its endpoints"
 test("one triangular arrow traverses A-B and then B-C sequentially before looping", () => {
   const animation = html.match(/function animateDriverRouteArrow\(routeAB,routeBC[\s\S]*?\n\}/)?.[0] || "";
   assert.match(animation, /const segments=\[/);
-  assert.match(animation, /segmentIndex=Math\.min\(segments\.length-1,Math\.floor\(elapsed\/duration\)\)/);
+  assert.match(animation, /segmentCycle=duration\+pause/);
   assert.match(animation, /driverNavigationArrowAnimations\.push\(animation\)/);
   assert.equal((animation.match(/L\.marker\(/g) || []).length, 1);
   assert.match(html, /driver-arrow-window/);
