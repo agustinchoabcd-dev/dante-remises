@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
+      - main
       - trip-request-alerts
       - trip-alerts-corrections
     paths:
@@ -20,6 +21,7 @@ on:
       - 'trip-alerts-ui.test.mjs'
   push:
     branches:
+      - trip-alert-actions-v2
       - dante-test
       - cache-optimization
       - parallax-optimization

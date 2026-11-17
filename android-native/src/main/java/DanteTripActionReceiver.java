@@ -8,7 +8,7 @@ public class DanteTripActionReceiver extends BroadcastReceiver {
         String action = intent == null ? "" : intent.getStringExtra("danteTripAction");
         String tripId = intent == null ? "" : intent.getStringExtra("danteTripId");
         if (tripId == null || tripId.isEmpty() ||
-            !("accept".equals(action) || "reject".equals(action))) return;
+            !("accept".equals(action) || "view".equals(action) || "reject".equals(action))) return;
 
         context.getSharedPreferences("dante_trip_alerts", 0).edit()
             .putString("pending_action", action)
