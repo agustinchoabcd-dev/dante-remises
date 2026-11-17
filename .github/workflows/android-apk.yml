@@ -16,6 +16,7 @@ on:
       - 'android-native/**'
       - 'firebase/google-services.json'
       - 'trip-alerts-client.mjs'
+      - 'trip-alerts-ui.test.mjs'
   push:
     branches:
       - dante-test
@@ -30,6 +31,7 @@ on:
       - 'chat-ui.test.mjs'
       - 'chat-client.mjs'
       - 'trip-alerts-client.mjs'
+      - 'trip-alerts-ui.test.mjs'
       - 'scripts/native-bridge.js'
       - 'scripts/build-native-bridge.mjs'
       - 'scripts/patch-android-audio.mjs'
@@ -105,7 +107,7 @@ jobs:
           node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
           node --check scripts/patch-android-trip-alerts.mjs
-          node --test chat-ui.test.mjs trip-alerts-client.test.mjs
+          node --test chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
