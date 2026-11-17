@@ -122,7 +122,7 @@ if (!main.includes("private void savePendingTripAction(")) {
         String action = intent.getStringExtra("danteTripAction");
         String tripId = intent.getStringExtra("danteTripId");
         if (tripId == null || tripId.isEmpty() ||
-            !("accept".equals(action) || "reject".equals(action))) return;
+            !("accept".equals(action) || "view".equals(action) || "reject".equals(action))) return;
         getSharedPreferences("dante_trip_alerts", MODE_PRIVATE).edit()
             .putString("pending_action", action)
             .putString("pending_trip_id", tripId)
