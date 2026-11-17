@@ -810,7 +810,7 @@ async function autocompleteLocation(q,target){
   const url=`https://api.locationiq.com/v1/autocomplete?key=${encodeURIComponent(LOCATIONIQ_KEY)}&q=${encodeURIComponent(q+', Santa Rosa de Calamuchita, Córdoba, Argentina')}&limit=6&countrycodes=ar&accept-language=es`;
   const res=await fetch(url);if(!res.ok)throw new Error('LocationIQ '+res.status);
   const items=await res.json();box.innerHTML='';
-  items.forEach(item=>{const b=document.createElement('button');b.type='button';b.textContent=formatLocationAddress(item)||driverTripStreet(item.display_name)||'Dirección encontrada';b.addEventListener('click',()=>{const label=formatLocationAddress(item)||driverTripStreet(item.display_name);setPoint(target,{lat:Number(item.lat),lon:Number(item.lon),label});box.classList.add('hidden')});box.appendChild(b)});
+  items.forEach(item=>{const b=document.createElement('button');b.type='button';b.textContent=formatLocationAddress(item)||'Calle cercana no disponible';b.addEventListener('click',()=>{const label=formatLocationAddress(item)||'Calle cercana no disponible';setPoint(target,{lat:Number(item.lat),lon:Number(item.lon),label});box.classList.add('hidden')});box.appendChild(b)});
   box.classList.toggle('hidden',!items.length);
  }catch(err){console.error(err);box.classList.add('hidden');notify('No se pudieron buscar direcciones. Intentá nuevamente.')}
 }
@@ -1187,7 +1187,7 @@ function formatLocationAddress(result){
  const number=address.house_number||'';
  if(road)return (road+' '+number).trim();
  const first=String(result?.display_name||result?.name||'').split(',').map(part=>part.trim()).filter(Boolean)[0]||'';
- return isCoordinateOrPlaceholderLabel(first)?'':first;
+ return '';
 }
 async function reverseGeocodeTripPoint(point){
  const fallback='Calle cercana no disponible';
