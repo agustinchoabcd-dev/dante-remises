@@ -1247,6 +1247,7 @@ function addDriverGradientRoute(route,startColor,endColor,segmentId){
   if(svg){
    let defs=svg.querySelector('defs');if(!defs){defs=document.createElementNS('http://www.w3.org/2000/svg','defs');svg.insertBefore(defs,svg.firstChild)}
    const id='dante-route-gradient-'+String(segmentId).replace(/[^a-z0-9_-]/gi,'-');
+   const previousGradient=svg.querySelector('#'+id);if(previousGradient)previousGradient.remove();
    const gradient=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
    gradient.setAttribute('id',id);gradient.setAttribute('gradientUnits','userSpaceOnUse');
    const start=path.getPointAtLength(0),end=path.getPointAtLength(path.getTotalLength());
