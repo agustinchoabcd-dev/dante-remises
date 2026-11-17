@@ -1260,7 +1260,7 @@ function updateDriverNavigationPosition(location){
  if(activeTripData.status==='requested'){
   const card=Array.from(document.querySelectorAll('[data-trip-card]')).find(element=>element.dataset.tripCard===activeTripData.tripId);
   const pickupLine=card?.querySelector('.trip-pickup-line');
-  if(pickupLine)pickupLine.textContent=driverTripStreet(activeTripData.origin?.label)+' ('+formatTripDistance(tripDistanceMeters(location,activeTripData.origin))+')';
+  if(pickupLine&&!driverPickupDistanceOrigin)pickupLine.textContent=driverTripStreet(activeTripData.origin?.label)+' ('+formatTripDistance(tripDistanceMeters(location,activeTripData.origin))+')';
   void refreshDriverPickupRoadDistance(activeTripData,location);
  }
  if(!driverTripMapInstance||driverTripMapTripId!==activeTripId&&activeTripData.status!=='requested')return;
