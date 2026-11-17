@@ -69,9 +69,10 @@ test("pending native actions are processed after the app becomes visible and are
 
 test("viewing and accepting a driver trip show its pickup and destination map", () => {
   assert.match(html, /function renderDriverTripPreview\(trip,id\)/);
-  assert.match(html, /function renderDriverTripMap\(trip,id\)/);
-  assert.match(html, /Punto de recogida del pasajero/);
-  assert.match(html, /data-preview-accept/);
+  assert.match(html, /function renderDriverTripMap\(trip,id,mode/);
+  assert.match(html, /Punto de recogida/);
+  assert.match(html, /data-accept-trip/);
+  assert.match(html, /data-view-trip/);
 });
 
 
@@ -85,8 +86,8 @@ test("driver trip cards show pickup distance and passenger destination distance 
   assert.match(html, /function tripDistanceMeters\(a,b\)/);
   assert.match(html, /function formatTripDistance\(meters\)/);
   assert.match(html, /driverTripStreet\(trip\.origin\?\.label\)/);
-  assert.match(html, /Destino: '\+destination\+' \('\+finalDistance\+'\)/);
-  assert.match(html, /Paradas: '\+stops\.join\(' · '\)/);
+  assert.match(html, /trip-destination-distance/);
+  assert.match(html, /Paradas: '\+esc\(stops\.join\(' · '\)\)/);
 });
 
 test("accepted trips navigate from the driver's live location to pickup, then from pickup to destination", () => {
@@ -100,4 +101,5 @@ test("accepted trips navigate from the driver's live location to pickup, then fr
 test("pickup distance refreshes as the driver's GPS position changes", () => {
   assert.match(html, /class="trip-pickup-line"/);
   assert.match(html, /pickupLine\.textContent=driverTripStreet\(activeTripData\.origin\?\.label\)\+' '\+formatTripDistance\(tripDistanceMeters\(location,activeTripData\.origin\)\)/);
+  assert.match(html, /refreshDriverPickupRoadDistance\(activeTripData,location\)/);
 });
