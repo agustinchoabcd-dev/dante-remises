@@ -1178,7 +1178,7 @@ function renderDriverTripPreview(trip,id){
  listenDriverInbox();
 }
 function renderDriverTripMap(trip,id,mode='preview',containerId='driverTripMap'){
- driverTripMapTripId=id;
+ driverNavigationRouteVersion++;driverTripMapTripId=id;
  if(mode==='preview'){driverPickupDistanceOrigin=null;driverPickupDistanceRequestVersion++;}
  const draw=async()=>{
   const node=byId(containerId);if(!node||!window.L)return;
@@ -1241,7 +1241,7 @@ async function refreshDriverPickupRoadDistance(trip,location){
  }catch(error){console.warn('No se pudo calcular la distancia vial hasta la recogida:',error)}
 }
 function updateDriverNavigationPosition(location){
- if(!validTripCoordinate(location)||!driverTripMapInstance||!activeTripData||driverTripMapTripId!==activeTripId&&activeTripData.status!=='requested')return;
+ if(!validTripCoordinate(location)||!activeTripData)return;
  const point=[Number(location.lat),Number(location.lon)];
  if(activeTripData.status==='requested'){
   const card=Array.from(document.querySelectorAll('[data-trip-card]')).find(element=>element.dataset.tripCard===activeTripData.tripId);
@@ -1249,6 +1249,7 @@ function updateDriverNavigationPosition(location){
   if(pickupLine)pickupLine.textContent=driverTripStreet(activeTripData.origin?.label)+' ('+formatTripDistance(tripDistanceMeters(location,activeTripData.origin))+')';
   void refreshDriverPickupRoadDistance(activeTripData,location);
  }
+ if(!driverTripMapInstance||driverTripMapTripId!==activeTripId&&activeTripData.status!=='requested')return;
  if(driverNavigationDriverMarker)driverNavigationDriverMarker.setLatLng(point);else driverNavigationDriverMarker=L.marker(point).addTo(driverTripMapInstance).bindPopup('Tu ubicación');
  if(!driverTripMapInstance.getBounds().contains(point))driverTripMapInstance.panTo(point,{animate:true,duration:.3});
  if(activeTripData.status==='accepted'&&driverNavigationMode==='pickup'){
@@ -1286,7 +1287,7 @@ function listenDriverInbox(){
  driverInboxUnsub=onValue(ref(db,'tripInbox/'+carId),async snap=>{
   const entries=Object.values(snap.val()||{}),pending=entries.filter(x=>x.status==='requested');
   targets.forEach(target=>target.innerHTML='');
-  if(!pending.length){targets.forEach(target=>target.textContent='No hay solicitudes pendientes.');driverTripPreviewId=null;return}
+  if(!pending.length){targets.forEach(target=>target.textContent='No hay solicitudes pendientes.');driverTripPreviewId=null;driverNavigationRouteVersion++;if(driverTripMapInstance){try{driverTripMapInstance.remove()}catch{}driverTripMapInstance=null}driverTripMapTripId=null;return}
   for(const item of pending){
    const tripSnap=await get(ref(db,'trips/'+item.tripId)),t=tripSnap.val();
    if(!t||t.status!=='requested')continue;
@@ -1367,7 +1368,7 @@ async function handleDriverTripDecision(id,decision){
  }catch(err){console.error(err);notify('No se pudo aceptar el viaje. Revisá las reglas de Firebase.');return false}
 }
 byId('driverActiveTrip').addEventListener('click',async e=>{const accept=e.target.closest('[data-preview-accept]'),reject=e.target.closest('[data-preview-reject]');const id=accept?.dataset.previewAccept||reject?.dataset.previewReject;if(id)await handleDriverTripDecision(id,reject?'reject':'accept')});
-byId('driverTripInbox').addEventListener('click',async e=>{const view=e.target.closest('[data-view-trip]'),collapse=e.target.closest('[data-collapse-trip]'),accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]'),chat=e.target.closest('[data-open-driver-trip-chat]');if(view){const trip=(await get(ref(db,'trips/'+view.dataset.viewTrip))).val();if(trip?.status==='requested')renderDriverTripPreview(trip,view.dataset.viewTrip);return}if(collapse){driverTripPreviewId=null;listenDriverInbox();return}if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat)});
+byId('driverTripInbox').addEventListener('click',async e=>{const view=e.target.closest('[data-view-trip]'),collapse=e.target.closest('[data-collapse-trip]'),accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]'),chat=e.target.closest('[data-open-driver-trip-chat]');if(view){const trip=(await get(ref(db,'trips/'+view.dataset.viewTrip))).val();if(trip?.status==='requested')renderDriverTripPreview(trip,view.dataset.viewTrip);return}if(collapse){driverTripPreviewId=null;driverNavigationRouteVersion++;if(driverTripMapInstance){try{driverTripMapInstance.remove()}catch{}driverTripMapInstance=null}driverTripMapTripId=null;listenDriverInbox();return}if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat)});
 byId('adminDriverTripInbox')?.addEventListener('click',async e=>{const view=e.target.closest('[data-view-trip]'),accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]'),chat=e.target.closest('[data-open-driver-trip-chat]');if(view){const trip=(await get(ref(db,'trips/'+view.dataset.viewTrip))).val();if(trip?.status==='requested')renderDriverTripPreview(trip,view.dataset.viewTrip);return}if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat)});
 byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='openTripChatButton'&&activeTripId){await openDriverTripChat(activeTripId)}if(e.target.id==='startTripButton'&&activeTripId){try{await update(ref(db,'trips/'+activeTripId),{status:'in_progress',startedAt:Date.now(),updatedAt:Date.now()});activeTripData={...activeTripData,status:'in_progress'};renderDriverActiveTrip(activeTripData,activeTripId);notify('Viaje iniciado.')}catch(err){console.error(err);notify('No se pudo iniciar el viaje.')}}if(e.target.id==='finishTripButton'&&activeTripId){const id=activeTripId,carId=currentRole?.carId||'144';try{await update(ref(db,'trips/'+id),{status:'completed',completedAt:Date.now(),updatedAt:Date.now()});const carTx=await runTransaction(ref(db,'cars/'+carId),current=>{if(!current||current.activeTripId!==id)return;current.status='libre';current.until=null;current.indefinite=false;current.activeTripId=null;current.updatedAt=Date.now();return current});if(!carTx.committed)throw new Error('El coche ya no tiene asociado este viaje.');await remove(ref(db,'trips/'+id+'/driverLocation'));activeTripId=null;activeTripData=null;stopDriverGps();byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');startDriverGps();notify('Viaje finalizado. El coche volvió a estar Libre.')}catch(err){console.error(err);notify('No se pudo finalizar el viaje.')}}});
 byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
