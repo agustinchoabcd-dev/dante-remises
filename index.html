@@ -1361,7 +1361,7 @@ async function refreshDriverPickupRoadDistance(trip,location){
 function updateDriverNavigationPosition(location){
  if(!validTripCoordinate(location)||!activeTripData)return;
  const point=[Number(location.lat),Number(location.lon)];
- driverPendingTripsById.forEach(trip=>void refreshDriverPickupRoadDistance(trip,location));
+ driverPendingTripsById.forEach(trip=>{if(driverTripPreviewId===trip.tripId&&driverTripMapTripId===trip.tripId)return;void refreshDriverPickupRoadDistance(trip,location)});
  if(!activeTripData)return;
  if(!driverTripMapInstance||driverTripMapTripId!==activeTripId&&activeTripData.status!=='requested')return;
  if(driverNavigationDriverMarker)driverNavigationDriverMarker.setLatLng(point);else driverNavigationDriverMarker=L.marker(point).addTo(driverTripMapInstance).bindPopup('Punto A · Tu ubicación GPS');
