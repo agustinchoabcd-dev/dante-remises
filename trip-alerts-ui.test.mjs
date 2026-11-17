@@ -148,7 +148,7 @@ test("driver trip map marks A, B and C and labels each segment by its endpoints"
   assert.match(html, /driverTripPointIcon\('#ffd43b'\)/);
   assert.match(html, /driverTripPointIcon\('#e53935','Inicio'\)/);
   assert.match(html, /driverTripPointIcon\('#8ce99a','Fin'\)/);
-  assert.match(html, /bindPopup\('Ubicación del chofer'\)/);
+  assert.doesNotMatch(html, /bindPopup\('Ubicación del chofer'\)/);
   assert.match(html, /bindPopup\('Inicio'\)/);
   assert.match(html, /bindPopup\('Fin'\)/);
   assert.doesNotMatch(html, /Punto [ABC] ·/);
