@@ -13,7 +13,8 @@ const webAssets = [
   "perf-monitor.mjs",
   "diagnostics-monitor.mjs",
   "availability-refresh.mjs",
-  "app-telemetry.mjs"
+  "app-telemetry.mjs",
+  "trip-alerts-client.mjs"
 ];
 
 await mkdir(destinationDirectory, { recursive: true });

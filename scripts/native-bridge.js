@@ -4,6 +4,7 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 
 const native = Capacitor.isNativePlatform();
 const DantePhotoChooser = registerPlugin("DantePhotoChooser");
+const DanteTripAlerts = registerPlugin("DanteTripAlerts");
 const watches = new Map();
 let nextWatchId = 1;
 
@@ -82,12 +83,64 @@ export async function requestLocationPermission() {
 export async function requestStartupPermissions() {
   if (!native) return;
   await requestLocationPermission();
+}
+
+export async function requestTripNotificationPermission() {
+  if (!native) return { granted: false };
   try {
-    const notifications = await LocalNotifications.checkPermissions();
-    if (notifications.display !== "granted") {
-      await LocalNotifications.requestPermissions();
-    }
+    const current = await LocalNotifications.checkPermissions();
+    if (current.display === "granted") return { granted: true };
+    const requested = await LocalNotifications.requestPermissions();
+    return { granted: requested.display === "granted" };
   } catch (error) {
-    console.warn("Permiso de notificaciones no concedido:", error);
+    console.warn("Permiso de notificaciones de viajes no concedido:", error);
+    return { granted: false };
   }
+}
+
+export function isNativePlatform() {
+  return native;
+}
+
+export async function getTripAlertToken() {
+  if (!native) return null;
+  const result = await DanteTripAlerts.getToken();
+  return typeof result?.token === "string" ? result.token : null;
+}
+
+export async function canPostTripNotifications() {
+  if (!native) return { granted: false };
+  return DanteTripAlerts.canPostNotifications();
+}
+
+export async function openTripNotificationSettings() {
+  if (!native) return { opened: false, granted: false };
+  return DanteTripAlerts.openNotificationSettings();
+}
+
+export async function canDrawTripOverlay() {
+  if (!native) return false;
+  const result = await DanteTripAlerts.canDrawOverlays();
+  return result?.granted === true;
+}
+
+export async function requestTripOverlayPermission() {
+  if (!native) return { opened: false, granted: false };
+  return DanteTripAlerts.requestOverlayPermission();
+}
+
+export async function getPendingTripAction() {
+  if (!native) return null;
+  const result = await DanteTripAlerts.getPendingTripAction();
+  return result?.tripId ? result : null;
+}
+
+export async function clearPendingTripAction() {
+  if (!native) return;
+  await DanteTripAlerts.clearPendingTripAction();
+}
+
+export async function stopTripAlert() {
+  if (!native) return;
+  await DanteTripAlerts.stopAlert();
 }

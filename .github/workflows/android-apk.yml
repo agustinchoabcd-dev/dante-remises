@@ -3,6 +3,21 @@ run-name: Android APK · ${{ github.ref_name }} · ${{ github.sha }}
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - trip-request-alerts
+      - trip-alerts-corrections
+    paths:
+      - '.github/workflows/android-apk.yml'
+      - 'index.html'
+      - 'scripts/native-bridge.js'
+      - 'scripts/build-native-bridge.mjs'
+      - 'scripts/patch-android-audio.mjs'
+      - 'scripts/patch-android-trip-alerts.mjs'
+      - 'android-native/**'
+      - 'firebase/google-services.json'
+      - 'trip-alerts-client.mjs'
+      - 'trip-alerts-ui.test.mjs'
   push:
     branches:
       - dante-test
@@ -10,12 +25,20 @@ on:
       - parallax-optimization
       - chat-media-integration
       - chat-ui-fixes-4b564f
+      - trip-request-alerts
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
       - 'chat-ui.test.mjs'
       - 'chat-client.mjs'
+      - 'trip-alerts-client.mjs'
+      - 'trip-alerts-ui.test.mjs'
+      - 'scripts/native-bridge.js'
+      - 'scripts/build-native-bridge.mjs'
       - 'scripts/patch-android-audio.mjs'
+      - 'scripts/patch-android-trip-alerts.mjs'
+      - 'android-native/**'
+      - 'firebase/google-services.json'
       - 'media-cache.mjs'
       - 'service-worker.js'
       - 'scripts/copy-web.mjs'
@@ -80,10 +103,12 @@ jobs:
           PY
           node --check /tmp/dante-audio-system.mjs
           node --check chat-client.mjs
+          node --check trip-alerts-client.mjs
           node --check media-cache.mjs
           node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
-          node --test chat-ui.test.mjs
+          node --check scripts/patch-android-trip-alerts.mjs
+          node --test chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
@@ -265,6 +290,41 @@ jobs:
 
       - name: Enable Android WebView startup audio and microphone capture permissions
         run: node scripts/patch-android-audio.mjs
+
+      - name: Inject and validate Firebase Android configuration for FCM
+        env:
+          FIREBASE_ANDROID_CONFIG_JSON: ${{ secrets.FIREBASE_ANDROID_CONFIG_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -n "${FIREBASE_ANDROID_CONFIG_JSON:-}" ]; then
+            printf '%s' "$FIREBASE_ANDROID_CONFIG_JSON" > android/app/google-services.json
+          elif [ -f firebase/google-services.json ]; then
+            cp firebase/google-services.json android/app/google-services.json
+          else
+            echo "::error::Missing FIREBASE_ANDROID_CONFIG_JSON. Refusing to build an APK without FCM registration."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("android/app/google-services.json")
+          config = json.loads(path.read_text(encoding="utf-8"))
+          project_id = config.get("project_info", {}).get("project_id")
+          if project_id != "dante-remiseria-src":
+              raise SystemExit(f"Unexpected Firebase project_id: {project_id!r}")
+          expected_package = "com.danteremises.test"
+          clients = config.get("client", [])
+          if not any(
+              item.get("client_info", {}).get("android_client_info", {}).get("package_name") == expected_package
+              for item in clients
+          ):
+              raise SystemExit(f"google-services.json has no Android client for {expected_package}")
+          print(f"Firebase Android config validated: project={project_id}, package={expected_package}")
+          PY
+
+      - name: Configure native Android trip alerts
+        run: node scripts/patch-android-trip-alerts.mjs
 
       - name: Verify Android microphone permissions
         run: |

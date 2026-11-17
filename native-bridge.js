@@ -35,3 +35,15 @@ export async function requestLocationPermission() {
 }
 
 export async function requestStartupPermissions() {}
+
+
+// La versión web no dispone de permisos ni alertas push nativas.
+export async function requestTripNotificationPermission() { return { granted: false }; }
+export async function getTripAlertToken() { return null; }
+export async function canPostTripNotifications() { return { granted: false }; }
+export async function openTripNotificationSettings() { return { opened: false, granted: false }; }
+export async function canDrawTripOverlay() { return false; }
+export async function requestTripOverlayPermission() { return { opened: false, granted: false }; }
+export async function getPendingTripAction() { return null; }
+export async function clearPendingTripAction() {}
+export async function stopTripAlert() {}

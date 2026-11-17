@@ -2,7 +2,7 @@ name: Client module tests
 
 on:
   push:
-    branches: [dante-test, cache-optimization, parallax-optimization, chat-media-integration, chat-ui-fixes-4b564f]
+    branches: [dante-test, cache-optimization, parallax-optimization, chat-media-integration, chat-ui-fixes-4b564f, trip-request-alerts]
     paths:
       - 'chat-client.mjs'
       - 'chat-history-cache.mjs'
@@ -22,6 +22,12 @@ on:
       - 'app-telemetry.test.mjs'
       - 'availability-refresh.mjs'
       - 'availability-refresh.test.mjs'
+      - 'trip-alerts-client.mjs'
+      - 'trip-alerts-client.test.mjs'
+      - 'scripts/native-bridge.js'
+      - 'scripts/patch-android-trip-alerts.mjs'
+      - 'android-native/**'
+      - '.github/workflows/chat-client-tests.yml'
       - 'scripts/copy-web.mjs'
       - 'app-telemetry.mjs'
       - 'app-telemetry.test.mjs'
@@ -31,7 +37,7 @@ on:
       - 'scripts/copy-web.mjs'
       - '.github/workflows/chat-client-tests.yml'
   pull_request:
-    branches: [dante-test, parallax-optimization]
+    branches: [main, dante-test, parallax-optimization]
     paths:
       - 'chat-client.mjs'
       - 'chat-client.test.mjs'
@@ -65,9 +71,11 @@ jobs:
           node --check diagnostics-monitor.mjs
           node --check availability-refresh.mjs
           node --check app-telemetry.mjs
+          node --check trip-alerts-client.mjs
+          node --check scripts/patch-android-trip-alerts.mjs
       - name: Check inline app module syntax
         run: |
           node -e "const fs=require('node:fs');const html=fs.readFileSync('index.html','utf8');const match=html.match(/<script type=\"module\">([\\s\\S]*?)<\\/script>/);if(!match)throw new Error('Inline module not found');fs.writeFileSync('/tmp/dante-index-inline.mjs',match[1]);"
           node --check /tmp/dante-index-inline.mjs
       - name: Run chat client tests
-        run: node --test media-cache.test.mjs chat-client.test.mjs chat-history-cache.test.mjs perf-monitor.test.mjs diagnostics-monitor.test.mjs availability-refresh.test.mjs app-telemetry.test.mjs chat-ui.test.mjs
+        run: node --test media-cache.test.mjs chat-client.test.mjs chat-history-cache.test.mjs perf-monitor.test.mjs diagnostics-monitor.test.mjs availability-refresh.test.mjs app-telemetry.test.mjs trip-alerts-client.test.mjs chat-ui.test.mjs
