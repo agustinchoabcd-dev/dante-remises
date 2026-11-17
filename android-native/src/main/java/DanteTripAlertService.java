@@ -111,17 +111,30 @@ public class DanteTripAlertService extends Service {
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
-        actions.setGravity(Gravity.END);
+        actions.setGravity(Gravity.CENTER);
         Button reject = new Button(this);
-        reject.setText("Rechazar");
+        reject.setText("Rechazar viaje");
+        reject.setTextSize(10);
         reject.setOnClickListener(view -> dispatchAction("reject"));
+        Button viewTrip = new Button(this);
+        viewTrip.setText("Ver viaje");
+        viewTrip.setTextSize(10);
+        viewTrip.setOnClickListener(view -> dispatchAction("view"));
         Button accept = new Button(this);
         accept.setText("Aceptar viaje");
+        accept.setTextSize(10);
         accept.setTextColor(Color.WHITE);
         accept.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(20, 135, 76)));
         accept.setOnClickListener(view -> dispatchAction("accept"));
-        actions.addView(reject, new LinearLayout.LayoutParams(0, dp(48), 1));
-        actions.addView(accept, new LinearLayout.LayoutParams(0, dp(48), 1));
+        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(0, dp(48), 1);
+        actionParams.setMargins(dp(2), 0, dp(2), 0);
+        actions.addView(reject, actionParams);
+        LinearLayout.LayoutParams viewParams = new LinearLayout.LayoutParams(0, dp(48), 1);
+        viewParams.setMargins(dp(2), 0, dp(2), 0);
+        actions.addView(viewTrip, viewParams);
+        LinearLayout.LayoutParams acceptParams = new LinearLayout.LayoutParams(0, dp(48), 1);
+        acceptParams.setMargins(dp(2), 0, dp(2), 0);
+        actions.addView(accept, acceptParams);
         card.addView(actions);
 
         int width = Math.min(getResources().getDisplayMetrics().widthPixels - dp(24), dp(420));
@@ -233,8 +246,9 @@ public class DanteTripAlertService extends Service {
             .setOnlyAlertOnce(true)
             .setContentIntent(content)
             .setSilent(true)
-            .addAction(0, "Rechazar", actionPendingIntent(context, tripId, "reject"))
-            .addAction(0, "Aceptar", actionPendingIntent(context, tripId, "accept"));
+            .addAction(0, "Rechazar viaje", actionPendingIntent(context, tripId, "reject"))
+            .addAction(0, "Ver viaje", actionPendingIntent(context, tripId, "view"))
+            .addAction(0, "Aceptar viaje", actionPendingIntent(context, tripId, "accept"));
         manager.notify(ALERT_ID, builder.build());
     }
 
