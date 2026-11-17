@@ -53,8 +53,8 @@ test("browser bridge keeps every imported trip-alert API available without nativ
 });
 
 
-test("native trip overlay exposes accept, view and reject as separate actions", () => {
-  const service = readFile(new URL("./android-native/src/main/java/DanteTripAlertService.java", import.meta.url), "utf8");
+test("native trip overlay exposes accept, view and reject as separate actions", async () => {
+  const service = await readFile(new URL("./android-native/src/main/java/DanteTripAlertService.java", import.meta.url), "utf8");
   assert.match(service, /dispatchAction\("accept"\)/);
   assert.match(service, /dispatchAction\("view"\)/);
   assert.match(service, /dispatchAction\("reject"\)/);
