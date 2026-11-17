@@ -21,6 +21,7 @@ on:
       - 'trip-alerts-ui.test.mjs'
   push:
     branches:
+      - trip-alert-actions-v2
       - dante-test
       - cache-optimization
       - parallax-optimization
