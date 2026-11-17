@@ -174,7 +174,7 @@ test("pending request pickup distances refresh even when no trip is expanded", (
 
 
 test("route gradients move in sync with the arrow and share its interpolated color", () => {
-  assert.match(html, /function updateDriverRouteGradient\(visual,progress,currentColor\)/);
+  assert.match(html, /function driverRouteGradientFrame\\(startColor,endColor,progress\\)/);\n  assert.match(html, /function updateDriverRouteGradient\\(visual,progress,currentColor\\)/);
   assert.match(html, /updateDriverRouteGradient\(segment\.visual,progress,color\)/);
   assert.match(html, /arrowStops\.forEach\(\(stop,i\)=>stop\.setAttribute\('stop-color',colors\[i\]\)\)/);
   assert.match(html, /const color=driverInterpolateColor\(segment\.startColor,segment\.endColor,progress\)/);
@@ -182,15 +182,15 @@ test("route gradients move in sync with the arrow and share its interpolated col
 
 test("the aerodynamic arrow stays green while its inner triangular window follows the route gradient", () => {
   const animation = html.match(/function animateDriverRouteArrow\(routeAB,routeBC[\s\S]*?\n\}/)?.[0] || "";
-  assert.match(animation, /M2 12 C8 7\.5 16 3\.7 27 2\.4/);
-  assert.match(animation, /fill="#20a765"/);
+  assert.match(animation, /M2 2 L38 12 L2 22 Z/);\n  assert.doesNotMatch(animation, /C8 7\\.5/);
+  assert.match(animation, /fill="#20a765"/);\n  assert.match(animation, /angle=Math\\.atan2\\(b\\.y-a\\.y,b\\.x-a\\.x\\)\\*180\\/Math\\.PI\\+180/);
   assert.match(animation, /class="driver-arrow-window"/);
   assert.match(animation, /fill="url\(#'/);
 });
 
 test("the animation pauses briefly at B and C before continuing and looping", () => {
   const animation = html.match(/function animateDriverRouteArrow\(routeAB,routeBC[\s\S]*?\n\}/)?.[0] || "";
-  assert.match(animation, /duration=5200,pause=220/);
+  assert.match(animation, /duration=4600,pause=220/);
   assert.match(animation, /segmentCycle=duration\+pause/);
   assert.match(animation, /progress=Math\.max\(0,Math\.min\(1,segmentElapsed\/duration\)\)/);
 });
