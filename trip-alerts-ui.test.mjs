@@ -162,3 +162,10 @@ test("one triangular arrow traverses A-B and then B-C sequentially before loopin
   assert.equal((animation.match(/L\.marker\(/g) || []).length, 1);
   assert.match(html, /Una flecha recorre A→B y luego B→C en loop/);
 });
+
+
+test("pending request pickup distances refresh even when no trip is expanded", () => {
+  const updater = html.match(/function updateDriverNavigationPosition\(location\)[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(updater, /if\(!validTripCoordinate\(location\)\)return/);
+  assert.ok(updater.indexOf("driverPendingTripsById.forEach") < updater.indexOf("if(!activeTripData)return"));
+});
