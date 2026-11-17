@@ -83,13 +83,18 @@ export async function requestLocationPermission() {
 export async function requestStartupPermissions() {
   if (!native) return;
   await requestLocationPermission();
+}
+
+export async function requestTripNotificationPermission() {
+  if (!native) return { granted: false };
   try {
-    const notifications = await LocalNotifications.checkPermissions();
-    if (notifications.display !== "granted") {
-      await LocalNotifications.requestPermissions();
-    }
+    const current = await LocalNotifications.checkPermissions();
+    if (current.display === "granted") return { granted: true };
+    const requested = await LocalNotifications.requestPermissions();
+    return { granted: requested.display === "granted" };
   } catch (error) {
-    console.warn("Permiso de notificaciones no concedido:", error);
+    console.warn("Permiso de notificaciones de viajes no concedido:", error);
+    return { granted: false };
   }
 }
 
