@@ -70,7 +70,7 @@ test("pending native actions are processed after the app becomes visible and are
 test("viewing and accepting a driver trip show its pickup and destination map", () => {
   assert.match(html, /function renderDriverTripPreview\(trip,id\)/);
   assert.match(html, /function renderDriverTripMap\(trip,id,mode/);
-  assert.match(html, /Punto B · Recogida/);
+  assert.match(html, /driverTripPointIcon\('#e53935','Inicio'\)/);
   assert.match(html, /data-accept-trip/);
   assert.match(html, /data-view-trip/);
 });
@@ -94,7 +94,7 @@ test("accepted trips navigate from the driver's live location to pickup, then fr
   assert.match(html, /renderDriverTripMap\(trip,id,trip\.status==='accepted'\?'pickup':'passenger','driverTripMap'\)/);
   assert.match(html, /requestDriverRoadRoute\(live,origin\)/);
   assert.match(html, /requestDriverRoadRoute\(origin,destination\)/);
-  assert.match(html, /animateDriverRouteArrow\(routeAB,routeBC\)/);
+  assert.match(html, /animateDriverRouteArrow\(routeAB,routeBC,routeVisualAB,routeVisualBC\)/);
   assert.match(html, /driverNavigationMode==='pickup'\|\|driverNavigationMode==='preview'/);
   assert.match(html, /latestDriverPosition=loc;updateDriverNavigationPosition\(loc\)/);
 });
@@ -144,13 +144,14 @@ test("live GPS updates pickup distance for every pending request, not only an ex
 
 
 test("driver trip map marks A, B and C and labels each segment by its endpoints", () => {
-  assert.match(html, /function driverTripPointIcon\(letter,background\)/);
-  assert.match(html, /driverTripPointIcon\('A','#ffd43b'\)/);
-  assert.match(html, /driverTripPointIcon\('B','#e53935'\)/);
-  assert.match(html, /driverTripPointIcon\('C','#8ce99a'\)/);
-  assert.match(html, /Punto A · Tu ubicación GPS/);
-  assert.match(html, /Punto B · Recogida/);
-  assert.match(html, /Punto C · Destino/);
+  assert.match(html, /function driverTripPointIcon\(background,label='\'\)/);
+  assert.match(html, /driverTripPointIcon\('#ffd43b'\)/);
+  assert.match(html, /driverTripPointIcon\('#e53935','Inicio'\)/);
+  assert.match(html, /driverTripPointIcon\('#8ce99a','Fin'\)/);
+  assert.match(html, /bindPopup\('Ubicación del chofer'\)/);
+  assert.match(html, /bindPopup\('Inicio'\)/);
+  assert.match(html, /bindPopup\('Fin'\)/);
+  assert.doesNotMatch(html, /Punto [ABC] ·/);
 });
 
 
@@ -160,7 +161,8 @@ test("one triangular arrow traverses A-B and then B-C sequentially before loopin
   assert.match(animation, /segmentIndex=Math\.min\(segments\.length-1,Math\.floor\(elapsed\/duration\)\)/);
   assert.match(animation, /driverNavigationArrowAnimations\.push\(animation\)/);
   assert.equal((animation.match(/L\.marker\(/g) || []).length, 1);
-  assert.match(html, /Una flecha recorre A→B y luego B→C en loop/);
+  assert.match(html, /driver-arrow-window/);
+  assert.match(html, /fill="#20a765"/);
 });
 
 
@@ -168,4 +170,27 @@ test("pending request pickup distances refresh even when no trip is expanded", (
   const updater = html.match(/function updateDriverNavigationPosition\(location\)[\s\S]*?\n\}/)?.[0] || "";
   assert.match(updater, /if\(!validTripCoordinate\(location\)\)return/);
   assert.ok(updater.indexOf("driverPendingTripsById.forEach") < updater.indexOf("if(!activeTripData)return"));
+});
+
+
+test("route gradients move in sync with the arrow and share its interpolated color", () => {
+  assert.match(html, /function updateDriverRouteGradient\(visual,progress,currentColor\)/);
+  assert.match(html, /updateDriverRouteGradient\(segment\.visual,progress,color\)/);
+  assert.match(html, /arrowStops\.forEach\(\(stop,i\)=>stop\.setAttribute\('stop-color',colors\[i\]\)\)/);
+  assert.match(html, /const color=driverInterpolateColor\(segment\.startColor,segment\.endColor,progress\)/);
+});
+
+test("the aerodynamic arrow stays green while its inner triangular window follows the route gradient", () => {
+  const animation = html.match(/function animateDriverRouteArrow\(routeAB,routeBC[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(animation, /M2 12 C8 7\.5 16 3\.7 27 2\.4/);
+  assert.match(animation, /fill="#20a765"/);
+  assert.match(animation, /class="driver-arrow-window"/);
+  assert.match(animation, /fill="url\(#'/);
+});
+
+test("the animation pauses briefly at B and C before continuing and looping", () => {
+  const animation = html.match(/function animateDriverRouteArrow\(routeAB,routeBC[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(animation, /duration=5200,pause=220/);
+  assert.match(animation, /segmentCycle=duration\+pause/);
+  assert.match(animation, /progress=Math\.max\(0,Math\.min\(1,segmentElapsed\/duration\)\)/);
 });
