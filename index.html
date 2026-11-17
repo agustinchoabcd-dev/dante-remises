@@ -608,6 +608,7 @@ function onValue(query, callback, cancelCallback, options){
 }
 let currentUser = null;
 let currentRole = null;
+const tripPushStatusById = new Map();
 let registrationInProgress = false;
 let remoteReady = false;
 let latestDriverPresence = {};
@@ -627,9 +628,10 @@ async function syncDriverPushRegistration(user,role){
   diagnostics.mark('trip.push.registration',{result:'success',carId:role.role==='admin'?'144':String(role.carId||'')});
   if(byId('tripAlertRegistrationStatus'))byId('tripAlertRegistrationStatus').textContent='Este dispositivo quedó registrado para recibir alertas de viaje.';
  }catch(error){
-  diagnostics.mark('trip.push.registration.error',{status:error?.status||0,code:error?.code||error?.message||error?.name||'Error'});
-  if(byId('tripAlertRegistrationStatus'))byId('tripAlertRegistrationStatus').textContent=error?.status===404?'El servicio de alertas todavía no está habilitado en el servidor.':'No se pudo registrar este dispositivo para alertas remotas. Revisá la conexión.';
-  console.warn('No se pudo registrar el dispositivo para alertas de viajes:',error?.status||error?.code||error?.name||'Error');
+  const status=Number(error?.status)||0,code=String(error?.code||error?.message||error?.name||'Error').slice(0,80);
+  diagnostics.mark('trip.push.registration.error',{status,code});
+  if(byId('tripAlertRegistrationStatus'))byId('tripAlertRegistrationStatus').textContent=status===404?'El servicio de alertas todavía no está habilitado en el servidor.':(status?'No se pudo registrar este dispositivo (HTTP '+status+' · '+code+').':'No se pudo obtener o registrar el token FCM ('+code+').');
+  console.warn('No se pudo registrar el dispositivo para alertas de viajes:',status||code);
  }
 }
 async function unregisterDriverPushRegistration(user,role){
@@ -834,26 +836,30 @@ byId('requestSelectedDriver').addEventListener('click',async()=>{
  stage='notify-driver-inbox';
  try{
   await set(ref(db,`tripInbox/${c.id}/${tripId}`),{tripId,createdAt:trip.createdAt,status:'requested'});
+  let pushNotice='El servidor todavía no confirmó la entrega de la alerta.';
   try{
    const pushResult=await notifyDriverForTrip({apiBaseUrl:CHAT_API_BASE_URL,idToken:await currentUser.getIdToken(),tripId});
    diagnostics.mark('trip.push.requested',{tripId,accepted:Number(pushResult.pushAccepted)||0,registered:pushResult.deviceRegistered===true});
-   if(Number(pushResult.pushAccepted)>0||pushResult.duplicate===true)notify('Solicitud registrada. El servicio de notificaciones aceptó el aviso; todavía no confirma que el teléfono lo haya mostrado.');
-   else if(pushResult.dispatchInProgress===true)notify('Solicitud registrada. El aviso al dispositivo ya se está procesando.');
-   else notify('Solicitud registrada, pero el chofer todavía no tiene un dispositivo push confirmado.');
+   if(Number(pushResult.pushAccepted)>0||pushResult.duplicate===true){pushNotice='FCM aceptó el aviso para envío; falta confirmar que Android lo haya mostrado.';notify('Solicitud registrada. FCM aceptó el aviso, pero todavía no confirma su visualización.');}
+   else if(pushResult.dispatchInProgress===true){pushNotice='El Worker está procesando el envío de la alerta.';notify('Solicitud registrada. El aviso al dispositivo se está procesando.');}
+   else if(pushResult.deviceRegistered===false){pushNotice='No hay un dispositivo FCM registrado para este chofer.';notify('Solicitud registrada, pero el chofer no tiene un dispositivo FCM registrado.');}
+   else{pushNotice='El servidor no confirmó que la alerta haya sido enviada.';notify('Solicitud registrada, pero el servidor no confirmó el envío de la alerta.');}
   }catch(pushError){
-   diagnostics.mark('trip.push.request.error',{tripId,status:pushError?.status||0,code:pushError?.code||pushError?.name||'Error'});
-   console.warn('La solicitud se registró, pero no se pudo enviar el aviso push:',pushError?.status||pushError?.name||'Error');
+   const status=Number(pushError?.status)||0,code=String(pushError?.code||pushError?.message||pushError?.name||'Error').slice(0,80);
+   diagnostics.mark('trip.push.request.error',{tripId,status,code});
+   pushNotice='Falló el envío de la alerta'+(status?' (HTTP '+status+')':'')+' · '+code+'. El viaje sí quedó registrado; no lo vuelvas a solicitar.';
+   console.warn('La solicitud se registró, pero no se pudo enviar el aviso push:',status||code);
   }
-
+  tripPushStatusById.set(tripId,pushNotice);
  }catch(error){
   console.error('[Dante Remises] El viaje se registró, pero falló el aviso al chofer.',{stage,tripId,code:error?.code||'unknown',message:error?.message||'sin detalle'});
   activeTripId=tripId;
   result.textContent='El viaje quedó registrado, pero no pudimos avisarle al chofer. No vuelvas a enviar la solicitud para evitar duplicados. Código técnico: '+(error?.code||'no disponible')+'. Contactá a la central e informá este código: '+tripId;
   notify('El viaje se registró, pero no se pudo notificar al chofer. Contactá a la central.');return;
  }
- activeTripId=tripId;result.innerHTML='<strong>Solicitud registrada en la bandeja del coche.</strong><br>El chofer podrá verla cuando tenga la aplicación conectada. Todavía no se confirmó que la haya recibido.<div class="actions"><button class="secondary" data-open-passenger-trip-chat="'+tripId+'">Chatear con el chofer</button></div>';listenPassengerTrip(tripId);notify('Solicitud registrada. La recepción por el chofer aún no está confirmada.');
+ activeTripId=tripId;result.innerHTML='<strong>Solicitud registrada en la bandeja del coche.</strong><br>'+esc(tripPushStatusById.get(tripId)||'El estado de la alerta todavía no está confirmado.')+'<div class="actions"><button class="secondary" data-open-passenger-trip-chat="'+tripId+'">Chatear con el chofer</button></div>';listenPassengerTrip(tripId);notify('Solicitud registrada.');
 });
-function listenPassengerTrip(id){if(passengerTripUnsub)passengerTripUnsub();passengerTripUnsub=onValue(ref(db,'trips/'+id),snap=>{const trip=snap.val();if(!trip)return;activeTripData=trip;const box=byId('requestResult');box.classList.remove('hidden');if(trip.status==='requested')box.innerHTML='<strong>Solicitud enviada.</strong><br>Esperando aceptación del chofer…<div class="actions"><button class="secondary" data-open-passenger-trip-chat="'+id+'">Chatear con el chofer</button></div>';else if(trip.status==='accepted'||trip.status==='in_progress'){box.innerHTML=`<strong class="trip-status">Viaje ${trip.status==='accepted'?'aceptado':'en curso'}</strong><br>${esc(trip.driverName)} · Coche ${esc(trip.carId)}<br>El mapa mostrará la ubicación del coche durante el servicio.<div class="actions"><button class="secondary" data-open-passenger-trip-chat="${esc(id)}">Chatear con el chofer</button></div>`;watchTripLocation(id)}else if(trip.status==='rejected'){box.innerHTML='<strong>El chofer rechazó la solicitud.</strong> Podés volver a elegir otro coche.';byId('requestSelectedDriver').disabled=false;}else if(trip.status==='completed'){box.innerHTML='<strong>Viaje finalizado.</strong> Gracias por viajar con Dante Remises.';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}else if(trip.status==='cancelled'){box.innerHTML='<strong>Solicitud cancelada.</strong>';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}},err=>console.error('No se pudo leer el viaje',err));}
+function listenPassengerTrip(id){if(passengerTripUnsub)passengerTripUnsub();passengerTripUnsub=onValue(ref(db,'trips/'+id),snap=>{const trip=snap.val();if(!trip)return;activeTripData=trip;const box=byId('requestResult');box.classList.remove('hidden');if(trip.status==='requested')box.innerHTML='<strong>Solicitud enviada.</strong><br>Esperando aceptación del chofer…<div class="hint">'+esc(tripPushStatusById.get(id)||'El estado de la alerta todavía no está confirmado.')+'</div><div class="actions"><button class="secondary" data-open-passenger-trip-chat="'+id+'">Chatear con el chofer</button></div>';else if(trip.status==='accepted'||trip.status==='in_progress'){box.innerHTML=`<strong class="trip-status">Viaje ${trip.status==='accepted'?'aceptado':'en curso'}</strong><br>${esc(trip.driverName)} · Coche ${esc(trip.carId)}<br>El mapa mostrará la ubicación del coche durante el servicio.<div class="actions"><button class="secondary" data-open-passenger-trip-chat="${esc(id)}">Chatear con el chofer</button></div>`;watchTripLocation(id)}else if(trip.status==='rejected'){box.innerHTML='<strong>El chofer rechazó la solicitud.</strong> Podés volver a elegir otro coche.';byId('requestSelectedDriver').disabled=false;}else if(trip.status==='completed'){box.innerHTML='<strong>Viaje finalizado.</strong> Gracias por viajar con Dante Remises.';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}else if(trip.status==='cancelled'){box.innerHTML='<strong>Solicitud cancelada.</strong>';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}},err=>console.error('No se pudo leer el viaje',err));}
 let tripLocationUnsub=null;function watchTripLocation(id){if(tripLocationUnsub)tripLocationUnsub();tripLocationUnsub=onValue(ref(db,'trips/'+id+'/driverLocation'),snap=>{const loc=snap.val();if(loc){showDriverMarker(loc);byId('driverLocationNote').textContent='Seguimiento GPS del coche durante tu viaje.'}},err=>console.warn(err))}function stopTripLocationWatch(){if(tripLocationUnsub){tripLocationUnsub();tripLocationUnsub=null}stopPassengerLocationWatch()}
 
 const passengerPhotoInput=byId('passengerProfilePhotoGallery');
