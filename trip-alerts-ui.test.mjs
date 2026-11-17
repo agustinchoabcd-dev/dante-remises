@@ -142,3 +142,14 @@ test("live GPS updates pickup distance for every pending request, not only an ex
   assert.match(html, /driverPendingTripsById\.forEach\(trip=>\{if\(driverTripPreviewId===trip\.tripId&&driverTripMapTripId===trip\.tripId\)return;void refreshDriverPickupRoadDistance\(trip,location\)\}\)/);
   assert.match(html, /if\(!expanded\)\{void refreshDriverDestinationRoadDistance\(t\);if\(validTripCoordinate\(latestDriverPosition\)\)void refreshDriverPickupRoadDistance\(t,latestDriverPosition\);\}/);
 });
+
+
+test("driver trip map marks A, B and C and labels each segment by its endpoints", () => {
+  assert.match(html, /function driverTripPointIcon\(letter,background\)/);
+  assert.match(html, /driverTripPointIcon\('A','#ffd43b'\)/);
+  assert.match(html, /driverTripPointIcon\('B','#e53935'\)/);
+  assert.match(html, /driverTripPointIcon\('C','#8ce99a'\)/);
+  assert.match(html, /Punto A · Tu ubicación GPS/);
+  assert.match(html, /Punto B · Recogida/);
+  assert.match(html, /Punto C · Destino/);
+});
