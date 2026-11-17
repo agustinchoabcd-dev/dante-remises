@@ -1386,7 +1386,7 @@ function updateDriverNavigationPosition(location){
  if(!activeTripData)return;
  const point=[Number(location.lat),Number(location.lon)];
  if(!driverTripMapInstance||driverTripMapTripId!==activeTripId&&activeTripData.status!=='requested')return;
- if(driverNavigationDriverMarker)driverNavigationDriverMarker.setLatLng(point);else driverNavigationDriverMarker=L.marker(point,{icon:driverTripPointIcon('#ffd43b')}).addTo(driverTripMapInstance).bindPopup('Ubicación del chofer');
+ if(driverNavigationDriverMarker)driverNavigationDriverMarker.setLatLng(point);else driverNavigationDriverMarker=L.marker(point,{icon:driverTripPointIcon('#ffd43b')}).addTo(driverTripMapInstance);
  if(!driverTripMapInstance.getBounds().contains(point))driverTripMapInstance.panTo(point,{animate:true,duration:.3});
  const moved=tripDistanceMeters(driverNavigationLastRouteOrigin,location);
  if((moved===null||moved>=40)&&(driverNavigationMode==='pickup'||driverNavigationMode==='preview'))void drawDriverNavigationRoute();
