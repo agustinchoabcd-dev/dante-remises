@@ -1258,13 +1258,17 @@ function addDriverGradientRoute(route,startColor,endColor,segmentId){
  defs.appendChild(gradient);path.style.setProperty('stroke','url(#'+id+')');path.style.setProperty('stroke-width','7');path.style.setProperty('stroke-linecap','round');path.style.setProperty('stroke-linejoin','round');
  return {line,path,gradient,stops,startColor,endColor};
 }
+function driverRouteGradientFrame(startColor,endColor,progress){
+ const p=Math.max(0,Math.min(1,progress)),before=Math.max(0,p-.16),after=Math.min(1,p+.16);
+ return {offsets:[0,before,p,after,1],colors:[startColor,startColor,driverInterpolateColor(startColor,endColor,p),endColor,endColor]};
+}
 function updateDriverRouteGradient(visual,progress,currentColor){
  if(!visual?.stops?.length)return;
- const p=Math.max(0,Math.min(1,progress)),before=Math.max(0,p-.16),after=Math.min(1,p+.16);
- const offsets=[0,before,p,after,1],colors=[visual.startColor,visual.startColor,currentColor,visual.endColor,visual.endColor];
- visual.stops.forEach((stop,index)=>{stop.setAttribute('offset',String(offsets[index]));stop.setAttribute('stop-color',colors[index])});
+ const frame=driverRouteGradientFrame(visual.startColor,visual.endColor,progress);
+ frame.colors[2]=currentColor;
+ visual.stops.forEach((stop,index)=>{stop.setAttribute('offset',String(frame.offsets[index]));stop.setAttribute('stop-color',frame.colors[index])});
 }
-function animateDriverRouteArrow(routeAB,routeBC,visualAB,visualBC,duration=5200,pause=220){
+function animateDriverRouteArrow(routeAB,routeBC,visualAB,visualBC,duration=4600,pause=220){
  if(!driverTripMapInstance||!driverNavigationRouteLayer||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
  const segments=[
   {route:routeAB,visual:visualAB,startColor:'#ffd43b',endColor:'#e53935'},
@@ -1276,7 +1280,7 @@ function animateDriverRouteArrow(routeAB,routeBC,visualAB,visualBC,duration=5200
  }).filter(segment=>segment.total>0);
  if(!segments.length)return;
  const arrowGradientId='dante-arrow-window-gradient-'+String(driverTripMapTripId||'trip').replace(/[^a-z0-9_-]/gi,'-');
- const first=segments[0].points[0],icon=L.divIcon({className:'driver-route-arrow-icon',html:'<svg viewBox="0 0 40 24" width="36" height="22" aria-hidden="true" style="transform-origin:50% 50%"><defs><linearGradient id="'+arrowGradientId+'" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="'+segments[0].startColor+'"/><stop offset="50%" stop-color="'+segments[0].startColor+'"/><stop offset="100%" stop-color="'+segments[0].endColor+'"/></linearGradient></defs><path d="M2 12 C8 7.5 16 3.7 27 2.4 L23.2 9 L38.5 12 L23.2 15 L27 21.6 C16 20.3 8 16.5 2 12 Z" fill="#20a765" stroke="#eafff2" stroke-width="1.1" stroke-linejoin="round"/><path class="driver-arrow-window" d="M8.5 12 L22 8.8 L18.8 12 L22 15.2 Z" fill="url(#'+arrowGradientId+')" stroke="#123d2a" stroke-width=".35" stroke-linejoin="round"/></svg>',iconSize:[36,22],iconAnchor:[18,11]});
+ const first=segments[0].points[0],icon=L.divIcon({className:'driver-route-arrow-icon',html:'<svg viewBox="0 0 40 24" width="30" height="20" aria-hidden="true" style="transform-origin:50% 50%"><defs><linearGradient id="'+arrowGradientId+'" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="'+segments[0].startColor+'"/><stop offset="25%" stop-color="'+segments[0].startColor+'"/><stop offset="50%" stop-color="'+segments[0].startColor+'"/><stop offset="75%" stop-color="'+segments[0].endColor+'"/><stop offset="100%" stop-color="'+segments[0].endColor+'"/></linearGradient></defs><path d="M2 2 L38 12 L2 22 Z" fill="#20a765" stroke="#eafff2" stroke-width="1.2" stroke-linejoin="round"/><path class="driver-arrow-window" d="M8 7 L27 12 L8 17 Z" fill="url(#'+arrowGradientId+')" stroke="#123d2a" stroke-width=".4" stroke-linejoin="round"/></svg>',iconSize:[30,20],iconAnchor:[15,10]});
  const marker=L.marker([first.lat,first.lon],{icon,interactive:false,zIndexOffset:1200}).addTo(driverNavigationRouteLayer);
  const animation={marker,frame:0};driverNavigationArrowAnimations.push(animation);
  const arrowSvg=marker.getElement()?.querySelector('svg'),arrowStops=arrowSvg?Array.from(arrowSvg.querySelectorAll('linearGradient stop')):[];
@@ -1288,11 +1292,12 @@ function animateDriverRouteArrow(routeAB,routeBC,visualAB,visualBC,duration=5200
   let index=1;while(index<segment.cumulative.length-1&&segment.cumulative[index]<distance)index++;
   const from=segment.points[index-1],to=segment.points[index],segmentLength=Math.max(1,segment.cumulative[index]-segment.cumulative[index-1]),local=Math.max(0,Math.min(1,(distance-segment.cumulative[index-1])/segmentLength));
   marker.setLatLng([from.lat+(to.lat-from.lat)*local,from.lon+(to.lon-from.lon)*local]);
-  const a=driverTripMapInstance.project([from.lat,from.lon]),b=driverTripMapInstance.project([to.lat,to.lon]),angle=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+  const a=driverTripMapInstance.project([from.lat,from.lon]),b=driverTripMapInstance.project([to.lat,to.lon]),angle=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI+180;
   const svg=marker.getElement()?.querySelector('svg');if(svg)svg.style.transform='rotate('+angle+'deg)';
-  const color=driverInterpolateColor(segment.startColor,segment.endColor,progress);
+  const color=driverInterpolateColor(segment.startColor,segment.endColor,progress),frame=driverRouteGradientFrame(segment.startColor,segment.endColor,progress);
+  frame.colors[2]=color;
   updateDriverRouteGradient(segment.visual,progress,color);
-  if(arrowStops.length){const colors=[driverInterpolateColor(segment.startColor,segment.endColor,Math.max(0,progress-.12)),color,driverInterpolateColor(segment.startColor,segment.endColor,Math.min(1,progress+.12))];arrowStops.forEach((stop,i)=>stop.setAttribute('stop-color',colors[i]));}
+  arrowStops.forEach((stop,i)=>{stop.setAttribute('offset',String(frame.offsets[i]));stop.setAttribute('stop-color',frame.colors[i])});
   animation.frame=requestAnimationFrame(step);
  };
  animation.frame=requestAnimationFrame(step);
