@@ -775,8 +775,9 @@ async function ensureDriverTripAlertPermissions(){
  tripAlertPermissionFlowStarted=true;
  try{
   const notificationPermission=await requestTripNotificationPermission();
-  if(!notificationPermission?.granted&&byId('tripAlertPermissionStatus')){
-   byId('tripAlertPermissionStatus').textContent='Falta habilitar las notificaciones. También podés hacerlo desde Configuración → Permisos.';
+  if(!notificationPermission?.granted){
+   if(byId('tripAlertPermissionStatus'))byId('tripAlertPermissionStatus').textContent='Abrí los ajustes de notificaciones y habilitalas para recibir solicitudes.';
+   await openTripNotificationSettings();
   }
   if(!(await canDrawTripOverlay()))await requestTripOverlayPermission();
   await refreshTripAlertPermissionStatus();
