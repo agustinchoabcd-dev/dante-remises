@@ -176,7 +176,7 @@ test("pending request pickup distances refresh even when no trip is expanded", (
 test("route gradients move in sync with the arrow and share its interpolated color", () => {
   assert.match(html, /function driverRouteGradientFrame\\(startColor,endColor,progress\\)/);\n  assert.match(html, /function updateDriverRouteGradient\\(visual,progress,currentColor\\)/);
   assert.match(html, /updateDriverRouteGradient\(segment\.visual,progress,color\)/);
-  assert.match(html, /arrowStops\.forEach\(\(stop,i\)=>stop\.setAttribute\('stop-color',colors\[i\]\)\)/);
+  assert.match(html, /arrowStops\.forEach\(\(stop,i\)=>\{stop\.setAttribute\('offset',String\(frame\.offsets\[i\]\)\);stop\.setAttribute\('stop-color',frame\.colors\[i\]\)\}\)/);
   assert.match(html, /const color=driverInterpolateColor\(segment\.startColor,segment\.endColor,progress\)/);
 });
 
