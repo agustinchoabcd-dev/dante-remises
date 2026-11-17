@@ -69,7 +69,131 @@ test("pending native actions are processed after the app becomes visible and are
 
 test("viewing and accepting a driver trip show its pickup and destination map", () => {
   assert.match(html, /function renderDriverTripPreview\(trip,id\)/);
-  assert.match(html, /function renderDriverTripMap\(trip,id\)/);
-  assert.match(html, /Punto de recogida del pasajero/);
-  assert.match(html, /data-preview-accept/);
+  assert.match(html, /function renderDriverTripMap\(trip,id,mode/);
+  assert.match(html, /driverTripPointIcon\('#e53935','Inicio'\)/);
+  assert.match(html, /data-accept-trip/);
+  assert.match(html, /data-view-trip/);
+});
+
+
+test("trip preview expands the existing inbox card instead of creating a duplicate active-trip card", () => {
+  assert.match(html, /driverTripPreviewId=id;activeTripData=trip;showView\('chofer'\);byId\('driverActiveTrip'\)\.classList\.add\('hidden'\)/);
+  assert.match(html, /el\.dataset\.tripCard=t\.tripId/);
+  assert.match(html, /driverTripCardMarkup\(t,t\.tripId,expanded\)/);
+});
+
+test("driver trip cards show pickup distance and passenger destination distance in compact form", () => {
+  assert.match(html, /function tripDistanceMeters\(a,b\)/);
+  assert.match(html, /function formatTripDistance\(meters\)/);
+  assert.match(html, /driverTripStreet\(trip\.origin\?\.label\)/);
+  assert.match(html, /trip-destination-distance/);
+  assert.match(html, /Paradas: '\+esc\(stops\.join\(' · '\)\)/);
+});
+
+test("accepted trips navigate from the driver's live location to pickup, then from pickup to destination", () => {
+  assert.match(html, /renderDriverTripMap\(trip,id,trip\.status==='accepted'\?'pickup':'passenger','driverTripMap'\)/);
+  assert.match(html, /requestDriverRoadRoute\(live,origin\)/);
+  assert.match(html, /requestDriverRoadRoute\(origin,destination\)/);
+  assert.match(html, /animateDriverRouteArrow\(routeAB,routeBC,routeVisualAB,routeVisualBC\)/);
+  assert.match(html, /driverNavigationMode==='pickup'\|\|driverNavigationMode==='preview'/);
+  assert.match(html, /latestDriverPosition=loc;updateDriverNavigationPosition\(loc\)/);
+});
+
+
+test("pickup distance refreshes as the driver's GPS position changes", () => {
+  assert.match(html, /class="trip-pickup-line"/);
+  assert.match(html, /requestDriverRoadRoute\(location,trip\.origin\)/);
+  assert.match(html, /line\.textContent=driverTripStreet\(trip\.origin\?\.label\)/);
+  assert.match(html, /driverPendingTripsById\.forEach\(trip=>\{[\s\S]*?refreshDriverPickupRoadDistance\(trip,location\)/);
+});
+
+
+test("passenger GPS and manual map points are reverse-geocoded to street labels", () => {
+  assert.match(html, /async function reverseGeocodeTripPoint\(point\)/);
+  assert.match(html, /realMap\.on\('click',async e=>/);
+  assert.match(html, /const point=await reverseGeocodeTripPoint\(\{lat:pos\.coords\.latitude,lon:pos\.coords\.longitude\}\)/);
+  assert.match(html, /Calle cercana no disponible/);
+  assert.match(html, /function isCoordinateOrPlaceholderLabel\(label\)/);
+});
+
+test("driver trip summary shows street-and-number lines with separate A-B and B-C distances", () => {
+  assert.match(html, /const pickup=driverTripStreet\(trip\.origin\?\.label\),destination=driverTripStreet\(trip\.destination\?\.label\)/);
+  assert.match(html, /class="trip-pickup-line"/);
+  assert.match(html, /class="trip-destination-address"/);
+  assert.match(html, /class="trip-destination-distance"/);
+  assert.match(html, /requestDriverRoadRoute\(live,origin\)/);
+  assert.match(html, /requestDriverRoadRoute\(origin,destination\)/);
+});
+
+test("A-B and B-C route layers use separate gradients and looping triangular arrows", () => {
+  assert.match(html, /function addDriverGradientRoute\(route,startColor,endColor,segmentId\)/);
+  assert.match(html, /function animateDriverRouteArrow\(routeAB,routeBC/);
+  assert.match(html, /startColor:'#ffd43b',endColor:'#e53935'/);
+  assert.match(html, /startColor:'#176b3a',endColor:'#8ce99a'/);
+  assert.match(html, /requestAnimationFrame\(step\)/);
+  assert.match(html, /prefers-reduced-motion: reduce/);
+  assert.match(html, /function stopDriverNavigationAnimations\(\)/);
+});
+
+
+test("live GPS updates pickup distance for every pending request, not only an expanded preview", () => {
+  assert.match(html, /driverPendingTripsById=new Map\(\)/);
+  assert.match(html, /driverPendingTripsById\.forEach\(trip=>\{if\(driverTripPreviewId===trip\.tripId&&driverTripMapTripId===trip\.tripId\)return;void refreshDriverPickupRoadDistance\(trip,location\)\}\)/);
+  assert.match(html, /if\(!expanded\)\{void refreshDriverDestinationRoadDistance\(t\);if\(validTripCoordinate\(latestDriverPosition\)\)void refreshDriverPickupRoadDistance\(t,latestDriverPosition\);\}/);
+});
+
+
+test("driver trip map marks A, B and C and labels each segment by its endpoints", () => {
+  assert.match(html, /function driverTripPointIcon\(background,label=/);
+  assert.match(html, /driverTripPointIcon\('#ffd43b'\)/);
+  assert.match(html, /driverTripPointIcon\('#e53935','Inicio'\)/);
+  assert.match(html, /driverTripPointIcon\('#8ce99a','Fin'\)/);
+  assert.doesNotMatch(html, /bindPopup\('Ubicación del chofer'\)/);
+  assert.match(html, /bindPopup\('Inicio'\)/);
+  assert.match(html, /bindPopup\('Fin'\)/);
+  assert.doesNotMatch(html, /Punto [ABC] ·/);
+});
+
+
+test("one triangular arrow traverses A-B and then B-C sequentially before looping", () => {
+  const animation = html.match(/function animateDriverRouteArrow\(routeAB,routeBC[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(animation, /const segments=\[/);
+  assert.match(animation, /segmentCycle=duration\+pause/);
+  assert.match(animation, /driverNavigationArrowAnimations\.push\(animation\)/);
+  assert.equal((animation.match(/L\.marker\(/g) || []).length, 1);
+  assert.match(html, /driver-arrow-window/);
+  assert.match(html, /fill="#20a765"/);
+});
+
+
+test("pending request pickup distances refresh even when no trip is expanded", () => {
+  const updater = html.match(/function updateDriverNavigationPosition\(location\)[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(updater, /if\(!validTripCoordinate\(location\)\)return/);
+  assert.ok(updater.indexOf("driverPendingTripsById.forEach") < updater.indexOf("if(!activeTripData)return"));
+});
+
+
+test("route gradients move in sync with the arrow and share its interpolated color", () => {
+  assert.match(html, /function driverRouteGradientFrame\(startColor,endColor,progress\)/);
+  assert.match(html, /function updateDriverRouteGradient\(visual,progress,currentColor\)/);
+  assert.match(html, /updateDriverRouteGradient\(segment\.visual,progress,color\)/);
+  assert.match(html, /arrowStops\.forEach\(\(stop,i\)=>\{stop\.setAttribute\('offset',String\(frame\.offsets\[i\]\)\);stop\.setAttribute\('stop-color',frame\.colors\[i\]\)\}\)/);
+  assert.match(html, /const color=driverInterpolateColor\(segment\.startColor,segment\.endColor,progress\)/);
+});
+
+test("the aerodynamic arrow is a solid green triangle with a synchronized gradient window and forward heading", () => {
+  const animation = html.match(/function animateDriverRouteArrow\(routeAB,routeBC[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(animation, /M2 2 L38 12 L2 22 Z/);
+  assert.doesNotMatch(animation, /C8 7\.5/);
+  assert.match(animation, /fill="#20a765"/);
+  assert.match(animation, /angle=Math\.atan2\(b\.y-a\.y,b\.x-a\.x\)\*180\/Math\.PI\+180/);
+  assert.match(animation, /class="driver-arrow-window"/);
+  assert.match(animation, /fill="url\(#'/);
+});
+
+test("the animation pauses briefly at B and C before continuing and looping", () => {
+  const animation = html.match(/function animateDriverRouteArrow\(routeAB,routeBC[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(animation, /duration=4600,pause=220/);
+  assert.match(animation, /segmentCycle=duration\+pause/);
+  assert.match(animation, /progress=Math\.max\(0,Math\.min\(1,segmentElapsed\/duration\)\)/);
 });
