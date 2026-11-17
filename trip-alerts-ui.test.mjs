@@ -26,6 +26,8 @@ test("staff entry starts the one-time Android notification and overlay permissio
   assert.match(html, /if\(v==='chofer'\)void ensureDriverTripAlertPermissions\(\)/);
   assert.match(html, /requestTripNotificationPermission\(\)/);
   assert.match(html, /requestTripOverlayPermission\(\)/);
+  const automaticFlow = html.match(/async function ensureDriverTripAlertPermissions\(\)\s*\{[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(automaticFlow, /openTripNotificationSettings\(\)/);
   assert.match(nativeBridge, /LocalNotifications\.requestPermissions\(\)/);
   assert.match(nativeBridge, /export async function requestTripNotificationPermission/);
 });
