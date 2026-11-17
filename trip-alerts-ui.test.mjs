@@ -19,6 +19,7 @@ test("trip alert permissions live only in Settings, not in driver or admin trip 
     "driverTripAlertSettings"
   ]) assert.equal(html.includes('id="' + obsoleteId + '"'), false, obsoleteId + " must be removed");
   assert.match(html, /id="tripAlertPermissionsCard"/);
+  assert.equal((html.match(/id="tripAlertRegistrationStatus"/g) || []).length, 1);
 });
 
 test("staff entry starts the one-time Android notification and overlay permission flow", () => {
