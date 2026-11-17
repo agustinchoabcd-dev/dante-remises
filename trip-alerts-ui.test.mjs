@@ -135,3 +135,10 @@ test("A-B and B-C route layers use separate gradients and looping triangular arr
   assert.match(html, /prefers-reduced-motion: reduce/);
   assert.match(html, /function stopDriverNavigationAnimations\(\)/);
 });
+
+
+test("live GPS updates pickup distance for every pending request, not only an expanded preview", () => {
+  assert.match(html, /const driverPendingTripsById=new Map\(\)/);
+  assert.match(html, /driverPendingTripsById\.forEach\(trip=>void refreshDriverPickupRoadDistance\(trip,location\)\)/);
+  assert.match(html, /if\(!expanded\)\{void refreshDriverDestinationRoadDistance\(t\);if\(validTripCoordinate\(latestDriverPosition\)\)void refreshDriverPickupRoadDistance\(t,latestDriverPosition\);\}/);
+});
