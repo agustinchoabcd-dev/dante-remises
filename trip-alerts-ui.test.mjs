@@ -70,7 +70,7 @@ test("pending native actions are processed after the app becomes visible and are
 test("viewing and accepting a driver trip show its pickup and destination map", () => {
   assert.match(html, /function renderDriverTripPreview\(trip,id\)/);
   assert.match(html, /function renderDriverTripMap\(trip,id,mode/);
-  assert.match(html, /Punto de recogida/);
+  assert.match(html, /Punto B · Recogida/);
   assert.match(html, /data-accept-trip/);
   assert.match(html, /data-view-trip/);
 });
