@@ -1248,7 +1248,9 @@ function addDriverGradientRoute(route,startColor,endColor,segmentId){
    let defs=svg.querySelector('defs');if(!defs){defs=document.createElementNS('http://www.w3.org/2000/svg','defs');svg.insertBefore(defs,svg.firstChild)}
    const id='dante-route-gradient-'+String(segmentId).replace(/[^a-z0-9_-]/gi,'-');
    const gradient=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
-   gradient.setAttribute('id',id);gradient.setAttribute('x1','0%');gradient.setAttribute('y1','0%');gradient.setAttribute('x2','100%');gradient.setAttribute('y2','100%');
+   gradient.setAttribute('id',id);gradient.setAttribute('gradientUnits','userSpaceOnUse');
+   const start=path.getPointAtLength(0),end=path.getPointAtLength(path.getTotalLength());
+   gradient.setAttribute('x1',String(start.x));gradient.setAttribute('y1',String(start.y));gradient.setAttribute('x2',String(end.x));gradient.setAttribute('y2',String(end.y));
    [[0,startColor],[1,endColor]].forEach(([offset,color])=>{const stop=document.createElementNS('http://www.w3.org/2000/svg','stop');stop.setAttribute('offset',String(offset));stop.setAttribute('stop-color',color);gradient.appendChild(stop)});
    defs.appendChild(gradient);path.style.setProperty('stroke','url(#'+id+')');path.style.setProperty('stroke-width','7');path.style.setProperty('stroke-linecap','round');path.style.setProperty('stroke-linejoin','round');
   }
