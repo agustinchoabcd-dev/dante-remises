@@ -96,7 +96,7 @@ test("accepted trips navigate from the driver's live location to pickup, then fr
   assert.match(html, /requestDriverRoadRoute\(origin,destination\)/);
   assert.match(html, /animateDriverRouteArrow\(routeAB,'#ffd43b','#e53935'\)/);
   assert.match(html, /animateDriverRouteArrow\(routeBC,'#176b3a','#8ce99a'\)/);
-  assert.match(html, /driverNavigationMode==='pickup'\)void drawDriverNavigationRoute\(\)/);
+  assert.match(html, /driverNavigationMode==='pickup'\|\|driverNavigationMode==='preview'/);
   assert.match(html, /latestDriverPosition=loc;updateDriverNavigationPosition\(loc\)/);
 });
 
