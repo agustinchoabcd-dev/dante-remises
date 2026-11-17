@@ -1170,7 +1170,7 @@ function renderDriverActiveTrip(trip,id){
 }
 function validTripCoordinate(point){return !!point&&point.lat!==null&&point.lat!==undefined&&point.lon!==null&&point.lon!==undefined&&Number.isFinite(Number(point.lat))&&Number.isFinite(Number(point.lon))}
 function tripDistanceMeters(a,b){if(!validTripCoordinate(a)||!validTripCoordinate(b))return null;const rad=value=>Number(value)*Math.PI/180,lat1=rad(a.lat),lat2=rad(b.lat),dLat=lat2-lat1,dLon=rad(b.lon)-rad(a.lon),h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h))}
-function formatTripDistance(meters){if(!Number.isFinite(meters))return 'distancia no disponible';if(meters<1000)return Math.max(1,Math.round(meters/10)*10)+' m';return (meters/1000).toFixed(1).replace('.',',')+' km'}
+function formatTripDistance(meters){if(!Number.isFinite(meters))return 'distancia no disponible';if(meters<1000)return Math.max(1,Math.round(meters/10)*10)+' m';return (meters/1000).toFixed(1)+' km'}
 function isCoordinateOrPlaceholderLabel(label){
  const value=String(label||'').trim();
  return !value||/punto seleccionado|mi ubicación\s*\(|-?\d{1,3}\.\d+\s*[,/]\s*-?\d{1,3}\.\d+/i.test(value)||/\b(lat|lon|longitud|latitud)\s*[:=]/i.test(value);
@@ -1289,7 +1289,7 @@ function renderDriverTripMap(trip,id,mode='preview',containerId='driverTripMap')
   const first=validTripCoordinate(latestDriverPosition)?[Number(latestDriverPosition.lat),Number(latestDriverPosition.lon)]:validTripCoordinate(origin)?[Number(origin.lat),Number(origin.lon)]:HOME_CENTER;
   driverTripMapInstance=L.map(node).setView(first,14);
   L.tileLayer(`https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`,{maxZoom:20,attribution:'© OpenStreetMap · LocationIQ'}).addTo(driverTripMapInstance);
-  if(validTripCoordinate(origin))driverNavigationPickupMarker=L.marker([Number(origin.lat),Number(origin.lon)]).addTo(driverTripMapInstance).bindPopup('Punto B · Recogida');
+  if(validTripCoordinate(origin))driverNavigationPickupMarker=L.marker([Number(origin.lat),Number(origin.lon)]).addTo(driverTripMapInstance).bindPopup('Punto de recogida · B');
   if(validTripCoordinate(destination))driverNavigationDestinationMarker=L.marker([Number(destination.lat),Number(destination.lon)]).addTo(driverTripMapInstance).bindPopup('Punto C · Destino');
   if(validTripCoordinate(latestDriverPosition))driverNavigationDriverMarker=L.marker([Number(latestDriverPosition.lat),Number(latestDriverPosition.lon)]).addTo(driverTripMapInstance).bindPopup('Punto A · Tu ubicación GPS');
   const boundsPoints=[latestDriverPosition,origin,destination].filter(validTripCoordinate).map(point=>[Number(point.lat),Number(point.lon)]);
