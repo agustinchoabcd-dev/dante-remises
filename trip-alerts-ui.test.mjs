@@ -51,3 +51,25 @@ test("browser bridge keeps every imported trip-alert API available without nativ
     "stopTripAlert"
   ]) assert.match(webBridge, new RegExp("export async function " + name + "\\("), name);
 });
+
+
+test("native trip overlay exposes accept, view and reject as separate actions", () => {
+  const service = readFile(new URL("./android-native/src/main/java/DanteTripAlertService.java", import.meta.url), "utf8");
+  assert.match(service, /dispatchAction\("accept"\)/);
+  assert.match(service, /dispatchAction\("view"\)/);
+  assert.match(service, /dispatchAction\("reject"\)/);
+  assert.match(service, /addAction\(0, "Ver viaje"/);
+});
+
+test("pending native actions are processed after the app becomes visible and are cleared only after handling", () => {
+  assert.match(html, /document\.addEventListener\('visibilitychange',processNativeTripActionWhenVisible\)/);
+  assert.match(html, /\['accept','view','reject'\]/);
+  assert.match(html, /if\(processed\)await clearPendingTripAction\(\)/);
+});
+
+test("viewing and accepting a driver trip show its pickup and destination map", () => {
+  assert.match(html, /function renderDriverTripPreview\(trip,id\)/);
+  assert.match(html, /function renderDriverTripMap\(trip,id\)/);
+  assert.match(html, /Punto de recogida del pasajero/);
+  assert.match(html, /data-preview-accept/);
+});
