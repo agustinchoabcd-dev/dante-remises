@@ -540,7 +540,6 @@ body.dante-role-transition #staffEntryButton{visibility:hidden!important;pointer
 </main><div class="image-lightbox hidden" id="imageLightbox" role="dialog" aria-modal="true" aria-label="Foto ampliada"><button type="button" class="lightbox-close" id="closeImageLightbox" aria-label="Cerrar">×</button><img id="lightboxImage" alt="Imagen ampliada"><div class="lightbox-caption" id="lightboxCaption"></div></div><div class="toast" id="toast" role="status"></div>
 <script type="module">
 import { getCurrentPosition, watchPosition, clearWatch, requestStartupPermissions, requestLocationPermission, requestTripNotificationPermission, isGeolocationAvailable, chooseChatImage, isNativePlatform, getTripAlertToken, canDrawTripOverlay, requestTripOverlayPermission, canPostTripNotifications, openTripNotificationSettings, getPendingTripAction, clearPendingTripAction, stopTripAlert } from "./native-bridge.js";
-import { registerDriverPushDevice, unregisterDriverPushDevice, notifyDriverForTrip } from "./trip-alerts-client.mjs";
 import { performanceMonitor as perf } from "./perf-monitor.mjs";
 import { mediaCache, sha256 } from "./media-cache.mjs";
 import { createAvailabilityRefreshScheduler } from "./availability-refresh.mjs";
@@ -649,6 +648,7 @@ async function syncDriverPushRegistration(user,role){
   const token=await getTripAlertToken();
   if(!token)throw new Error('FCM_ANDROID_CONFIG_MISSING');
   const idToken=await user.getIdToken();
+  const {registerDriverPushDevice}=await import("./trip-alerts-client.mjs");
   const result=await registerDriverPushDevice({apiBaseUrl:CHAT_API_BASE_URL,idToken,token,appVersion:window.DANTE_BUILD_INFO?.htmlVersion||'0.6.1'});
   if(result?.registered!==true)throw new Error('FCM_DEVICE_REGISTRATION_NOT_CONFIRMED');
   diagnostics.mark('trip.push.registration',{result:'success',carId:role.role==='admin'?'144':String(role.carId||'')});
@@ -665,6 +665,7 @@ async function unregisterDriverPushRegistration(user,role){
  try{
   const token=await getTripAlertToken();
   if(!token)return;
+  const {unregisterDriverPushDevice}=await import("./trip-alerts-client.mjs");
   await unregisterDriverPushDevice({apiBaseUrl:CHAT_API_BASE_URL,idToken:await user.getIdToken(),token});
  }catch(error){console.warn('No se pudo desregistrar el dispositivo de alertas:',error?.status||error?.name||'Error')}
 }
@@ -906,6 +907,7 @@ byId('requestSelectedDriver').addEventListener('click',async()=>{
   await set(ref(db,`tripInbox/${c.id}/${tripId}`),{tripId,createdAt:trip.createdAt,status:'requested'});
   let pushNotice='El servidor todavía no confirmó la entrega de la alerta.';
   try{
+   const {notifyDriverForTrip}=await import("./trip-alerts-client.mjs");
    const pushResult=await notifyDriverForTrip({apiBaseUrl:CHAT_API_BASE_URL,idToken:await currentUser.getIdToken(),tripId});
    diagnostics.mark('trip.push.requested',{tripId,accepted:Number(pushResult.pushAccepted)||0,registered:pushResult.deviceRegistered===true});
    if(Number(pushResult.pushAccepted)>0||pushResult.duplicate===true){pushNotice='FCM aceptó el aviso para envío; falta confirmar que Android lo haya mostrado.';notify('Solicitud registrada. FCM aceptó el aviso, pero todavía no confirma su visualización.');}
