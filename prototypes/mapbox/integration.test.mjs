@@ -6,7 +6,7 @@ const html = await readFile(new URL("../../index.html", import.meta.url), "utf8"
 const adapter = await readFile(new URL("../../js/dante-map.js", import.meta.url), "utf8");
 const config = await readFile(new URL("../../js/mapbox-config.js", import.meta.url), "utf8");
 
-test("the production app pins Mapbox GL JS 3.35.0 while retaining Leaflet for fallback", () => {
+test("the app pins Mapbox GL JS 3.35.0 and keeps the compatibility renderer isolated", () => {
   assert.match(html, /mapbox-gl-js\/v3\.35\.0\/mapbox-gl\.js/);
   assert.match(html, /mapbox-gl-js\/v3\.35\.0\/mapbox-gl\.css/);
   assert.match(html, /leaflet@1\.9\.4\/dist\/leaflet\.js/);
@@ -32,11 +32,12 @@ test("the adapter contains both renderers and preserves the Leaflet fallback", (
   assert.match(adapter, /invalidateSize/);
 });
 
-test("routing prefers Mapbox driving and falls back to the existing LocationIQ endpoint", () => {
+test("all road routing is performed by Mapbox Directions without a LocationIQ fallback", () => {
   assert.match(adapter, /directions\/v5\/mapbox\/driving/);
-  assert.match(adapter, /us1\.locationiq\.com\/v1\/directions\/driving/);
+  assert.match(adapter, /MAPBOX_TOKEN_NOT_CONFIGURED/);
   assert.match(adapter, /provider:'Mapbox'/);
-  assert.match(adapter, /provider:'LocationIQ'/);
+  assert.doesNotMatch(adapter, /locationiq\.com\/v1\/directions/);
+  assert.equal((html.match(/DanteMap\.getDrivingRoute\(points\)/g) || []).length, 2);
 });
 
 test("the token is injected at runtime and no access token is committed in source", () => {
