@@ -14,9 +14,9 @@ Esta rama integra la primera capa de migración dentro de la aplicación real, s
 
 ## Configuración del token público
 
-El token `pk.` se inyecta mediante `window.DANTE_MAPBOX_TOKEN` desde `js/mapbox-config.js`. El archivo está vacío por defecto para no incluir credenciales en el repositorio.
+El token público `pk.` se inyecta mediante `window.DANTE_MAPBOX_TOKEN` en `js/mapbox-config.js` durante el build experimental de Android. El archivo versionado permanece vacío por defecto. El workflow requiere un secreto de repositorio llamado `MAPBOX_PUBLIC_TOKEN`; no lo imprime ni lo guarda en Git. El paso de copia de Capacitor incluye `js/dante-map.js` y `js/mapbox-config.js` dentro de `www/js/`.
 
-GitHub Secret Scanning rechazó el token público facilitado para la prueba al clasificarlo como `MAPBOX_SECRET_ACCESS_TOKEN`. No se eludió ese control ni se incluyó el token en el código. Para activar el backend Mapbox, el token público debe incorporarse por un mecanismo de configuración de despliegue fuera del código versionado. Mientras tanto, la aplicación sigue funcionando con Leaflet/LocationIQ.
+GitHub Secret Scanning rechazó el token público facilitado para la prueba al clasificarlo como `MAPBOX_SECRET_ACCESS_TOKEN`. No se eludió ese control ni se incluyó el token en el código. El mecanismo de inyección quedó implementado, pero todavía requiere que exista el secreto `MAPBOX_PUBLIC_TOKEN` en Settings → Secrets and variables → Actions. Sin ese secreto, el build experimental se detiene antes de empaquetar la APK. El fallback Leaflet/LocationIQ se conserva temporalmente sólo para no romper dispositivos hasta verificar WebGL2 en los teléfonos reales.
 
 No hace falta vincular una tarjeta para la etapa de desarrollo con el acceso demo de Mapbox. No se habilitó facturación.
 
@@ -25,8 +25,9 @@ No hace falta vincular una tarjeta para la etapa de desarrollo con el acceso dem
 El workflow ejecuta comprobaciones de sintaxis de los adaptadores y pruebas estructurales para verificar:
 - CDN Mapbox fijado y Leaflet disponible como alternativa.
 - Uso del adaptador en los mapas de pasajero y chofer.
-- Selección de Mapbox Directions y fallback LocationIQ.
-- Inyección externa del token sin incluirlo en el repositorio.
+- Uso exclusivo de Mapbox Directions, sin fallback de rutas a LocationIQ.
+- Inclusión de los módulos cartográficos en el paquete web de Capacitor.
+- Configuración externa del token sin incluirlo en el repositorio.
 
 Estas pruebas son estructurales. No prueban el renderizado WebGL real ni sustituyen las pruebas en navegador y APK.
 
