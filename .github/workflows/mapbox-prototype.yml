@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/mapbox-prototype.yml'
       - 'prototypes/mapbox/**'
+      - 'index.html'
+      - 'js/dante-map.js'
+      - 'js/mapbox-config.js'
   pull_request:
     branches:
       - main
@@ -24,8 +27,12 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Run isolated prototype checks
-        run: node --test prototypes/mapbox/prototype.test.mjs
+      - name: Check map adapter syntax
+        run: |
+          node --check js/dante-map.js
+          node --check js/mapbox-config.js
+      - name: Run prototype and application integration checks
+        run: node --test prototypes/mapbox/*.test.mjs
       - name: Upload prototype source
         uses: actions/upload-artifact@v4
         with:
@@ -33,5 +40,8 @@ jobs:
           path: |
             prototypes/mapbox/index.html
             prototypes/mapbox/README.md
+            index.html
+            js/dante-map.js
+            js/mapbox-config.js
           if-no-files-found: error
           retention-days: 14
