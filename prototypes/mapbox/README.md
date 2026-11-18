@@ -1,33 +1,40 @@
-# Prototipo Mapbox GL JS — Dante Remises
+# Migración cartográfica — Dante Remises
 
-Este prototipo está aislado de la aplicación y parte de `main` (commit `190c11f6a4d28a4e6db30217f43070b2bb5e2a60`). No sustituye Leaflet ni modifica los flujos de pasajeros, choferes, Firebase o chat.
+Esta rama integra la primera capa de migración dentro de la aplicación real, sin modificar `main`, producción, Firebase, Cloudflare Worker ni la PR #12.
 
-## Objetivo de esta etapa
+## Qué está integrado
 
-Comprobar únicamente el renderizado vectorial de Mapbox GL JS y el soporte WebGL2 en navegador. El mapa se centra en Santa Rosa de Calamuchita. No incorpora búsqueda de direcciones, geocodificación, rutas, tráfico ni seguimiento GPS.
+- Mapbox GL JS fijado en la versión 3.35.0 para renderizado vectorial.
+- Adaptador común en `js/dante-map.js` para inicialización, eventos de toque, marcadores, marcador GPS, rutas GeoJSON, encuadre, resize y destrucción.
+- Leaflet 1.9.4 + tiles LocationIQ como fallback cuando no hay token Mapbox, no carga GL JS o WebGL no es compatible.
+- Mapbox Directions con el perfil `mapbox/driving`; si la llamada falla o el token no está configurado, el adaptador recurre al endpoint Directions actual de LocationIQ.
+- LocationIQ sigue a cargo de autocomplete y reverse geocoding para Argentina.
+- Las vistas de pasajero y chofer usan el mismo adaptador. No se cambió el esquema de viajes ni Firebase.
+- El cálculo de ruta del pasajero descarta respuestas antiguas si el usuario cambia origen/destino mientras la solicitud está en curso.
 
-## Uso
+## Configuración del token público
 
-1. Abrir `index.html` desde un servidor HTTP/HTTPS de prueba.
-2. Pegar un token público de Mapbox que comience con `pk.`.
-3. Pulsar una sola vez **Cargar mapa**. El prototipo bloquea cualquier segundo intento durante esa sesión, incluso si el primero falla o se cierra el mapa.
-4. Probar zoom, desplazamiento y controles táctiles.
-5. Copiar el bloque de diagnóstico para comparar dispositivos.
-6. Si se cierra el mapa, no se puede volver a inicializar desde esa sesión. Recargar la página reinicia el bloqueo y puede generar otra carga facturable; no hacerlo para reintentar sin revisar antes el consumo.
+El token `pk.` se inyecta mediante `window.DANTE_MAPBOX_TOKEN` desde `js/mapbox-config.js`. El archivo está vacío por defecto para no incluir credenciales en el repositorio.
 
-No usar nunca un token secreto `sk.` en el cliente. El token ingresado se mantiene en memoria y no se guarda localmente.
+GitHub Secret Scanning rechazó el token público facilitado para la prueba al clasificarlo como `MAPBOX_SECRET_ACCESS_TOKEN`. No se eludió ese control ni se incluyó el token en el código. Para activar el backend Mapbox, el token público debe incorporarse por un mecanismo de configuración de despliegue fuera del código versionado. Mientras tanto, la aplicación sigue funcionando con Leaflet/LocationIQ.
 
-## Restricciones económicas conocidas
+No hace falta vincular una tarjeta para la etapa de desarrollo con el acceso demo de Mapbox. No se habilitó facturación.
 
-- Mapbox no ofrece un tope duro de gasto mensual.
-- Las alertas de uso no detienen el servicio.
-- Al superar el tramo gratuito, el excedente se factura automáticamente al medio de pago registrado.
-- No habilitar una cuenta con tarjeta para uso real hasta resolver un control externo de cuota y el mecanismo de corte.
-- No confundir token público con token secreto: el público es visible en el navegador y debe restringirse por origen cuando el entorno final esté definido.
+## CI y pruebas
 
-## Próximas etapas, todavía no incluidas
+El workflow ejecuta comprobaciones de sintaxis de los adaptadores y pruebas estructurales para verificar:
+- CDN Mapbox fijado y Leaflet disponible como alternativa.
+- Uso del adaptador en los mapas de pasajero y chofer.
+- Selección de Mapbox Directions y fallback LocationIQ.
+- Inyección externa del token sin incluirlo en el repositorio.
 
-- Probar en ZTE Blade V50 Design (Android 13), S17 Pro (Android 14) y Moto G20 (Android 11).
-- Evaluar el WebView de Capacitor, no sólo Chrome.
-- Mantener LocationIQ u otro proveedor para búsqueda de direcciones hasta resolver cobertura argentina y persistencia.
-- Evaluar Directions API por separado.
+Estas pruebas son estructurales. No prueban el renderizado WebGL real ni sustituyen las pruebas en navegador y APK.
+
+## Pendiente
+
+1. Configurar el token público mediante un mecanismo de despliegue seguro que no lo escriba en el repositorio.
+2. Ejecutar una prueba real de GL JS en Chrome.
+3. Generar APK y validar WebView en ZTE Blade V50 Design (Android 13), S17 Pro (Android 14) y Moto G20 (Android 11).
+4. Revisar rendimiento, memoria, rotación, segundo plano, atribución y comportamiento sin conexión.
+5. Confirmar la política de retención de los resultados del geocoder antes de modificar su uso o persistencia.
+6. Mantener la rama experimental sin merge hasta la aprobación explícita de Agustín.
