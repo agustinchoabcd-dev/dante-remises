@@ -19,13 +19,8 @@ jobs:
     name: Publish isolated web staging
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout dante-test
+      - name: Checkout migration branch
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -46,7 +41,7 @@ jobs:
           if (!token.startsWith('pk.') || token.length < 30) {
             throw new Error('Missing or invalid MAPBOX_PUBLIC_TOKEN. Add the public pk.* token as a repository Actions secret.');
           }
-          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(token) + ';\\n', {encoding:'utf8'});
+          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(token) + ';\n', {encoding:'utf8'});
           console.log('Mapbox public token injected into staging build.');
           NODE
 
