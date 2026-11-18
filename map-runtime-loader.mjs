@@ -1,17 +1,22 @@
 const MAP_STYLES = Object.freeze([
   {
+    engine: "leaflet",
     href: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
     integrity: "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
   },
-  { href: "https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.css" }
+  { engine: "mapbox", href: "https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.css" }
 ]);
 
-const MAP_SCRIPTS = Object.freeze([
+const MAP_ENGINE_SCRIPTS = Object.freeze([
   {
+    engine: "leaflet",
     src: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
     integrity: "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
   },
-  { src: "https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js" },
+  { engine: "mapbox", src: "https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js" }
+]);
+
+const MAP_SUPPORT_SCRIPTS = Object.freeze([
   { src: "js/mapbox-config.js" },
   { src: "js/geocoding-config.js" },
   { src: "js/dante-geocoding.js" },
@@ -29,7 +34,7 @@ function loadStyle(documentRef, resource) {
 
   return new Promise((resolve, reject) => {
     link.onload = resolve;
-    link.onerror = () => reject(new Error("No se pudo cargar el estilo cartográfico."));
+    link.onerror = () => reject(new Error("No se pudo cargar el estilo cartográfico: " + resource.engine));
     documentRef.head.appendChild(link);
   });
 }
@@ -52,7 +57,8 @@ function loadScript(documentRef, resource) {
 
 /**
  * Defers both map engines, their styles, provider configuration and adapters
- * until a passenger or staff workflow actually needs a map.
+ * until a passenger or staff workflow actually needs a map. Either rendering
+ * engine may fail independently: Mapbox remains preferred, Leaflet is fallback.
  */
 export function createMapRuntimeLoader({
   document: documentRef = globalThis.document,
@@ -68,12 +74,16 @@ export function createMapRuntimeLoader({
   const loadedScripts = new Set();
 
   const ensureStyle = resource => {
-    if (loadedStyles.has(resource.href)) return Promise.resolve();
-    return loadStyle(documentRef, resource).then(() => loadedStyles.add(resource.href));
+    if (loadedStyles.has(resource.href)) return Promise.resolve(true);
+    return loadStyle(documentRef, resource)
+      .then(() => { loadedStyles.add(resource.href); return true; })
+      .catch(() => false);
   };
   const ensureScript = resource => {
-    if (loadedScripts.has(resource.src)) return Promise.resolve();
-    return loadScript(documentRef, resource).then(() => loadedScripts.add(resource.src));
+    if (loadedScripts.has(resource.src)) return Promise.resolve(true);
+    return loadScript(documentRef, resource)
+      .then(() => { loadedScripts.add(resource.src); return true; })
+      .catch(() => false);
   };
 
   return function ensureMapRuntime() {
@@ -81,8 +91,27 @@ export function createMapRuntimeLoader({
     if (loading) return loading;
 
     loading = (async () => {
-      await Promise.all(MAP_STYLES.map(ensureStyle));
-      for (const script of MAP_SCRIPTS) await ensureScript(script);
+      const [leafletStyle, mapboxStyle, leafletScript, mapboxScript] = await Promise.all([
+        ensureStyle(MAP_STYLES[0]),
+        ensureStyle(MAP_STYLES[1]),
+        ensureScript(MAP_ENGINE_SCRIPTS[0]),
+        ensureScript(MAP_ENGINE_SCRIPTS[1])
+      ]);
+
+      const leafletReady = leafletStyle && leafletScript && !!windowRef.L;
+      const mapboxReady = mapboxStyle && mapboxScript && !!windowRef.mapboxgl;
+
+      // Do not let an engine with a missing stylesheet/script win selection.
+      if (!leafletReady) windowRef.L = undefined;
+      if (!mapboxReady) windowRef.mapboxgl = undefined;
+      if (!leafletReady && !mapboxReady) {
+        throw new Error("No se pudo cargar ningún motor cartográfico compatible.");
+      }
+
+      for (const script of MAP_SUPPORT_SCRIPTS) {
+        const loaded = await ensureScript(script);
+        if (!loaded) throw new Error("No se pudo cargar un componente del mapa: " + script.src);
+      }
 
       if (!windowRef.DanteMap || !windowRef.DanteGeocoding) {
         throw new Error("El motor cartográfico no terminó de inicializarse.");
@@ -99,5 +128,5 @@ export function createMapRuntimeLoader({
 
 export const mapRuntimeResources = Object.freeze({
   styles: MAP_STYLES,
-  scripts: MAP_SCRIPTS
+  scripts: Object.freeze([...MAP_ENGINE_SCRIPTS, ...MAP_SUPPORT_SCRIPTS])
 });
