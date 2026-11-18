@@ -7,6 +7,7 @@ const webAssets = [
   "role-transition.mjs",
   "role-runtime.mjs",
   "map-runtime-loader.mjs",
+  "chat-runtime-loader.mjs",
   "roles/passenger.mjs",
   "roles/driver.mjs",
   "roles/operator.mjs",
