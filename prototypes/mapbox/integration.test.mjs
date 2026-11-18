@@ -71,3 +71,44 @@ test("the Capacitor web copy includes both Mapbox runtime files", () => {
   assert.match(copyScript, /"js\/geocoding-config\.js"/);
   assert.match(copyScript, /new URL\("js\/", destinationDirectory\)/);
 });
+
+
+test("Geoapify autocomplete and reverse geocoding normalize real response shapes", async () => {
+  const originalWindow = globalThis.window;
+  const originalFetch = globalThis.fetch;
+  const requested = [];
+  globalThis.window = {DANTE_GEOAPIFY_KEY: "test-geoapify-key"};
+  globalThis.fetch = async input => {
+    const url = new URL(String(input));
+    requested.push(url);
+    const isReverse = url.pathname.endsWith("/reverse");
+    return {
+      ok: true,
+      json: async () => ({features: [{
+        geometry: {coordinates: [-64.536, -32.071]},
+        properties: {lat: -32.071, lon: -64.536, formatted: "Mendoza 356, Santa Rosa de Calamuchita, Córdoba, Argentina"}
+      }]})
+    };
+  };
+  try {
+    await import("../../js/dante-geocoding.js?test=geoapify-runtime");
+    const api = globalThis.window.DanteGeocoding;
+    const results = await api.autocomplete("Mendoza 356");
+    assert.equal(results.length, 1);
+    assert.equal(results[0].lat, -32.071);
+    assert.equal(results[0].lon, -64.536);
+    assert.match(results[0].label, /^Mendoza 356/);
+    const address = await api.reverse({lat: -32.071, lon: -64.536});
+    assert.match(address, /^Mendoza 356/);
+    assert.equal(requested.length, 2);
+    assert.equal(requested[0].searchParams.get("filter"), "countrycode:ar");
+    assert.equal(requested[0].searchParams.get("lang"), "es");
+    assert.equal(requested[0].searchParams.get("apiKey"), "test-geoapify-key");
+    assert.equal(requested[1].searchParams.get("lat"), "-32.071");
+    assert.equal(requested[1].searchParams.get("lon"), "-64.536");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+  }
+});
