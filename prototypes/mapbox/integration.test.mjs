@@ -54,6 +54,7 @@ test("Geoapify handles address autocomplete and reverse geocoding for Argentina"
   assert.doesNotMatch(html, /api\.locationiq\.com\/v1\/(autocomplete|reverse)/);
   assert.match(html, /DanteGeocoding\.reverse\(point\)/);
   assert.match(html, /Calle cercana no disponible/);
+  assert.match(html, /Esperá a que se resuelva la dirección del punto seleccionado/);
 });
 
 test("Geoapify attribution remains visible when saved trip addresses are reused by drivers", () => {
