@@ -840,7 +840,7 @@ async function initRealMap(){
   if(!realMap){
    realMap=window.DanteMap.create(byId('realMap'),HOME_CENTER,14,LOCATIONIQ_KEY);
    realMap.onClick(point=>{
-    if(!mapPickMode)return;
+    if(generation!==passengerViewGeneration||currentRole?.role!=='passenger'||!mapPickMode)return;
     const kind=mapPickMode;mapPickMode=null;
     const selected={lat:point.lat,lon:point.lon,label:'Buscando dirección…'};
     setPoint(kind,selected);void resolvePointAddress(kind,selected);
