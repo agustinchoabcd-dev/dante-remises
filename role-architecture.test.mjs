@@ -81,4 +81,7 @@ test("role view controller is the only path that activates a workspace", () => {
   assert.match(html, /applyRoleView\(document,currentRole\?\.role,v\)/);
   assert.doesNotMatch(callback, /byId\(['"](?:pasajero|chofer|central|chat|configuracion)['"]\)\.classList\.toggle\(['"]hidden['"]/);
   assert.doesNotMatch(callback, /byId\(['"]central['"]\)\.classList\.remove\(['"]hidden['"]/);
+  for (const view of ["pasajero", "chofer", "central", "chat", "configuracion"]) {
+    assert.doesNotMatch(html, new RegExp("byId\\(['\\"]" + view + "['\\"]\\)\\.classList\\.(?:remove|toggle)\\(['\\"]hidden['\\"]"));
+  }
 });
