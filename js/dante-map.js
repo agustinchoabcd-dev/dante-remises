@@ -105,6 +105,7 @@
         antialias: false, fadeDuration: 0,
         pitchWithRotate: false, dragRotate: false
       });
+      this.map.addControl(new mapboxgl.NavigationControl({showCompass:false}), 'top-right');
       this.markers = new Map();
       this.routes = new Map();
     }
