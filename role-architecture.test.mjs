@@ -27,8 +27,8 @@ test("role event bindings survive a view being absent and mounted later", () => 
   assert.match(html, /createRoleDomBindings\(document\)/);
   assert.match(html, /const flushRoleDomBindings=roleDomBindings\.flush/);
   for (const match of passengerTemplate.matchAll(/\bid="([^"]+)"/g)) {
-    const directBinding = new RegExp("byId\\(['\"]" + match[1] + "['\"]\\)\\.addEventListener\\(");
-    assert.doesNotMatch(html, directBinding, "Passenger listener must be deferred: " + match[1]);
+    assert.equal(html.includes("byId('" + match[1] + "').addEventListener("), false, "Passenger listener must be deferred: " + match[1]);
+    assert.equal(html.includes('byId("' + match[1] + '").addEventListener('), false, "Passenger listener must be deferred: " + match[1]);
   }
   assert.match(html, /bindRoleDom\('passengerCars'/);
   assert.match(roleDomBindings, /function flush\(\)/);
