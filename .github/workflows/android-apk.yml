@@ -252,7 +252,7 @@ jobs:
           if (!token.startsWith('pk.') || token.length < 30) {
             throw new Error('Missing or invalid MAPBOX_PUBLIC_TOKEN. Add the public pk.* token as a repository Actions secret; no token is written to Git.');
           }
-          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(token) + ';\\n', {encoding:'utf8'});
+          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(token) + ';\n', {encoding:'utf8'});
           console.log('Mapbox public token injected into this build only.');
           NODE
 
