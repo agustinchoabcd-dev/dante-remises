@@ -21,9 +21,9 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
 
-  // Same-origin application modules are cached only after they are requested.
+  // Same-origin modules and role HTML templates are cached only after they are requested.
   // This keeps role/chat/map chunks out of first-install downloads while
-  // preserving their availability after the user has opened those features.
+  // preserving offline access after the user has opened those features.
   if (url.origin === self.location.origin &&
       /\.(?:mjs|js|html)$/.test(url.pathname) &&
       !url.pathname.endsWith("/service-worker.js")) {
