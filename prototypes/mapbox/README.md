@@ -20,7 +20,7 @@ El token público `pk.` se inyecta mediante `window.DANTE_MAPBOX_TOKEN` en `js/m
 
 GitHub Secret Scanning rechazó el token público facilitado para la prueba al clasificarlo como `MAPBOX_SECRET_ACCESS_TOKEN`. No se eludió ese control ni se incluyó el token en el código. El mecanismo de inyección quedó implementado, pero todavía requiere que exista el secreto `MAPBOX_PUBLIC_TOKEN` en Settings → Secrets and variables → Actions. Sin esos secretos, el build experimental se detiene antes de empaquetar la APK. El fallback Leaflet/LocationIQ se conserva temporalmente sólo para no romper dispositivos hasta verificar WebGL2 en los teléfonos reales.
 
-No hace falta vincular una tarjeta para la etapa de desarrollo con el acceso demo de Mapbox. No se habilitó facturación.
+Mapbox sin método de pago funciona en modo demo, con límites de prueba (actualmente 5.000 cargas de mapa GL JS y 10.000 solicitudes Directions por mes, además de límites de velocidad menores). Al alcanzar el tope, el acceso a las APIs se bloquea hasta actualizar la cuenta. Sirve para prototipo y validación, pero no debe asumirse como acceso productivo permanente. No se habilitó facturación ni se agregó tarjeta.
 
 ## CI y pruebas
 
