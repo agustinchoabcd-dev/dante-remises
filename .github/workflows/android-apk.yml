@@ -47,6 +47,8 @@ on:
       - 'scripts/copy-web.mjs'
       - 'js/dante-map.js'
       - 'js/mapbox-config.js'
+      - 'js/dante-geocoding.js'
+      - 'js/geocoding-config.js'
       - 'prototypes/mapbox/**'
 
 permissions:
@@ -241,19 +243,21 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm install --include=optional
 
-      - name: Inject Mapbox public token for the experimental migration build
+      - name: Inject Mapbox and Geoapify public keys for the experimental migration build
         if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype'
         env:
           MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
+          GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
         run: |
           node --input-type=module <<'NODE'
           import {writeFileSync} from 'node:fs';
-          const token = process.env.MAPBOX_PUBLIC_TOKEN || '';
-          if (!token.startsWith('pk.') || token.length < 30) {
-            throw new Error('Missing or invalid MAPBOX_PUBLIC_TOKEN. Add the public pk.* token as a repository Actions secret; no token is written to Git.');
-          }
-          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(token) + ';\n', {encoding:'utf8'});
-          console.log('Mapbox public token injected into this build only.');
+          const mapbox = process.env.MAPBOX_PUBLIC_TOKEN || '';
+          const geoapify = process.env.GEOAPIFY_API_KEY || '';
+          if (!mapbox.startsWith('pk.') || mapbox.length < 30) throw new Error('Missing or invalid MAPBOX_PUBLIC_TOKEN. Add the public pk.* token as a repository Actions secret.');
+          if (geoapify.length < 20) throw new Error('Missing or invalid GEOAPIFY_API_KEY. Add the Geoapify API key as a repository Actions secret.');
+          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(mapbox) + ';\\n', {encoding:'utf8'});
+          writeFileSync('js/geocoding-config.js', 'window.DANTE_GEOAPIFY_KEY = ' + JSON.stringify(geoapify) + ';\\n', {encoding:'utf8'});
+          console.log('Mapbox and Geoapify public keys injected into this build only.');
           NODE
 
       - name: Copy web application into Capacitor assets
