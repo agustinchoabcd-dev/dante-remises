@@ -10,10 +10,10 @@ Comprobar únicamente el renderizado vectorial de Mapbox GL JS y el soporte WebG
 
 1. Abrir `index.html` desde un servidor HTTP/HTTPS de prueba.
 2. Pegar un token público de Mapbox que comience con `pk.`.
-3. Pulsar una sola vez **Cargar mapa**.
+3. Pulsar una sola vez **Cargar mapa**. El prototipo bloquea cualquier segundo intento durante esa sesión, incluso si el primero falla o se cierra el mapa.
 4. Probar zoom, desplazamiento y controles táctiles.
 5. Copiar el bloque de diagnóstico para comparar dispositivos.
-6. Cerrar el mapa al terminar. No repetir inicializaciones innecesariamente: cada instancia Mapbox GL JS cuenta como una carga.
+6. Si se cierra el mapa, no se puede volver a inicializar desde esa sesión. Recargar la página reinicia el bloqueo y puede generar otra carga facturable; no hacerlo para reintentar sin revisar antes el consumo.
 
 No usar nunca un token secreto `sk.` en el cliente. El token ingresado se mantiene en memoria y no se guarda localmente.
 
