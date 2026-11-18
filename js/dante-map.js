@@ -151,8 +151,9 @@
       this.removeRoute(id);
       const sourceId = 'dante-route-' + String(id).replace(/[^a-z0-9_-]/gi, '-');
       const layerId = sourceId + '-line';
+      let cancelled = false;
       const add = () => {
-        if (!this.map || !this.map.isStyleLoaded()) return;
+        if (cancelled || !this.map || !this.map.isStyleLoaded()) return;
         if (this.map.getLayer(layerId)) this.map.removeLayer(layerId);
         if (this.map.getSource(sourceId)) this.map.removeSource(sourceId);
         this.map.addSource(sourceId, {type:'geojson', data:{type:'Feature', geometry, properties:{}}});
@@ -169,6 +170,7 @@
       if (this.map.isStyleLoaded()) add(); else this.map.once('load', add);
       const handle = {
         remove: () => {
+          cancelled = true;
           if (!this.map) return;
           if (this.map.getLayer(layerId)) this.map.removeLayer(layerId);
           if (this.map.getSource(sourceId)) this.map.removeSource(sourceId);
@@ -207,7 +209,9 @@
   }
 
   function create(container, center, zoom, locationIqKey) {
-    const supported = !!(window.mapboxgl && MAPBOX_TOKEN && mapboxgl.supported());
+    let supported = false;
+    try { supported = !!(window.mapboxgl && MAPBOX_TOKEN && mapboxgl.supported()); }
+    catch (error) { console.warn('No se pudo comprobar WebGL2; se usará Leaflet:', error); }
     if (supported) {
       try { return new MapboxAdapter(container, center, zoom); }
       catch (error) { console.warn('Mapbox no pudo inicializarse; se usará el mapa alternativo:', error); }
