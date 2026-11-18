@@ -548,7 +548,7 @@ import { diagnostics } from "./diagnostics-monitor.mjs";
 import { installAppTelemetry } from "./app-telemetry.mjs";
 import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.mjs";
 import { activateRole } from "./role-runtime.mjs";
-import { canAccessRoleView } from "./role-view-access.mjs";
+import { canAccessRoleView, applyRoleView, hideRoleViews } from "./role-view-access.mjs";
 import { createRoleTransitionController } from "./role-transition.mjs";
 import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
 import { createChatRuntimeLoader } from "./chat-runtime-loader.mjs";
@@ -1144,11 +1144,7 @@ function showView(v){
  byId('settingsGearButton').classList.toggle('hidden',!currentUser);
  byId('tripAlertPermissionsCard').classList.toggle('hidden',!isNativePlatform()||!['driver','admin'].includes(currentRole?.role));
  byId('passengerOnboarding').classList.add('hidden');
- document.querySelectorAll('.tab').forEach(x=>{
-  x.classList.toggle('hidden',!canAccessRoleView(currentRole?.role,x.dataset.view));
-  x.classList.toggle('active',x.dataset.view===v);
- });
- ['pasajero','chofer','central','chat','configuracion'].forEach(id=>byId(id).classList.toggle('hidden',id!==v));
+ if(!applyRoleView(document,currentRole?.role,v)){notify('No tenés permiso para acceder a esta pantalla.');return}
  const greetingView=currentRole?.role==='passenger'?v==='pasajero':currentRole?.role==='driver'?v==='chofer':currentRole?.role==='operator'?v==='central':currentRole?.role==='admin'?(v==='central'||v==='chofer'):false;
  byId('postLoginGreeting').classList.toggle('hidden',!greetingView);
  if(v==='chat')void loadChatView().catch(error=>{console.error('No se pudo cargar el chat:',error);setChatStatus('No se pudo cargar el módulo de chat. Revisá tu conexión e intentá nuevamente.')});else stopChatPolling();
@@ -2534,6 +2530,7 @@ onAuthStateChanged(auth,async user=>{
  const authGeneration=++authStateGeneration;
  const transitionToken=roleTransition.begin();
  activeRoleTransitionToken=transitionToken;
+ hideRoleViews(document);
  closeChatScreen();
  closeImageLightbox();
  passengerPhotoLoadVersion++;chatPeerAvatarLoadVersion++;
@@ -2566,7 +2563,7 @@ onAuthStateChanged(auth,async user=>{
  byId('authStatus').textContent=roleText;byId('centralAuthStatus').textContent=roleText;byId('versionNote').classList.toggle('hidden',!user);byId('appFooter').classList.toggle('hidden',!user);if(user)await welcomeUser(user);else byId('postLoginGreeting').classList.add('hidden');if(authGeneration!==authStateGeneration)return;perf.mark('auth.welcome.done');
  byId('driverControls').classList.toggle('hidden',!user||!['driver','admin'].includes(currentRole.role));
  byId('roleSummary').textContent=roleText;
- byId('central').classList.toggle('hidden',!user||!['admin','operator'].includes(currentRole.role));
+ 
  byId('logoSettingsCard').classList.toggle('hidden',!user||user.uid!==ADMIN_UID);
  byId('centralDescription').textContent=currentRole?.role==='operator'?'Panel de operador: consulta de disponibilidad. No podés modificar estados.': 'Panel de administración total.';
  if(user&&currentRole.role==='driver')activeDriver=currentRole.carId;
@@ -2577,11 +2574,9 @@ onAuthStateChanged(auth,async user=>{
    byId('staffEntryButton').classList.remove('hidden');
   }
   document.querySelectorAll('.tabs').forEach(el=>el.classList.toggle('hidden',!user));
-  // Todas las vistas comienzan ocultas; el módulo del rol habilita solo su pantalla.
-  ['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));
   if(user)configurePersonalization();
  perf.mark('auth.photo-stage.done');
- byId('central').classList.toggle('hidden',!user||!['admin','operator'].includes(currentRole.role));
+ 
  byId('passengerAdmin').classList.toggle('hidden',!user||currentRole.role!=='admin');
 
  let roleActivation=null;
