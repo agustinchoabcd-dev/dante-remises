@@ -34,3 +34,13 @@ test("the prototype does not integrate search, directions, Firebase, or chat", (
   assert.doesNotMatch(html, /searchbox|geocod/);
   assert.doesNotMatch(html, /firebase|chat-client|tripInbox/);
 });
+
+
+test("the prototype allows at most one Mapbox initialization attempt per page session", () => {
+  assert.match(html, /let mapInitializationAttempted = false/);
+  assert.match(html, /if \(mapInitializationAttempted\)/);
+  assert.match(html, /mapInitializationAttempted = true/);
+  assert.match(html, /loadButton\.textContent = 'Intento utilizado'/);
+  assert.match(html, /loadButton\.disabled = true/);
+  assert.match(html, /no se permite otra inicialización/);
+});
