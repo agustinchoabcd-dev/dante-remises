@@ -75,7 +75,7 @@ test("auth callback hides role views before asynchronous cleanup and activation"
 
 test("role view controller is the only path that activates a workspace", () => {
   const callbackStart = html.indexOf("onAuthStateChanged(auth,async user=>{");
-  const callbackEnd = html.indexOf("\\n});", callbackStart);
+  const callbackEnd = html.indexOf("\n});", callbackStart);
   const callback = html.slice(callbackStart, callbackEnd);
   assert.match(callback, /hideRoleViews\(document\)/);
   assert.match(html, /applyRoleView\(document,currentRole\?\.role,v\)/);
