@@ -1,0 +1,37 @@
+name: Mapbox prototype checks
+on:
+  push:
+    branches:
+      - mapbox-migration-prototype
+    paths:
+      - '.github/workflows/mapbox-prototype.yml'
+      - 'prototypes/mapbox/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/mapbox-prototype.yml'
+      - 'prototypes/mapbox/**'
+permissions:
+  contents: read
+jobs:
+  prototype:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Run isolated prototype checks
+        run: node --test prototypes/mapbox/prototype.test.mjs
+      - name: Upload prototype source
+        uses: actions/upload-artifact@v4
+        with:
+          name: dante-mapbox-prototype
+          path: |
+            prototypes/mapbox/index.html
+            prototypes/mapbox/README.md
+          if-no-files-found: error
+          retention-days: 14
