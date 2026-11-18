@@ -1029,7 +1029,7 @@ async function getVerifiedPassengerPhoto(key,token){
 async function loadPassengerPhoto(){
  const version=++passengerPhotoLoadVersion;
  const card=byId('passengerPhotoCard'),isPassenger=currentRole?.role==='passenger',preview=byId('passengerProfilePhotoPreview');
- passengerPhotoReady=false;card.classList.toggle('hidden',!isPassenger);if(!isPassenger)return false;
+ passengerPhotoReady=false;if(!card||!preview)return false;card.classList.toggle('hidden',!isPassenger);if(!isPassenger)return false;
  const key=currentRole.profile?.profilePhotoKey||'',uid=currentUser?.uid||'';
  if(!key){preview.removeAttribute('src');if(uid)void mediaCache.removePrefix(`private:${uid}:passenger-profile:`);setPassengerPhotoStatus('Todavía falta tu foto. Guardala para poder pedir viajes.');return false}
  const cacheKey=`private:${uid}:passenger-profile:${key}`;
@@ -1137,11 +1137,18 @@ function showView(v){
  if(v!=='chat')closeChatScreen();
  if(v==='pasajero'&&currentRole?.role==='passenger'&&!passengerPhotoReady){showPassengerOnboarding();return}
  if(!canAccessRoleView(currentRole?.role,v)){notify('No tenés permiso para acceder a esta pantalla.');return}
- if(v==='configuracion'&&currentRole?.role==='passenger')byId('passengerPhotoSettingsContainer').appendChild(byId('passengerPhotoCard'));else byId('passengerPhotoCardHome').appendChild(byId('passengerPhotoCard'));
+ const passengerPhotoCard=byId('passengerPhotoCard');
+ if(currentRole?.role==='passenger'&&v==='configuracion'){
+  const target=byId('passengerPhotoSettingsContainer');
+  if(target&&passengerPhotoCard)target.appendChild(passengerPhotoCard);
+ }else if(currentRole?.role==='passenger'&&v==='pasajero'){
+  const home=byId('passengerPhotoCardHome');
+  if(home&&passengerPhotoCard)home.appendChild(passengerPhotoCard);
+ }
  byId('logoutButton').classList.toggle('hidden',!currentUser);
  byId('settingsGearButton').classList.toggle('hidden',!currentUser);
  byId('tripAlertPermissionsCard').classList.toggle('hidden',!isNativePlatform()||!['driver','admin'].includes(currentRole?.role));
- byId('passengerOnboarding').classList.add('hidden');
+ byId('passengerOnboarding')?.classList.add('hidden');
  if(!applyRoleView(document,currentRole?.role,v)){notify('No tenés permiso para acceder a esta pantalla.');return}
  const greetingView=currentRole?.role==='passenger'?v==='pasajero':currentRole?.role==='driver'?v==='chofer':currentRole?.role==='operator'?v==='central':currentRole?.role==='admin'?(v==='central'||v==='chofer'):false;
  byId('postLoginGreeting').classList.toggle('hidden',!greetingView);
@@ -1149,7 +1156,6 @@ function showView(v){
  if(v==='chofer')void ensureDriverTripAlertPermissions();
  if(v==='configuracion'&&['driver','admin'].includes(currentRole?.role))void refreshTripAlertPermissionStatus();
 }
-
 let driverGpsStarting=false;
 async function startDriverGps(){
  if(!isGeolocationAvailable()||driverWatchId!==null||driverGpsStarting)return;
@@ -2529,6 +2535,12 @@ onAuthStateChanged(auth,async user=>{
  const transitionToken=roleTransition.begin();
  activeRoleTransitionToken=transitionToken;
  hideRoleViews(document);
+ const passengerPhotoCard=byId('passengerPhotoCard'),passengerPhotoHome=byId('passengerPhotoCardHome');
+ if(passengerPhotoHome&&passengerPhotoCard)passengerPhotoHome.appendChild(passengerPhotoCard);
+ roleTemplateLoader.unmount();
+ stopTripLocationWatch();
+ if(passengerTripUnsub){passengerTripUnsub();passengerTripUnsub=null}
+ selectedPassengerDriver=null;
  closeChatScreen();
  closeImageLightbox();
  passengerPhotoLoadVersion++;chatPeerAvatarLoadVersion++;
@@ -2583,7 +2595,7 @@ onAuthStateChanged(auth,async user=>{
    roleActivation=await activateRole(currentRole.role,{
     user,
     role:currentRole,
-    loadRoleView:async role=>{const result=await roleTemplateLoader.load(role);if(authGeneration!==authStateGeneration){roleTemplateLoader.unmount();return {stale:true}}return result},
+    loadRoleView:async role=>{const result=await roleTemplateLoader.load(role);if(authGeneration!==authStateGeneration)return {stale:true};return result},
     loadPassengerPhoto:async()=>{passengerPhotoReady=false;return await loadPassengerPhoto()},
     showView,
     showPassengerOnboarding,
