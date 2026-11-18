@@ -64,14 +64,25 @@ export function createMapRuntimeLoader({
   if (!windowRef) throw new TypeError("A window object is required to load the map runtime");
 
   let loading = null;
+  const loadedStyles = new Set();
+  const loadedScripts = new Set();
+
+  const ensureStyle = resource => {
+    if (loadedStyles.has(resource.href)) return Promise.resolve();
+    return loadStyle(documentRef, resource).then(() => loadedStyles.add(resource.href));
+  };
+  const ensureScript = resource => {
+    if (loadedScripts.has(resource.src)) return Promise.resolve();
+    return loadScript(documentRef, resource).then(() => loadedScripts.add(resource.src));
+  };
 
   return function ensureMapRuntime() {
     if (windowRef.DanteMap && windowRef.DanteGeocoding) return Promise.resolve(windowRef.DanteMap);
     if (loading) return loading;
 
     loading = (async () => {
-      await Promise.all(MAP_STYLES.map(style => loadStyle(documentRef, style)));
-      for (const script of MAP_SCRIPTS) await loadScript(documentRef, script);
+      await Promise.all(MAP_STYLES.map(ensureStyle));
+      for (const script of MAP_SCRIPTS) await ensureScript(script);
 
       if (!windowRef.DanteMap || !windowRef.DanteGeocoding) {
         throw new Error("El motor cartográfico no terminó de inicializarse.");
