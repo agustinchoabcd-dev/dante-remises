@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#198754">
+<title>Dante Remises · Laboratorio Mapbox</title>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.css" rel="stylesheet">
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#182230;background:#f3f5f8}
+*{box-sizing:border-box}body{margin:0;padding:16px;max-width:900px;margin-inline:auto}
+header{background:#198754;color:#fff;border-radius:14px;padding:16px;margin-bottom:14px}
+h1{font-size:20px;margin:0 0 4px}p{line-height:1.45}.muted{color:#667085;font-size:13px}
+.panel{background:#fff;border:1px solid #e3e8ef;border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-weight:650;margin-bottom:7px}
+input,button{font:inherit;min-height:44px;border-radius:10px}
+input{width:100%;padding:10px 12px;border:1px solid #cbd5e1}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+button{border:0;padding:10px 15px;background:#198754;color:#fff;font-weight:700}
+button.secondary{background:#e8edf1;color:#182230}button:disabled{opacity:.5}
+#map{height:min(62vh,520px);min-height:320px;background:#e8edf1;border-radius:12px;overflow:hidden}
+#status{font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+#diagnostics{white-space:pre-wrap;font:12px/1.45 ui-monospace,monospace;color:#475467}
+.notice{border-left:3px solid #d97706;padding:9px 11px;background:#fffbeb;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Laboratorio cartográfico · Dante Remises</h1>
+  <div>Prototipo aislado de Mapbox GL JS · no modifica la aplicación</div>
+</header>
+<section class="panel">
+  <label for="token">Token público de Mapbox (pk…)</label>
+  <input id="token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Pegá aquí el token público pk.…">
+  <div class="actions">
+    <button id="load">Cargar mapa (1 carga)</button>
+    <button id="close" class="secondary" disabled>Cerrar mapa</button>
+    <button id="show-token" class="secondary">Mostrar token</button>
+  </div>
+  <p class="muted">El token se conserva sólo en memoria durante esta sesión: no se guarda en el dispositivo ni se envía a Dante Remises.</p>
+  <div class="notice">Cada inicialización de un mapa Mapbox GL JS cuenta como una carga. Evitá pulsar Cargar repetidamente: cerrar y volver a crear el mapa puede consumir otra carga.</div>
+</section>
+<section class="panel">
+  <div id="status" role="status" aria-live="polite">Esperando token. Todavía no se realizó ninguna solicitud a Mapbox.</div>
+  <div id="map" aria-label="Mapa de prueba de Santa Rosa de Calamuchita"></div>
+</section>
+<section class="panel">
+  <strong>Diagnóstico del dispositivo</strong>
+  <pre id="diagnostics">Comprobación pendiente.</pre>
+</section>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js"></script>
+<script>
+(() => {
+  const byId = id => document.getElementById(id);
+  const status = byId('status');
+  const diagnostics = byId('diagnostics');
+  const loadButton = byId('load');
+  const closeButton = byId('close');
+  const tokenInput = byId('token');
+  let map = null;
+  let marker = null;
+
+  function reportDiagnostics(supported) {
+    const webgl2 = (() => {
+      try {
+        const canvas = document.createElement('canvas');
+        return !!(window.WebGL2RenderingContext && canvas.getContext('webgl2'));
+      } catch { return false; }
+    })();
+    diagnostics.textContent = [
+      'Mapbox GL JS: ' + (window.mapboxgl ? mapboxgl.version : 'no cargó'),
+      'mapboxgl.supported(): ' + String(supported),
+      'WebGL2: ' + String(webgl2),
+      'User-Agent: ' + navigator.userAgent,
+      'Device pixel ratio: ' + String(window.devicePixelRatio || 'n/d'),
+      'Viewport: ' + innerWidth + ' × ' + innerHeight
+    ].join('\n');
+  }
+
+  if (!window.mapboxgl) {
+    status.textContent = 'No se pudo cargar Mapbox GL JS desde el CDN. Revisá la conexión.';
+    reportDiagnostics(false);
+    loadButton.disabled = true;
+    return;
+  }
+
+  const supported = mapboxgl.supported();
+  reportDiagnostics(supported);
+  if (!supported) {
+    status.textContent = 'Este navegador/WebView no informa compatibilidad con Mapbox GL JS. No se intentará inicializar el mapa.';
+    loadButton.disabled = true;
+  }
+
+  byId('show-token').addEventListener('click', () => {
+    tokenInput.type = tokenInput.type === 'password' ? 'text' : 'password';
+  });
+
+  loadButton.addEventListener('click', () => {
+    if (map) {
+      status.textContent = 'El mapa ya está inicializado. No se creó otra carga.';
+      return;
+    }
+    const token = tokenInput.value.trim();
+    if (!token.startsWith('pk.')) {
+      status.textContent = 'Ingresá un token público que comience con pk. No uses tokens secretos sk.';
+      tokenInput.focus();
+      return;
+    }
+    if (!supported) {
+      status.textContent = 'WebGL2 no está disponible en este navegador/WebView.';
+      return;
+    }
+
+    loadButton.disabled = true;
+    status.textContent = 'Inicializando Mapbox GL JS…';
+    mapboxgl.accessToken = token;
+
+    try {
+      map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-64.5368, -32.0717],
+        zoom: 13,
+        attributionControl: true,
+        cooperativeGestures: true
+      });
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right');
+      map.addControl(new mapboxgl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+      map.once('load', () => {
+        marker = new mapboxgl.Marker({ color: '#198754' })
+          .setLngLat([-64.5368, -32.0717])
+          .setPopup(new mapboxgl.Popup({ offset: 24 }).setText('Santa Rosa de Calamuchita'))
+          .addTo(map);
+        status.textContent = 'Mapa cargado. Probá zoom, desplazamiento, inclinación y controles táctiles. Esta prueba sólo valida renderizado; todavía no consulta direcciones ni rutas.';
+        closeButton.disabled = false;
+        map.resize();
+      });
+      map.on('error', event => {
+        const message = event?.error?.message || 'Error desconocido de Mapbox';
+        status.textContent = 'Error de Mapbox: ' + message;
+        console.error('Mapbox prototype error', event?.error || event);
+      });
+    } catch (error) {
+      status.textContent = 'No se pudo inicializar el mapa: ' + (error?.message || error);
+      loadButton.disabled = false;
+      map = null;
+    }
+  });
+
+  closeButton.addEventListener('click', () => {
+    if (marker) { marker.remove(); marker = null; }
+    if (map) { map.remove(); map = null; }
+    closeButton.disabled = true;
+    loadButton.disabled = !supported;
+    status.textContent = 'Mapa cerrado. Si lo volvés a cargar, se contará una nueva carga de mapa.';
+  });
+
+  window.addEventListener('resize', () => {
+    if (map) map.resize();
+    reportDiagnostics(supported);
+  });
+})();
+</script>
+</body>
+</html>
