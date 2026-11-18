@@ -33,7 +33,7 @@ button.secondary{background:#e8edf1;color:#182230}button:disabled{opacity:.5}
   <label for="token">Token público de Mapbox (pk…)</label>
   <input id="token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Pegá aquí el token público pk.…">
   <div class="actions">
-    <button id="load">Cargar mapa (1 carga)</button>
+    <button id="load">Cargar mapa (1 intento)</button>
     <button id="close" class="secondary" disabled>Cerrar mapa</button>
     <button id="show-token" class="secondary">Mostrar token</button>
   </div>
@@ -59,6 +59,7 @@ button.secondary{background:#e8edf1;color:#182230}button:disabled{opacity:.5}
   const tokenInput = byId('token');
   let map = null;
   let marker = null;
+  let mapInitializationAttempted = false;
 
   function reportDiagnostics(supported) {
     const webgl2 = (() => {
@@ -96,8 +97,8 @@ button.secondary{background:#e8edf1;color:#182230}button:disabled{opacity:.5}
   });
 
   loadButton.addEventListener('click', () => {
-    if (map) {
-      status.textContent = 'El mapa ya está inicializado. No se creó otra carga.';
+    if (mapInitializationAttempted) {
+      status.textContent = 'El único intento de esta sesión ya fue utilizado. No se inicializará otro mapa para evitar una carga adicional.';
       return;
     }
     const token = tokenInput.value.trim();
@@ -111,7 +112,9 @@ button.secondary{background:#e8edf1;color:#182230}button:disabled{opacity:.5}
       return;
     }
 
+    mapInitializationAttempted = true;
     loadButton.disabled = true;
+    loadButton.textContent = 'Intento utilizado';
     status.textContent = 'Inicializando Mapbox GL JS…';
     mapboxgl.accessToken = token;
 
@@ -124,6 +127,7 @@ button.secondary{background:#e8edf1;color:#182230}button:disabled{opacity:.5}
         attributionControl: true,
         cooperativeGestures: true
       });
+      closeButton.disabled = false;
       map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right');
       map.addControl(new mapboxgl.ScaleControl({ unit: 'metric' }), 'bottom-left');
       map.once('load', () => {
@@ -142,8 +146,9 @@ button.secondary{background:#e8edf1;color:#182230}button:disabled{opacity:.5}
       });
     } catch (error) {
       status.textContent = 'No se pudo inicializar el mapa: ' + (error?.message || error);
-      loadButton.disabled = false;
-      map = null;
+      if (map) { map.remove(); map = null; }
+      closeButton.disabled = true;
+      // El intento se considera consumido incluso si la inicialización falla.
     }
   });
 
@@ -151,8 +156,8 @@ button.secondary{background:#e8edf1;color:#182230}button:disabled{opacity:.5}
     if (marker) { marker.remove(); marker = null; }
     if (map) { map.remove(); map = null; }
     closeButton.disabled = true;
-    loadButton.disabled = !supported;
-    status.textContent = 'Mapa cerrado. Si lo volvés a cargar, se contará una nueva carga de mapa.';
+    loadButton.disabled = true;
+    status.textContent = 'Mapa cerrado. El intento único de esta sesión ya fue utilizado; no se permite otra inicialización.';
   });
 
   window.addEventListener('resize', () => {
