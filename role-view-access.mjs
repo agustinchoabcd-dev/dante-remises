@@ -1,5 +1,5 @@
 const ROLE_VIEWS = Object.freeze({
-  passenger: Object.freeze(["pasajero", "chat", "configuracion"]),
+  passenger: Object.freeze(["pasajero", "passengerOnboarding", "chat", "configuracion"]),
   driver: Object.freeze(["chofer", "chat", "configuracion"]),
   operator: Object.freeze(["central", "chat", "configuracion"]),
   admin: Object.freeze(["central", "chofer", "chat", "configuracion"])
