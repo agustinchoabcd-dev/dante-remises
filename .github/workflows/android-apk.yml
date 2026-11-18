@@ -11,6 +11,7 @@ on:
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
+      - 'service-worker.js'
       - 'scripts/native-bridge.js'
       - 'scripts/build-native-bridge.mjs'
       - 'scripts/patch-android-audio.mjs'
@@ -121,6 +122,7 @@ jobs:
           Path("/tmp/dante-audio-system.mjs").write_text(scripts[0], encoding="utf-8")
           PY
           node --check /tmp/dante-audio-system.mjs
+          node --check service-worker.js
           node --check role-transition.mjs
           node --check role-runtime.mjs
           node --check map-runtime-loader.mjs
