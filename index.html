@@ -643,18 +643,23 @@ const LOCATIONIQ_KEY='pk.5345850e051f788db6c1274d8cb1eb72';
 const PROFILE_PHOTO_WORKER='https://dante-remises-b2-test.agustinchoabcd.workers.dev';
 // Shared B2 + chat Worker; media and operator-selector routes stay fail-closed until their dedicated configuration is enabled.
 const CHAT_API_BASE_URL='https://dante-remises-b2-test.agustinchoabcd.workers.dev'; // Shared B2 + chat Worker; Firebase ID tokens are sent per request.
-async function syncDriverPushRegistration(user,role){
- if(!isNativePlatform()||!user||!['driver','admin'].includes(role?.role))return;
+async function syncDriverPushRegistration(user,role,isCurrent=()=>true){
+ if(!isCurrent()||!isNativePlatform()||!user||!['driver','admin'].includes(role?.role))return;
  try{
   const token=await getTripAlertToken();
+  if(!isCurrent())return;
   if(!token)throw new Error('FCM_ANDROID_CONFIG_MISSING');
   const idToken=await user.getIdToken();
+  if(!isCurrent())return;
   const {registerDriverPushDevice}=await import("./trip-alerts-client.mjs");
+  if(!isCurrent())return;
   const result=await registerDriverPushDevice({apiBaseUrl:CHAT_API_BASE_URL,idToken,token,appVersion:window.DANTE_BUILD_INFO?.htmlVersion||'0.6.1'});
+  if(!isCurrent())return;
   if(result?.registered!==true)throw new Error('FCM_DEVICE_REGISTRATION_NOT_CONFIRMED');
   diagnostics.mark('trip.push.registration',{result:'success',carId:role.role==='admin'?'144':String(role.carId||'')});
   if(byId('tripAlertRegistrationStatus'))byId('tripAlertRegistrationStatus').textContent='Este dispositivo quedó registrado para recibir alertas de viaje.';
  }catch(error){
+  if(!isCurrent())return;
   const status=Number(error?.status)||0,code=String(error?.code||error?.message||error?.name||'Error').slice(0,80);
   diagnostics.mark('trip.push.registration.error',{status,code});
   if(byId('tripAlertRegistrationStatus'))byId('tripAlertRegistrationStatus').textContent=status===404?'El servicio de alertas todavía no está habilitado en el servidor.':(status?'No se pudo registrar este dispositivo (HTTP '+status+' · '+code+').':'No se pudo obtener o registrar el token FCM ('+code+').');
@@ -1292,39 +1297,43 @@ async function restoreDriverActiveTrip(){
 }
 function listenDriverInbox(){
  if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}
+ const generation=authStateGeneration,uid=currentUser?.uid;
  const carId=currentRole?.carId||'144';
  const targets=[byId('driverTripInbox')];
  if(currentRole?.role==='admin'&&byId('adminDriverTripInbox'))targets.push(byId('adminDriverTripInbox'));
  driverInboxUnsub=onValue(ref(db,'tripInbox/'+carId),async snap=>{
+  if(generation!==authStateGeneration||currentUser?.uid!==uid)return;
   const entries=Object.values(snap.val()||{}),pending=entries.filter(x=>x.status==='requested');
   targets.forEach(target=>target.innerHTML='');
   if(!pending.length){targets.forEach(target=>target.textContent='No hay solicitudes pendientes.');return}
   for(const item of pending){
    const tripSnap=await get(ref(db,'trips/'+item.tripId)),t=tripSnap.val();
+   if(generation!==authStateGeneration||currentUser?.uid!==uid)return;
    if(!t||t.status!=='requested')continue;
    const el=document.createElement('div');el.className='trip-request';
    const origin=t.origin?.label||'Origen sin nombre',dest=t.destination?.label||'Destino sin nombre';
    el.innerHTML=`<strong>Solicitud de ${esc(t.passengerName||'Pasajero')}</strong><div class="hint">Desde: ${esc(origin)}</div><div class="hint">Hasta: ${esc(dest)}</div><div class="actions"><button class="secondary" data-open-driver-trip-chat="${esc(t.tripId)}">Chat con pasajero</button><button class="primary" data-accept-trip="${esc(t.tripId)}">Aceptar viaje</button><button class="danger" data-reject-trip="${esc(t.tripId)}">Rechazar</button></div>`;
    targets.forEach((target,index)=>target.appendChild(index===0?el:el.cloneNode(true)));
   }
- },err=>{console.error(err);targets.forEach(target=>target.textContent='No se pudieron cargar solicitudes. Revisá las reglas de Firebase.')});
+ },err=>{if(generation!==authStateGeneration||currentUser?.uid!==uid)return;console.error(err);targets.forEach(target=>target.textContent='No se pudieron cargar solicitudes. Revisá las reglas de Firebase.')});
 }
 async function dismissNativeTripAlert(){try{await stopTripAlert()}catch(error){console.warn('No se pudo detener la alerta nativa:',error?.name||'Error')}}
-async function processPendingTripAction(){
- if(!isNativePlatform()||!currentUser||!['driver','admin'].includes(currentRole?.role)||processingNativeTripAction)return;
+async function processPendingTripAction(isCurrent=()=>true){
+ if(!isCurrent()||!isNativePlatform()||!currentUser||!['driver','admin'].includes(currentRole?.role)||processingNativeTripAction)return;
  processingNativeTripAction=true;
  try{
   const pending=await getPendingTripAction();
-  if(!pending?.tripId||!['accept','view','reject'].includes(pending.action))return;
+  if(!isCurrent()||!pending?.tripId||!['accept','view','reject'].includes(pending.action))return;
   let processed=false;
   if(pending.action==='view'){
    const snapshot=await get(ref(db,'trips/'+pending.tripId)),trip=snapshot.val();
+   if(!isCurrent())return;
    if(!trip||trip.status!=='requested'){notify('La solicitud ya no está disponible.');processed=true}
    else{renderDriverTripPreview(trip,pending.tripId);await dismissNativeTripAlert();processed=true}
   }else{
    processed=await handleDriverTripDecision(pending.tripId,pending.action);
   }
-  if(processed)await clearPendingTripAction();
+  if(isCurrent()&&processed)await clearPendingTripAction();
  }catch(error){console.warn('No se pudo procesar la acción nativa del viaje:',error?.name||'Error')}
  finally{processingNativeTripAction=false}
 }
@@ -2579,19 +2588,22 @@ onAuthStateChanged(auth,async user=>{
     showView,
     showPassengerOnboarding,
     startOperatorPresence,
-    syncDriverPushRegistration,
+    isCurrent:()=>authGeneration===authStateGeneration,
+    syncDriverPushRegistration:(user,role)=>syncDriverPushRegistration(user,role,()=>authGeneration===authStateGeneration),
     listenDriverInbox,
     restoreDriverActiveTrip,
     startDriverGps,
-    processPendingTripAction,
+    processPendingTripAction:()=>processPendingTripAction(()=>authGeneration===authStateGeneration),
     loadAdminProfiles:async()=>{
      byId('passengerList').textContent='Cargando pasajeros…';
      try{
       const profSnap=await get(ref(db,'profiles'));
+      if(authGeneration!==authStateGeneration)return;
       const profiles=profSnap.val()||{};
       const entries=Object.values(profiles);
       byId('passengerList').innerHTML=entries.length?entries.map(p=>'<div class="choice-card"><strong>'+esc((p.name||'')+' '+(p.lastName||''))+'</strong><div class="muted">DNI: '+esc(p.dni||'—')+' · Teléfono: '+esc(p.phone||'No informado')+'</div></div>').join(''):'Todavía no hay pasajeros registrados.';
      }catch(error){
+      if(authGeneration!==authStateGeneration)return;
       byId('passengerList').textContent='No se pudieron consultar los perfiles. Revisá las reglas de Firebase.';
       console.error('No se pudieron cargar los perfiles para administración:',error);
      }
@@ -2601,7 +2613,9 @@ onAuthStateChanged(auth,async user=>{
      if(!remoteReady){
       try{
        const snap=await get(carsRef),data=snap.val()||{};
+       if(authGeneration!==authStateGeneration)return;
        for(const item of initial){
+        if(authGeneration!==authStateGeneration)return;
         if(!data[item.id])await update(ref(db,'cars/'+item.id),{driver:item.driver,model:item.model,status:'libre',until:null,indefinite:false,updatedAt:Date.now()});
        }
       }catch(error){
