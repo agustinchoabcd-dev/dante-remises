@@ -42,8 +42,8 @@ jobs:
           const geoapify = process.env.GEOAPIFY_API_KEY || '';
           if (!mapbox.startsWith('pk.') || mapbox.length < 30) throw new Error('Missing or invalid MAPBOX_PUBLIC_TOKEN. Add the public pk.* token as a repository Actions secret.');
           if (geoapify.length < 20) throw new Error('Missing or invalid GEOAPIFY_API_KEY. Add the Geoapify API key as a repository Actions secret.');
-          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(mapbox) + ';\\n', {encoding:'utf8'});
-          writeFileSync('js/geocoding-config.js', 'window.DANTE_GEOAPIFY_KEY = ' + JSON.stringify(geoapify) + ';\\n', {encoding:'utf8'});
+          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(mapbox) + ';\n', {encoding:'utf8'});
+          writeFileSync('js/geocoding-config.js', 'window.DANTE_GEOAPIFY_KEY = ' + JSON.stringify(geoapify) + ';\n', {encoding:'utf8'});
           console.log('Mapbox and Geoapify public keys injected into this build only.');
           NODE
 
