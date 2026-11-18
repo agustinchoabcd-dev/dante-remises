@@ -40,6 +40,7 @@ on:
       - 'roles/**'
       - 'role-transition.test.mjs'
       - 'role-runtime.test.mjs'
+      - 'role-architecture.test.mjs'
       - 'map-runtime-loader.test.mjs'
       - 'chat-runtime-loader.test.mjs'
       - 'chat-ui.test.mjs'
@@ -134,7 +135,7 @@ jobs:
           node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
           node --check scripts/patch-android-trip-alerts.mjs
-          node --test role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
+          node --test role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs role-architecture.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
