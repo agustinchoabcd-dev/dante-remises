@@ -1318,22 +1318,24 @@ function listenDriverInbox(){
  },err=>{if(generation!==authStateGeneration||currentUser?.uid!==uid)return;console.error(err);targets.forEach(target=>target.textContent='No se pudieron cargar solicitudes. Revisá las reglas de Firebase.')});
 }
 async function dismissNativeTripAlert(){try{await stopTripAlert()}catch(error){console.warn('No se pudo detener la alerta nativa:',error?.name||'Error')}}
-async function processPendingTripAction(isCurrent=()=>true){
- if(!isCurrent()||!isNativePlatform()||!currentUser||!['driver','admin'].includes(currentRole?.role)||processingNativeTripAction)return;
+async function processPendingTripAction(isCurrent){
+ const generation=authStateGeneration,uid=currentUser?.uid;
+ const sessionIsCurrent=isCurrent||(()=>generation===authStateGeneration&&currentUser?.uid===uid);
+ if(!sessionIsCurrent()||!isNativePlatform()||!currentUser||!['driver','admin'].includes(currentRole?.role)||processingNativeTripAction)return;
  processingNativeTripAction=true;
  try{
   const pending=await getPendingTripAction();
-  if(!isCurrent()||!pending?.tripId||!['accept','view','reject'].includes(pending.action))return;
+  if(!sessionIsCurrent()||!pending?.tripId||!['accept','view','reject'].includes(pending.action))return;
   let processed=false;
   if(pending.action==='view'){
    const snapshot=await get(ref(db,'trips/'+pending.tripId)),trip=snapshot.val();
-   if(!isCurrent())return;
+   if(!sessionIsCurrent())return;
    if(!trip||trip.status!=='requested'){notify('La solicitud ya no está disponible.');processed=true}
    else{renderDriverTripPreview(trip,pending.tripId);await dismissNativeTripAlert();processed=true}
   }else{
    processed=await handleDriverTripDecision(pending.tripId,pending.action);
   }
-  if(isCurrent()&&processed)await clearPendingTripAction();
+  if(sessionIsCurrent()&&processed)await clearPendingTripAction();
  }catch(error){console.warn('No se pudo procesar la acción nativa del viaje:',error?.name||'Error')}
  finally{processingNativeTripAction=false}
 }
