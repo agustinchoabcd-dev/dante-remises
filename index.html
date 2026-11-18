@@ -549,6 +549,7 @@ import { installAppTelemetry } from "./app-telemetry.mjs";
 import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.mjs";
 import { activateRole } from "./role-runtime.mjs";
 import { canAccessRoleView, applyRoleView, hideRoleViews } from "./role-view-access.mjs";
+import { createRoleDomBindings } from "./role-dom-bindings.mjs";
 import { createRoleTransitionController } from "./role-transition.mjs";
 import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
 import { createChatRuntimeLoader } from "./chat-runtime-loader.mjs";
@@ -715,6 +716,9 @@ function refreshCarPresenceFromSnapshot(){initial.forEach(x=>{const presence=lat
 const dniEmail=dni=>`dni${String(dni).replace(/\D/g,'')}@login.dante-remises.invalid`;
 const cleanDni=value=>String(value||'').replace(/\D/g,'');
 const byId=id=>document.getElementById(id);
+const roleDomBindings=createRoleDomBindings(document);
+const bindRoleDom=roleDomBindings.bind;
+const flushRoleDomBindings=roleDomBindings.flush;
 const fmtRemaining=ms=>{if(ms<=0)return 'vencido';let total=Math.ceil(ms/60000),h=Math.floor(total/60),m=total%60;return h?`${h} h ${m?m+' min':''}`.trim():`${m} min`};
 function refreshExpired(){const now=Date.now();Object.values(cars).forEach(c=>{if(c.until&&c.until<=now){c.status='libre';c.until=null;c.indefinite=false}})}
 function statusText(c){if(!remoteReady)return 'Consultando disponibilidad…';if(!c.online||c.status==='desconectado')return 'Desconectado';if(c.status==='libre')return 'Libre';if(c.status==='ocupado')return 'Ocupado'+(c.until?' · '+fmtRemaining(c.until-Date.now()):'');return 'Fuera de servicio'+(c.indefinite?' · sin vencimiento':c.until?' · '+fmtRemaining(c.until-Date.now()):'')}
@@ -773,7 +777,7 @@ async function setStatus(id,status,minutes=null,indefinite=false){
 }
 window.quickSet=(id,status)=>{if(!currentUser||currentRole?.role!=='admin'){notify('Solo Agustín, administrador, puede gestionar todos los coches.');return}if(status==='libre')setStatus(id,'libre');else if(status==='ocupado')setStatus(id,'ocupado',30);else setStatus(id,'fuera',null,true)}
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
-byId('settingsGearButton').addEventListener('click',()=>showView('configuracion'));
+bindRoleDom('settingsGearButton','click',()=>showView('configuracion'));
 let tripAlertPermissionFlowStarted=false;
 let tripAlertPermissionFlowRunning=false;
 async function refreshTripAlertPermissionStatus(){
@@ -830,9 +834,9 @@ let driverTripMapInstance=null,driverTripMapTripId=null,processingNativeTripActi
 let driverPresenceGeneration=0;
 const carMarkers={};
 async function choosePassengerDriver(id){const c=cars[id];if(!c||!c.online||c.status!=='libre'){notify('Ese chofer ya no está disponible.');render('invalid-driver-selection');return}selectedPassengerDriver=id;byId('passengerDriverScreen').classList.add('hidden');byId('passengerTripScreen').classList.remove('hidden');byId('selectedDriverCard').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${esc(c.driver)}</div><div class="model">Coche ${c.id} · ${esc(c.model)}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;byId('requestResult').classList.add('hidden');byId('requestResult').textContent='';originPoint=null;destinationPoint=null;byId('origin').value='';byId('destination').value='';if(realMap){if(routeLayer){realMap.removeLayer(routeLayer);routeLayer=null}if(window.originMarker){realMap.removeLayer(window.originMarker);window.originMarker=null}if(window.destinationMarker){realMap.removeLayer(window.destinationMarker);window.destinationMarker=null}}['origin','destination','useMyLocation','pickOrigin','pickDestination'].forEach(controlId=>byId(controlId).disabled=true);byId('routeSummary').textContent='Cargando mapa…';const mapReady=await initRealMap();if(mapReady){['origin','destination','useMyLocation','pickOrigin','pickDestination'].forEach(controlId=>byId(controlId).disabled=false);byId('routeSummary').textContent='Elegí el origen y el destino para calcular el recorrido.';watchSelectedDriver(id)}else{byId('routeSummary').textContent='No se pudo cargar el mapa. Volvé a la lista de choferes e intentá nuevamente.'}}
-byId('passengerCars').addEventListener('click',e=>{if(e.target.closest('.avatar'))return;const btn=e.target.closest('[data-driver-id]');if(btn&&!btn.disabled)choosePassengerDriver(btn.dataset.driverId)});
-byId('randomFreeDriver').addEventListener('click',()=>{refreshExpired();const available=Object.values(cars).filter(c=>c.online&&c.status==='libre');if(!available.length){notify('En este momento no hay choferes libres.');return}const chosen=available[Math.floor(Math.random()*available.length)];choosePassengerDriver(chosen.id)});
-byId('backToDrivers').addEventListener('click',()=>{stopPassengerLocationWatch();byId('passengerTripScreen').classList.add('hidden');byId('passengerDriverScreen').classList.remove('hidden');selectedPassengerDriver=null;originPoint=null;destinationPoint=null;});
+bindRoleDom('passengerCars','click',e=>{if(e.target.closest('.avatar'))return;const btn=e.target.closest('[data-driver-id]');if(btn&&!btn.disabled)choosePassengerDriver(btn.dataset.driverId)});
+bindRoleDom('randomFreeDriver','click',()=>{refreshExpired();const available=Object.values(cars).filter(c=>c.online&&c.status==='libre');if(!available.length){notify('En este momento no hay choferes libres.');return}const chosen=available[Math.floor(Math.random()*available.length)];choosePassengerDriver(chosen.id)});
+bindRoleDom('backToDrivers','click',()=>{stopPassengerLocationWatch();byId('passengerTripScreen').classList.add('hidden');byId('passengerDriverScreen').classList.remove('hidden');selectedPassengerDriver=null;originPoint=null;destinationPoint=null;});
 async function initRealMap(){
  try{
   await ensureMapRuntime();
@@ -879,14 +883,14 @@ function waitForKeyboardViewportToSettle(){
 const autocompleteRequestIds={origin:0,destination:0};
 async function autocompleteLocation(q,target){const box=byId(target==='origin'?'originResults':'destinationResults');const input=byId(target);const requestId=++autocompleteRequestIds[target];if(q.trim().length<3){box.classList.add('hidden');return}try{const items=await window.DanteGeocoding.autocomplete(q);if(requestId!==autocompleteRequestIds[target]||input.value.trim()!==q.trim())return;box.innerHTML='';items.forEach(item=>{const b=document.createElement('button');b.type='button';b.textContent=item.label;b.addEventListener('click',async event=>{event.preventDefault();event.stopPropagation();box.classList.add('hidden');const selectionId=++autocompleteRequestIds[target];const viewportSettled=waitForKeyboardViewportToSettle();input.blur();try{await viewportSettled;if(selectionId!==autocompleteRequestIds[target])return;if(realMap)realMap.invalidateSize();await new Promise(resolve=>requestAnimationFrame(resolve));setPoint(target,item)}catch(error){console.error('No se pudo seleccionar el punto del viaje:',error);notify('No se pudo seleccionar ese lugar. Intentá nuevamente.')}},{once:true});box.appendChild(b)});box.classList.toggle('hidden',!items.length)}catch(err){if(requestId!==autocompleteRequestIds[target])return;console.error(err);box.classList.add('hidden');notify('No se pudieron buscar direcciones. Intentá nuevamente.')}}
 let searchTimers={};['origin','destination'].forEach(id=>byId(id).addEventListener('input',()=>{clearTimeout(searchTimers[id]);searchTimers[id]=setTimeout(()=>autocompleteLocation(byId(id).value,id),450)}));
-byId('useMyLocation').addEventListener('click',async()=>{if(!isGeolocationAvailable()){notify('Este dispositivo no ofrece geolocalización.');return}const permitted=await requestLocationPermission();if(!permitted){notify('No hay permiso de ubicación. Habilitalo en los ajustes del dispositivo y volvé a intentarlo.');return}notify('Buscando tu ubicación…');getCurrentPosition(async pos=>{const lat=pos.coords.latitude,lon=pos.coords.longitude;let label='Calle cercana no disponible';try{label=await DanteGeocoding.reverse({lat,lon})||label}catch(e){console.warn('No se pudo resolver la dirección GPS:',e)}setPoint('origin',{lat,lon,label});},err=>notify(err.code===1?'Tenés que permitir el acceso a la ubicación.':'No se pudo obtener tu ubicación. Comprobá que el GPS esté activado.'),{enableHighAccuracy:true,timeout:20000,maximumAge:10000})});
-byId('pickOrigin').addEventListener('click',()=>{mapPickMode='origin';byId('pickOrigin').classList.add('active');byId('pickDestination').classList.remove('active');notify('Tocá el mapa para marcar el origen.')});byId('pickDestination').addEventListener('click',()=>{mapPickMode='destination';byId('pickDestination').classList.add('active');byId('pickOrigin').classList.remove('active');notify('Tocá el mapa para marcar el destino.')});
+bindRoleDom('useMyLocation','click',async()=>{if(!isGeolocationAvailable()){notify('Este dispositivo no ofrece geolocalización.');return}const permitted=await requestLocationPermission();if(!permitted){notify('No hay permiso de ubicación. Habilitalo en los ajustes del dispositivo y volvé a intentarlo.');return}notify('Buscando tu ubicación…');getCurrentPosition(async pos=>{const lat=pos.coords.latitude,lon=pos.coords.longitude;let label='Calle cercana no disponible';try{label=await DanteGeocoding.reverse({lat,lon})||label}catch(e){console.warn('No se pudo resolver la dirección GPS:',e)}setPoint('origin',{lat,lon,label});},err=>notify(err.code===1?'Tenés que permitir el acceso a la ubicación.':'No se pudo obtener tu ubicación. Comprobá que el GPS esté activado.'),{enableHighAccuracy:true,timeout:20000,maximumAge:10000})});
+bindRoleDom('pickOrigin','click',()=>{mapPickMode='origin';byId('pickOrigin').classList.add('active');byId('pickDestination').classList.remove('active');notify('Tocá el mapa para marcar el origen.')});bindRoleDom('pickDestination','click',()=>{mapPickMode='destination';byId('pickDestination').classList.add('active');byId('pickOrigin').classList.remove('active');notify('Tocá el mapa para marcar el destino.')});
 let passengerRouteRequestVersion=0;
 async function updateRoute(){if(!originPoint||!destinationPoint){byId('routeSummary').textContent='Elegí el origen y el destino para calcular el recorrido.';return}const requestVersion=++passengerRouteRequestVersion;const points=[{lat:originPoint.lat,lon:originPoint.lon},{lat:destinationPoint.lat,lon:destinationPoint.lon}];try{const route=await window.DanteMap.getDrivingRoute(points);if(requestVersion!==passengerRouteRequestVersion||!realMap)return;if(routeLayer)realMap.removeLayer(routeLayer);routeLayer=realMap.addRoute('passenger-route',route.geometry,{color:'#168447',weight:6,opacity:.85});realMap.fitGeometry(route.geometry,.15);byId('routeSummary').textContent=`Recorrido estimado: ${(route.distance/1000).toFixed(1)} km · ${Math.max(1,Math.round(route.duration/60))} min · ${route.provider} (estimación de ruta, no de espera del remis).`}catch(err){if(requestVersion!==passengerRouteRequestVersion)return;console.error(err);byId('routeSummary').textContent='No se pudo calcular la ruta. Podés continuar si ambos puntos están seleccionados.';}}
 function watchSelectedDriver(carId){stopPassengerLocationWatch();if(liveLocationUnsub){liveLocationUnsub();liveLocationUnsub=null}liveLocationUnsub=onValue(ref(db,'driverLocations/'+carId),snap=>{const loc=snap.val();if(loc&&cars[carId]?.online&&cars[carId]?.status==='libre'&&Date.now()-Number(loc.updatedAt||0)<45000){showDriverMarker(loc);byId('driverLocationNote').textContent='Ubicación en vivo del coche '+carId+' mientras figura Libre.'}else{if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}byId('driverLocationNote').textContent='El coche no está compartiendo ubicación en este momento.'}},err=>console.warn('No se pudo leer la ubicación pública',err));}
 function showDriverMarker(loc){if(!realMap)return;const point={lat:Number(loc.lat),lon:Number(loc.lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return;if(loc.updatedAt&&Date.now()-Number(loc.updatedAt)>45000){if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}byId('driverLocationNote').textContent='La ubicación del coche está desactualizada; esperando una nueva señal GPS.';return}if(selectedCarMarker)selectedCarMarker.setLatLng(point);else selectedCarMarker=realMap.addCircleMarker('selected-driver',point,{radius:9,color:'#fff',weight:3,fillColor:'#176b3a',fillOpacity:1,popup:'Ubicación del remis seleccionado'});}
 function stopPassengerLocationWatch(){if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}}
-byId('requestSelectedDriver').addEventListener('click',async()=>{
+bindRoleDom('requestSelectedDriver','click',async()=>{
  const c=cars[selectedPassengerDriver];
  if(!currentUser||currentRole?.role!=='passenger'){notify('Iniciá sesión como pasajero para solicitar un viaje.');return}
  if(!c||!c.online||c.status!=='libre'){notify('El chofer seleccionado ya no está disponible o se desconectó.');return}
@@ -943,9 +947,9 @@ let tripLocationUnsub=null;function watchTripLocation(id){if(tripLocationUnsub)t
 
 const passengerPhotoInput=byId('passengerProfilePhotoGallery');
 const passengerPhotoCameraInput=byId('passengerProfilePhotoCamera');
-byId('takePassengerPhoto').addEventListener('click',()=>passengerPhotoCameraInput.click());
-byId('choosePassengerPhoto').addEventListener('click',()=>passengerPhotoInput.click());
-byId('passengerOnboardingBack').addEventListener('click',()=>signOut(auth));
+bindRoleDom('takePassengerPhoto','click',()=>passengerPhotoCameraInput.click());
+bindRoleDom('choosePassengerPhoto','click',()=>passengerPhotoInput.click());
+bindRoleDom('passengerOnboardingBack','click',()=>signOut(auth));
 let pendingPassengerPhotoBlob=null,passengerPhotoObjectUrl=null,passengerPhotoReady=false;
 function setPassengerPhotoStatus(message){byId('passengerProfilePhotoStatus').textContent=message}
 function passengerPhotoHeaders(token,json=true){return {Authorization:'Bearer '+token,...(json?{'Content-Type':'application/json'}:{})}}
@@ -1083,8 +1087,8 @@ async function deletePassengerPhoto(key,token){
  const response=await fetch(PROFILE_PHOTO_WORKER+'/v1/profile-photo/delete',{method:'POST',headers:passengerPhotoHeaders(token),body:JSON.stringify({key})});
  return response.ok;
 }
-byId('refreshPassengerProfilePhoto').addEventListener('click',()=>loadPassengerPhoto());
-byId('savePassengerProfilePhoto').addEventListener('click',async()=>{
+bindRoleDom('refreshPassengerProfilePhoto','click',()=>loadPassengerPhoto());
+bindRoleDom('savePassengerProfilePhoto','click',async()=>{
  if(currentRole?.role!=='passenger'||!currentUser){notify('Iniciá sesión como pasajero para guardar la foto.');return}
  if(!pendingPassengerPhotoBlob){notify('Primero elegí o sacá una foto.');return}
  const button=byId('savePassengerProfilePhoto'),oldKey=currentRole.profile?.profilePhotoKey||'';button.disabled=true;const operationVersion=++passengerPhotoLoadVersion;setPassengerPhotoStatus('Preparando una versión liviana y privada…');
@@ -1118,7 +1122,7 @@ const imageLightbox=byId('imageLightbox');
 function openImageLightbox(img){if(!img||!img.src)return;byId('lightboxImage').src=img.src;byId('lightboxCaption').textContent=img.alt||'Foto';imageLightbox.classList.remove('hidden');document.body.style.overflow='hidden'}
 function closeImageLightbox(){imageLightbox.classList.add('hidden');byId('lightboxImage').removeAttribute('src');document.body.style.overflow=''}
 document.addEventListener('click',e=>{const img=e.target.closest('.avatar img, .profile-photo-preview, .photo-frame img');if(img){e.preventDefault();e.stopPropagation();openImageLightbox(img)}});
-byId('closeImageLightbox').addEventListener('click',closeImageLightbox);
+bindRoleDom('closeImageLightbox','click',closeImageLightbox);
 imageLightbox.addEventListener('click',e=>{if(e.target===imageLightbox)closeImageLightbox()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!imageLightbox.classList.contains('hidden'))closeImageLightbox()});
 
@@ -1384,13 +1388,13 @@ async function handleDriverTripDecision(id,decision){
   return true;
  }catch(err){console.error(err);notify('No se pudo aceptar el viaje. Revisá las reglas de Firebase.');return false}
 }
-byId('driverActiveTrip').addEventListener('click',async e=>{const accept=e.target.closest('[data-preview-accept]'),reject=e.target.closest('[data-preview-reject]');const id=accept?.dataset.previewAccept||reject?.dataset.previewReject;if(id)await handleDriverTripDecision(id,reject?'reject':'accept')});
-byId('driverTripInbox').addEventListener('click',async e=>{const accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]');const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;if(!id)return;await handleDriverTripDecision(id,reject?'reject':'accept')});
+bindRoleDom('driverActiveTrip','click',async e=>{const accept=e.target.closest('[data-preview-accept]'),reject=e.target.closest('[data-preview-reject]');const id=accept?.dataset.previewAccept||reject?.dataset.previewReject;if(id)await handleDriverTripDecision(id,reject?'reject':'accept')});
+bindRoleDom('driverTripInbox','click',async e=>{const accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]');const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;if(!id)return;await handleDriverTripDecision(id,reject?'reject':'accept')});
 byId('adminDriverTripInbox')?.addEventListener('click',async e=>{const accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]'),chat=e.target.closest('[data-open-driver-trip-chat]');if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat)});
-byId('driverActiveTrip').addEventListener('click',async e=>{if(e.target.id==='openTripChatButton'&&activeTripId){await openDriverTripChat(activeTripId)}if(e.target.id==='startTripButton'&&activeTripId){try{await update(ref(db,'trips/'+activeTripId),{status:'in_progress',startedAt:Date.now(),updatedAt:Date.now()});activeTripData={...activeTripData,status:'in_progress'};renderDriverActiveTrip(activeTripData,activeTripId);notify('Viaje iniciado.')}catch(err){console.error(err);notify('No se pudo iniciar el viaje.')}}if(e.target.id==='finishTripButton'&&activeTripId){const id=activeTripId,carId=currentRole?.carId||'144';try{await update(ref(db,'trips/'+id),{status:'completed',completedAt:Date.now(),updatedAt:Date.now()});const carTx=await runTransaction(ref(db,'cars/'+carId),current=>{if(!current||current.activeTripId!==id)return;current.status='libre';current.until=null;current.indefinite=false;current.activeTripId=null;current.updatedAt=Date.now();return current});if(!carTx.committed)throw new Error('El coche ya no tiene asociado este viaje.');await remove(ref(db,'trips/'+id+'/driverLocation'));activeTripId=null;activeTripData=null;stopDriverGps();byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');startDriverGps();notify('Viaje finalizado. El coche volvió a estar Libre.')}catch(err){console.error(err);notify('No se pudo finalizar el viaje.')}}});
-byId('setBusy').addEventListener('click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
-byId('setOut').addEventListener('click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
-byId('setFree').addEventListener('click',()=>setStatus(activeDriver,'libre'));
+bindRoleDom('driverActiveTrip','click',async e=>{if(e.target.id==='openTripChatButton'&&activeTripId){await openDriverTripChat(activeTripId)}if(e.target.id==='startTripButton'&&activeTripId){try{await update(ref(db,'trips/'+activeTripId),{status:'in_progress',startedAt:Date.now(),updatedAt:Date.now()});activeTripData={...activeTripData,status:'in_progress'};renderDriverActiveTrip(activeTripData,activeTripId);notify('Viaje iniciado.')}catch(err){console.error(err);notify('No se pudo iniciar el viaje.')}}if(e.target.id==='finishTripButton'&&activeTripId){const id=activeTripId,carId=currentRole?.carId||'144';try{await update(ref(db,'trips/'+id),{status:'completed',completedAt:Date.now(),updatedAt:Date.now()});const carTx=await runTransaction(ref(db,'cars/'+carId),current=>{if(!current||current.activeTripId!==id)return;current.status='libre';current.until=null;current.indefinite=false;current.activeTripId=null;current.updatedAt=Date.now();return current});if(!carTx.committed)throw new Error('El coche ya no tiene asociado este viaje.');await remove(ref(db,'trips/'+id+'/driverLocation'));activeTripId=null;activeTripData=null;stopDriverGps();byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');startDriverGps();notify('Viaje finalizado. El coche volvió a estar Libre.')}catch(err){console.error(err);notify('No se pudo finalizar el viaje.')}}});
+bindRoleDom('setBusy','click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
+bindRoleDom('setOut','click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
+bindRoleDom('setFree','click',()=>setStatus(activeDriver,'libre'));
 let chatApiClient=null,chatPollTimer=null,chatEventController=null,chatEventReconnectTimer=null,chatEventRetryMs=1000,chatEventUnavailable=false,chatResolvedTitles=new Map(),chatConversations=[],activeChatConversation=null,chatMessagesCursor=null,chatMessages=[],chatDirectoryRecipients=[],chatHistorySyncing=new Set(),chatHistoryPrefetching=false,chatSessionUid=null,chatMessagesHasMore=false,chatMessagesLoadingOlder=false,chatMessagesConversationId=null,chatMessagesUid=null,chatMessagesCacheComplete=false,chatBusy=false,chatRefreshing=false,chatRefreshPending=false,chatOperators=[],chatSelectedOperatorUid='',chatPeerAvatarLoadVersion=0,operatorPresenceTimer=null,operatorPresenceBusy=false,operatorPresenceUnavailable=false,chatOperatorPollTimer=null,chatOperatorServiceUnavailable=false,chatAttachmentUrls=new Map(),chatMediaRecorder=null,chatMediaStream=null,chatAudioChunks=[],chatRecordedAudio=null,chatRecordingObjectUrl=null,chatRecordingTimer=null,chatRecordingStartedAt=0,chatDiscardRecording=false,chatRecordingFinalized=false,chatRecordingHoldActive=false,chatRecordingAutoSend=false,chatRecordingGestureMode="idle",chatRecordingRequestPending=false,chatRecordingPointerStart=null,chatRecordingPointerId=null,activeTripRestoreVersion=0;
 function ensureChatSessionForCurrentUser(){
  const uid=currentUser?.uid;if(!uid)return false;
@@ -1777,8 +1781,8 @@ function showChatImageLightbox(src,caption){
 function hideChatImageLightbox(){
  byId('imageLightbox').classList.add('hidden');byId('lightboxImage').removeAttribute('src');byId('lightboxCaption').textContent='';
 }
-byId('closeImageLightbox').addEventListener('click',hideChatImageLightbox);
-byId('imageLightbox').addEventListener('click',event=>{if(event.target===byId('imageLightbox'))hideChatImageLightbox()});
+bindRoleDom('closeImageLightbox','click',hideChatImageLightbox);
+bindRoleDom('imageLightbox','click',event=>{if(event.target===byId('imageLightbox'))hideChatImageLightbox()});
 async function renderChatMessageAttachment(item,message,conversationId){
  const attachment=message?.attachment;if(!attachment?.key)return;
  const status=document.createElement('small');status.className='hint';status.textContent='Cargando adjunto…';item.appendChild(status);
@@ -1963,9 +1967,9 @@ async function openChatImagePicker(){
   await processChatImageFile(new File([bytes],'chat-photo.'+extension,{type:mimeType}));
  }catch(error){notify(error.message||'No se pudo procesar la fotografía seleccionada.');console.warn('Android photo selection failed:',error)}
 }
-byId('chatAttachButton').addEventListener('click',openChatImagePicker);
-byId('chatImageInput').addEventListener('change',handleChatImageSelection);
-byId('chatRecordButton').addEventListener('pointerdown',event=>{
+bindRoleDom('chatAttachButton','click',openChatImagePicker);
+bindRoleDom('chatImageInput','change',handleChatImageSelection);
+bindRoleDom('chatRecordButton','pointerdown',event=>{
  if(event.button!==undefined&&event.button!==0)return;
  if(chatMediaRecorder?.state==='recording'||chatRecordingRequestPending)return;
  event.preventDefault();chatRecordingGestureMode='hold';chatRecordingHoldActive=true;chatDiscardRecording=false;
@@ -1975,7 +1979,7 @@ byId('chatRecordButton').addEventListener('pointerdown',event=>{
  try{byId('chatRecordButton').setPointerCapture(event.pointerId)}catch{}
  void startChatAudioRecording();
 });
-byId('chatRecordButton').addEventListener('pointermove',event=>{
+bindRoleDom('chatRecordButton','pointermove',event=>{
  if(chatRecordingGestureMode!=='hold'||event.pointerId!==chatRecordingPointerId||!chatRecordingPointerStart)return;
  event.preventDefault();
  const horizontalLimit=Math.min(260,window.innerWidth*.7);const dx=Math.max(-horizontalLimit,Math.min(horizontalLimit,event.clientX-chatRecordingPointerStart.x));
@@ -1994,7 +1998,7 @@ byId('chatRecordButton').addEventListener('pointermove',event=>{
   byId('chatRecordingStatus').textContent='Grabando en manos libres · tocá Enviar audio para terminar';
  }
 });
-byId('chatRecordButton').addEventListener('pointerup',event=>{
+bindRoleDom('chatRecordButton','pointerup',event=>{
  event.preventDefault();if(event.pointerId!==chatRecordingPointerId||!chatRecordingPointerStart)return;
  const shouldCancel=chatRecordingPointerStart.cancel;
  chatRecordingPointerStart=null;chatRecordingPointerId=null;resetChatRecordingDrag();
@@ -2003,11 +2007,11 @@ byId('chatRecordButton').addEventListener('pointerup',event=>{
   stopChatAudioRecording();
  }
 });
-byId('chatRecordButton').addEventListener('pointercancel',()=>{if(chatRecordingGestureMode==='hold')cancelChatRecording()});
-byId('chatRecordButton').addEventListener('lostpointercapture',()=>{if(chatRecordingGestureMode==='hold'&&chatRecordingPointerStart)cancelChatRecording()});
-byId('chatRecordButton').addEventListener('contextmenu',event=>event.preventDefault());
-byId('chatCancelRecordingButton').addEventListener('click',cancelChatRecording);
-byId('chatSendRecordingButton').addEventListener('click',async()=>{
+bindRoleDom('chatRecordButton','pointercancel',()=>{if(chatRecordingGestureMode==='hold')cancelChatRecording()});
+bindRoleDom('chatRecordButton','lostpointercapture',()=>{if(chatRecordingGestureMode==='hold'&&chatRecordingPointerStart)cancelChatRecording()});
+bindRoleDom('chatRecordButton','contextmenu',event=>event.preventDefault());
+bindRoleDom('chatCancelRecordingButton','click',cancelChatRecording);
+bindRoleDom('chatSendRecordingButton','click',async()=>{
  if(chatMediaRecorder?.state==='recording'){byId('chatSendRecordingButton').disabled=true;byId('chatSendRecordingButton').textContent='Enviando…';chatRecordingGestureMode='stopped';byId('chatRecordingGestureBar').classList.add('hidden');chatMediaRecorder.stop();return}
  if(!chatRecordedAudio)return;
  const mimeType=chatRecordedAudio.type.split(';')[0]||'audio/webm';
@@ -2366,13 +2370,13 @@ async function startChatFromSelection(){
  }else return;
  await openChatConversation(payload);
 }
-byId('contactChoice').addEventListener('change',updateChatRecipientTitle);
-byId('chatStartButton').addEventListener('click',startChatFromSelection);
-byId('chatPeerSelect').addEventListener('click',()=>{
+bindRoleDom('contactChoice','change',updateChatRecipientTitle);
+bindRoleDom('chatStartButton','click',startChatFromSelection);
+bindRoleDom('chatPeerSelect','click',()=>{
  const menu=byId('chatPeerMenu'),open=menu.classList.contains('hidden');
  menu.classList.toggle('hidden',!open);byId('chatPeerSelect').setAttribute('aria-expanded',String(open));
 });
-byId('chatPeerMenu').addEventListener('click',async event=>{
+bindRoleDom('chatPeerMenu','click',async event=>{
  const button=event.target.closest('[data-conversation-id],[data-target-uid],[data-target-type="operators"]');if(!button)return;
  byId('chatPeerMenu').classList.add('hidden');byId('chatPeerSelect').setAttribute('aria-expanded','false');
  if(button.dataset.conversationId){
@@ -2399,11 +2403,11 @@ function setChatScreenOpen(open){
  if(open)requestAnimationFrame(()=>{const box=byId('messages');if(box)box.scrollTop=box.scrollHeight});
 }
 function closeChatScreen(){if(document.body.classList.contains('chat-screen-open'))setChatScreenOpen(false)}
-byId('chatFullscreenButton').addEventListener('click',()=>setChatScreenOpen(!document.body.classList.contains('chat-screen-open')));
+bindRoleDom('chatFullscreenButton','click',()=>setChatScreenOpen(!document.body.classList.contains('chat-screen-open')));
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('chat-screen-open'))closeChatScreen()});
-byId('chatRefreshButton').addEventListener('click',()=>refreshChatConversations());
-byId('chatLoadOlderButton').addEventListener('click',loadOlderChatMessages);
-byId('chatConversationList').addEventListener('click',async event=>{
+bindRoleDom('chatRefreshButton','click',()=>refreshChatConversations());
+bindRoleDom('chatLoadOlderButton','click',loadOlderChatMessages);
+bindRoleDom('chatConversationList','click',async event=>{
  const button=event.target.closest('[data-conversation-id]');if(!button)return;
  const conversation=chatConversations.find(c=>c.conversationId===button.dataset.conversationId);if(conversation)await selectChatConversation(conversation);
 });
@@ -2412,9 +2416,9 @@ function updateChatComposerAction(){
  byId('chatRecordButton').classList.toggle('hidden',hasText);
  byId('chatSendButton').classList.toggle('hidden',!hasText);
 }
-byId('chatInput').addEventListener('input',updateChatComposerAction);
+bindRoleDom('chatInput','input',updateChatComposerAction);
 updateChatComposerAction();
-byId('chatForm').addEventListener('submit',async event=>{
+bindRoleDom('chatForm','submit',async event=>{
  event.preventDefault();const input=byId('chatInput'),textValue=input.value.trim();if(!textValue)return;
  try{await ensureChatModules()}catch(error){setChatStatus('No se pudo cargar el módulo de chat.');return}
  const api=getChatApiClient();
@@ -2454,26 +2458,26 @@ async function openDriverTripChat(tripId){
  byId('chatTitle').textContent='Chat con Pasajero';
  await openChatConversation({tripId});
 }
-byId('requestResult').addEventListener('click',event=>{
+bindRoleDom('requestResult','click',event=>{
  const button=event.target.closest('[data-open-passenger-trip-chat]');if(button)openPassengerTripChat(button.dataset.openPassengerTripChat);
 });
-byId('driverTripInbox').addEventListener('click',event=>{
+bindRoleDom('driverTripInbox','click',event=>{
  const button=event.target.closest('[data-open-driver-trip-chat]');if(button)openDriverTripChat(button.dataset.openDriverTripChat);
 });
 
 function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function showAuthPage(page){const staff=page==='staff';byId('acceso').classList.toggle('hidden',staff);byId('staffAccess').classList.toggle('hidden',!staff);byId('pasajero').classList.add('hidden');byId('chofer').classList.add('hidden');byId('central').classList.add('hidden');byId('chat').classList.add('hidden');byId('configuracion').classList.add('hidden');document.querySelectorAll('.tabs').forEach(el=>el.classList.add('hidden'));byId('logoutButton').classList.add('hidden')}
 async function welcomeUser(user){let name=currentRole?.name||USER_ROLES[user.uid]?.name||'';if(!name){try{const snap=await get(ref(db,'profiles/'+user.uid));const profile=snap.val()||{};name=[profile.name,profile.lastName].filter(Boolean).join(' ')}catch(e){console.error('No se pudo leer el nombre del perfil',e)}}if(!name)name=user.email||'usuario';const role=currentRole?.role||'passenger';byId('postLoginGreeting').innerHTML=role==='passenger'?`Hola ${esc(name)}, es un gusto verte por acá! <span>¿Cómo podemos ayudarte?</span>`:`Hola ${esc(name)}, que bueno verte acá de nuevo! <span>¡Hoy va a ser un excelente día!</span>`;byId('postLoginGreeting').classList.remove('hidden')}
-byId('staffEntryButton').addEventListener('click',()=>showAuthPage('staff'));
-byId('backToPassengerLogin').addEventListener('click',()=>{byId('staffAccess').classList.add('hidden');byId('acceso').classList.remove('hidden');byId('pasajero').classList.add('hidden')});
-byId('showRegisterButton').addEventListener('click',()=>{byId('registerPanel').classList.toggle('hidden');byId('showRegisterButton').textContent=byId('registerPanel').classList.contains('hidden')?'Crear cuenta de pasajero':'Ocultar registro'});
+bindRoleDom('staffEntryButton','click',()=>showAuthPage('staff'));
+bindRoleDom('backToPassengerLogin','click',()=>{byId('staffAccess').classList.add('hidden');byId('acceso').classList.remove('hidden');byId('pasajero').classList.add('hidden')});
+bindRoleDom('showRegisterButton','click',()=>{byId('registerPanel').classList.toggle('hidden');byId('showRegisterButton').textContent=byId('registerPanel').classList.contains('hidden')?'Crear cuenta de pasajero':'Ocultar registro'});
 async function performLogin(identity,password,statusEl,source){if(!identity||!password){notify('Completá el usuario y la contraseña.');return}const isEmail=identity.includes('@');const dni=cleanDni(identity);if(!isEmail&&dni.length<7){notify('Ingresá un correo válido o un DNI de al menos 7 números.');return}const loginEmail=isEmail?identity:dniEmail(dni);try{const credential=await signInWithEmailAndPassword(auth,loginEmail,password);if(statusEl)statusEl.textContent='Sesión iniciada.';await welcomeUser(credential.user)}catch(err){console.error('Error de inicio de sesión',source,err);if(statusEl)statusEl.textContent='No se pudo iniciar sesión. Revisá el correo o DNI y la contraseña.';notify('No se pudo iniciar sesión. Revisá tus datos.')}}
-byId('loginButton').addEventListener('click',()=>performLogin(byId('authIdentity').value.trim(),byId('authPassword').value,byId('authStatus'),'pasajero'));
-byId('staffLoginButton').addEventListener('click',()=>performLogin(byId('staffIdentity').value.trim(),byId('staffPassword').value,byId('staffAuthStatus'),'personal'));
-byId('staffPassword').addEventListener('keydown',e=>{if(e.key==='Enter')byId('staffLoginButton').click()});
-byId('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter')byId('loginButton').click()});
-byId('registerButton').addEventListener('click',async()=>{const name=byId('regName').value.trim(),lastName=byId('regLastName').value.trim(),dni=cleanDni(byId('regDni').value),phone=byId('regPhone').value.trim(),password=byId('regPassword').value;if(!name||!lastName||dni.length<7||password.length<6){notify('Completá nombre, apellido, DNI válido y contraseña de al menos 6 caracteres.');return}let credential=null,reserved=false;registrationInProgress=true;try{credential=await createUserWithEmailAndPassword(auth,dniEmail(dni),password);const uid=credential.user.uid;await set(ref(db,'dniIndex/'+dni),uid);reserved=true;await set(ref(db,'profiles/'+uid),{name,lastName,dni,phone:phone||'',role:'passenger',createdAt:Date.now()});byId('authStatus').textContent='Cuenta creada correctamente.';sessionStorage.setItem('danteWelcomeName',name+' '+lastName);registrationInProgress=false;window.location.reload()}catch(err){console.error(err);if(reserved){try{await remove(ref(db,'dniIndex/'+dni))}catch(e){console.error(e)}}if(credential?.user){try{await deleteUser(credential.user)}catch(e){console.error(e)}}byId('authStatus').textContent=err.code==='PERMISSION_DENIED'?'No se pudo reservar ese DNI. Puede estar registrado o faltan publicar las reglas nuevas.':'No se pudo crear la cuenta. Revisá los datos e intentá nuevamente.';registrationInProgress=false;notify('No se pudo completar el registro')}});
-byId('logoutButton').addEventListener('click',async()=>{await dismissNativeTripAlert();await unregisterDriverPushRegistration(currentUser,currentRole);await clearDriverPresence();await signOut(auth)});
+bindRoleDom('loginButton','click',()=>performLogin(byId('authIdentity').value.trim(),byId('authPassword').value,byId('authStatus'),'pasajero'));
+bindRoleDom('staffLoginButton','click',()=>performLogin(byId('staffIdentity').value.trim(),byId('staffPassword').value,byId('staffAuthStatus'),'personal'));
+bindRoleDom('staffPassword','keydown',e=>{if(e.key==='Enter')byId('staffLoginButton').click()});
+bindRoleDom('authPassword','keydown',e=>{if(e.key==='Enter')byId('loginButton').click()});
+bindRoleDom('registerButton','click',async()=>{const name=byId('regName').value.trim(),lastName=byId('regLastName').value.trim(),dni=cleanDni(byId('regDni').value),phone=byId('regPhone').value.trim(),password=byId('regPassword').value;if(!name||!lastName||dni.length<7||password.length<6){notify('Completá nombre, apellido, DNI válido y contraseña de al menos 6 caracteres.');return}let credential=null,reserved=false;registrationInProgress=true;try{credential=await createUserWithEmailAndPassword(auth,dniEmail(dni),password);const uid=credential.user.uid;await set(ref(db,'dniIndex/'+dni),uid);reserved=true;await set(ref(db,'profiles/'+uid),{name,lastName,dni,phone:phone||'',role:'passenger',createdAt:Date.now()});byId('authStatus').textContent='Cuenta creada correctamente.';sessionStorage.setItem('danteWelcomeName',name+' '+lastName);registrationInProgress=false;window.location.reload()}catch(err){console.error(err);if(reserved){try{await remove(ref(db,'dniIndex/'+dni))}catch(e){console.error(e)}}if(credential?.user){try{await deleteUser(credential.user)}catch(e){console.error(e)}}byId('authStatus').textContent=err.code==='PERMISSION_DENIED'?'No se pudo reservar ese DNI. Puede estar registrado o faltan publicar las reglas nuevas.':'No se pudo crear la cuenta. Revisá los datos e intentá nuevamente.';registrationInProgress=false;notify('No se pudo completar el registro')}});
+bindRoleDom('logoutButton','click',async()=>{await dismissNativeTripAlert();await unregisterDriverPushRegistration(currentUser,currentRole);await clearDriverPresence();await signOut(auth)});
 // Identidad visual compartida: el teléfono conserva la última versión y consulta sólo metadatos.
 let startupBrandingReady=false;
 let startupAuthReady=false;
@@ -2491,9 +2495,9 @@ function readLogoSettings(){logoSettings={scale:Number(byId('logoScale').value),
 async function logoSourceToDataUrl(source){if(typeof source!=='string')throw new Error('No hay una imagen disponible para guardar.');if(source.startsWith('data:'))return source;const response=await fetch(source);if(!response.ok)throw new Error('No se pudo recuperar la imagen local del logo.');const blob=await response.blob();return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)})}
 ['logoScale','logoX','logoY'].forEach(id=>byId(id).addEventListener('input',readLogoSettings));
 void (async()=>{try{const cached=await mediaCache.get('public:branding:logo');if(!cached)return;logoDisplayData=await mediaCache.objectUrl('public:branding:logo');logoSettings=cached.extra?.settings||logoSettings;if(!pendingLogoData)paintLogo(logoDisplayData,logoSettings);byId('logoScale').value=logoSettings.scale;byId('logoX').value=logoSettings.x;byId('logoY').value=logoSettings.y;finishBrandingStartup();perf.mark('branding.logo.cache-hit')}catch(error){console.warn('No se pudo recuperar el logo local:',error?.name||'Error')}})();
-byId('logoFile').addEventListener('change',async ev=>{const file=ev.target.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){notify('Elegí un archivo de imagen.');return}try{const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)});const img=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=data});const canvas=document.createElement('canvas');const ratio=Math.min(1,700/Math.max(img.width,img.height));canvas.width=Math.round(img.width*ratio);canvas.height=Math.round(img.height*ratio);const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);pendingLogoData=canvas.toDataURL('image/png');if(pendingLogoData.length>850000){pendingLogoData=null;throw new Error('La imagen sigue siendo demasiado pesada. Probá con un PNG o JPG más liviano.')}paintLogo(pendingLogoData,logoSettings);byId('logoStatus').textContent='Vista previa lista. Ajustá tamaño y posición, después guardá.'}catch(err){console.error(err);notify(err.message||'No se pudo abrir esa imagen.')}});
-byId('resetLogoButton').addEventListener('click',()=>{byId('logoScale').value=100;byId('logoX').value=0;byId('logoY').value=0;readLogoSettings()});
-byId('saveLogoButton').addEventListener('click',async()=>{if(!currentUser||currentUser.uid!==ADMIN_UID){notify('Solo Agustín (144) puede guardar el logo.');return}const source=pendingLogoData||logoData||logoDisplayData;if(!source){notify('Primero elegí una imagen.');return}const btn=byId('saveLogoButton');btn.disabled=true;byId('logoStatus').textContent='Guardando logo para todos…';try{const data=await logoSourceToDataUrl(source),version=await sha256(data),updatedAt=Date.now(),settings={...logoSettings};await set(ref(db,'branding/logo'),{data,version,scale:settings.scale,x:settings.x,y:settings.y,updatedAt,updatedBy:currentUser.uid});await mediaCache.putDataUrl('public:branding:logo',data,{version,category:'logo',extra:{updatedAt,settings}});logoData=null;logoDisplayData=await mediaCache.objectUrl('public:branding:logo');pendingLogoData=null;paintLogo(logoDisplayData,logoSettings);byId('logoStatus').textContent='Logo guardado. Ya está disponible para todos los usuarios.';notify('Logo de Dante Remises guardado.')}catch(err){console.error(err);byId('logoStatus').textContent='No se pudo guardar. Revisá las reglas de Firebase indicadas en las instrucciones.';notify('Firebase rechazó el guardado del logo.')}finally{btn.disabled=false}});
+bindRoleDom('logoFile','change',async ev=>{const file=ev.target.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){notify('Elegí un archivo de imagen.');return}try{const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)});const img=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=data});const canvas=document.createElement('canvas');const ratio=Math.min(1,700/Math.max(img.width,img.height));canvas.width=Math.round(img.width*ratio);canvas.height=Math.round(img.height*ratio);const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);pendingLogoData=canvas.toDataURL('image/png');if(pendingLogoData.length>850000){pendingLogoData=null;throw new Error('La imagen sigue siendo demasiado pesada. Probá con un PNG o JPG más liviano.')}paintLogo(pendingLogoData,logoSettings);byId('logoStatus').textContent='Vista previa lista. Ajustá tamaño y posición, después guardá.'}catch(err){console.error(err);notify(err.message||'No se pudo abrir esa imagen.')}});
+bindRoleDom('resetLogoButton','click',()=>{byId('logoScale').value=100;byId('logoX').value=0;byId('logoY').value=0;readLogoSettings()});
+bindRoleDom('saveLogoButton','click',async()=>{if(!currentUser||currentUser.uid!==ADMIN_UID){notify('Solo Agustín (144) puede guardar el logo.');return}const source=pendingLogoData||logoData||logoDisplayData;if(!source){notify('Primero elegí una imagen.');return}const btn=byId('saveLogoButton');btn.disabled=true;byId('logoStatus').textContent='Guardando logo para todos…';try{const data=await logoSourceToDataUrl(source),version=await sha256(data),updatedAt=Date.now(),settings={...logoSettings};await set(ref(db,'branding/logo'),{data,version,scale:settings.scale,x:settings.x,y:settings.y,updatedAt,updatedBy:currentUser.uid});await mediaCache.putDataUrl('public:branding:logo',data,{version,category:'logo',extra:{updatedAt,settings}});logoData=null;logoDisplayData=await mediaCache.objectUrl('public:branding:logo');pendingLogoData=null;paintLogo(logoDisplayData,logoSettings);byId('logoStatus').textContent='Logo guardado. Ya está disponible para todos los usuarios.';notify('Logo de Dante Remises guardado.')}catch(err){console.error(err);byId('logoStatus').textContent='No se pudo guardar. Revisá las reglas de Firebase indicadas en las instrucciones.';notify('Firebase rechazó el guardado del logo.')}finally{btn.disabled=false}});
 async function syncLogoFromMetadata(updatedAt){logoRemoteUpdatedAt=Number(updatedAt||0);if(logoSyncTask){logoSyncPending=true;return logoSyncTask}logoSyncTask=(async()=>{try{const [versionSnapshot,cached,scaleSnapshot,xSnapshot,ySnapshot]=await Promise.all([get(ref(db,'branding/logo/version')),mediaCache.get('public:branding:logo'),get(ref(db,'branding/logo/scale')),get(ref(db,'branding/logo/x')),get(ref(db,'branding/logo/y'))]);const remoteVersion=versionSnapshot.val(),settings={scale:Number(scaleSnapshot.val())||100,x:Number(xSnapshot.val())||0,y:Number(ySnapshot.val())||0};const cacheMatches=!!cached&&((remoteVersion&&cached.version===remoteVersion)||(!remoteVersion&&Number(cached.extra?.updatedAt||0)===logoRemoteUpdatedAt));if(cacheMatches){if(Number(cached.extra?.updatedAt||0)!==logoRemoteUpdatedAt||JSON.stringify(cached.extra?.settings||{})!==JSON.stringify(settings))await mediaCache.put('public:branding:logo',cached.blob,{version:cached.version,category:'logo',extra:{updatedAt:logoRemoteUpdatedAt,settings}});logoData=null;logoDisplayData=await mediaCache.objectUrl('public:branding:logo');logoSettings=settings;if(!pendingLogoData)paintLogo(logoDisplayData,logoSettings);byId('logoScale').value=settings.scale;byId('logoX').value=settings.x;byId('logoY').value=settings.y;perf.mark('branding.logo.cache-hit');return}const snapshot=await get(ref(db,'branding/logo')),value=snapshot.val();if(value?.data){const remoteSettings={scale:Number(value.scale)||100,x:Number(value.x)||0,y:Number(value.y)||0},version=value.version||await sha256(value.data),savedAt=Number(value.updatedAt||logoRemoteUpdatedAt||Date.now());await mediaCache.putDataUrl('public:branding:logo',value.data,{version,category:'logo',extra:{updatedAt:savedAt,settings:remoteSettings}});logoData=null;logoDisplayData=await mediaCache.objectUrl('public:branding:logo');logoSettings=remoteSettings;if(!pendingLogoData)paintLogo(logoDisplayData,logoSettings);byId('logoScale').value=remoteSettings.scale;byId('logoX').value=remoteSettings.x;byId('logoY').value=remoteSettings.y;perf.mark('branding.logo.remote-refresh')}else{logoData=null;logoDisplayData=null;await mediaCache.remove('public:branding/logo');if(!pendingLogoData)paintLogo(null)} }catch(error){console.warn('No se pudo sincronizar el logo compartido:',error?.name||'Error')}finally{finishBrandingStartup()}})().finally(()=>{logoSyncTask=null;if(logoSyncPending){logoSyncPending=false;void syncLogoFromMetadata(logoRemoteUpdatedAt)}});return logoSyncTask}
 onValue(ref(db,'branding/logo/updatedAt'),snapshot=>{logoRemoteUpdatedAt=Number(snapshot.val()||0);void syncLogoFromMetadata(logoRemoteUpdatedAt)},error=>{console.error('No se pudo leer la versión del logo:',error);finishBrandingStartup()});
 async function resolveAuthenticatedRole(user){
@@ -2709,11 +2713,11 @@ function paintPersonalizationPreviews(){const uid=selectedPhotoTarget(),saved=st
 function updatePendingTransform(key,field,value){const uid=selectedPhotoTarget(),base=photoTransform(uid,key);pendingPhotoTransforms[key]={...base,[field]:Number(value)};applyPhotoTransform(key)}
 [['profileScale','profilePhoto','scale'],['profileX','profilePhoto','x'],['profileY','profilePhoto','y'],['vehicleScale','vehiclePhoto','scale'],['vehicleX','vehiclePhoto','x'],['vehicleY','vehiclePhoto','y']].forEach(([id,key,field])=>byId(id).addEventListener('input',e=>updatePendingTransform(key,field,e.target.value)));
 async function compressImage(file){if(!file||!file.type.startsWith('image/'))throw new Error('Elegí un archivo de imagen.');const raw=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=raw});const canvas=document.createElement('canvas'),ratio=Math.min(1,700/Math.max(img.width,img.height));canvas.width=Math.round(img.width*ratio);canvas.height=Math.round(img.height*ratio);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);const data=canvas.toDataURL('image/jpeg',.82);if(data.length>850000)throw new Error('La imagen es demasiado pesada. Elegí otra más liviana.');return data}
-byId('personalProfileFile').addEventListener('change',async e=>{try{pendingPersonalPhotos.profilePhoto=await compressImage(e.target.files?.[0]);paintPersonalizationPreviews();byId('personalizationStatus').textContent='Foto de perfil lista para guardar.'}catch(err){notify(err.message)}});
-byId('personalVehicleFile').addEventListener('change',async e=>{try{pendingPersonalPhotos.vehiclePhoto=await compressImage(e.target.files?.[0]);paintPersonalizationPreviews();byId('personalizationStatus').textContent='Foto del vehículo lista para guardar.'}catch(err){notify(err.message)}});
-byId('personalizationTarget').addEventListener('change',()=>{personalizationTarget=selectedPhotoTarget();pendingPersonalPhotos={profilePhoto:null,vehiclePhoto:null};pendingPhotoTransforms={profilePhoto:null,vehiclePhoto:null};paintPersonalizationPreviews()});
-byId('clearPersonalization').addEventListener('click',()=>{pendingPersonalPhotos={profilePhoto:null,vehiclePhoto:null};pendingPhotoTransforms={profilePhoto:null,vehiclePhoto:null};byId('personalProfileFile').value='';byId('personalVehicleFile').value='';paintPersonalizationPreviews();byId('personalizationStatus').textContent='Cambios pendientes descartados.'});
-byId('savePersonalization').addEventListener('click',async()=>{
+bindRoleDom('personalProfileFile','change',async e=>{try{pendingPersonalPhotos.profilePhoto=await compressImage(e.target.files?.[0]);paintPersonalizationPreviews();byId('personalizationStatus').textContent='Foto de perfil lista para guardar.'}catch(err){notify(err.message)}});
+bindRoleDom('personalVehicleFile','change',async e=>{try{pendingPersonalPhotos.vehiclePhoto=await compressImage(e.target.files?.[0]);paintPersonalizationPreviews();byId('personalizationStatus').textContent='Foto del vehículo lista para guardar.'}catch(err){notify(err.message)}});
+bindRoleDom('personalizationTarget','change',()=>{personalizationTarget=selectedPhotoTarget();pendingPersonalPhotos={profilePhoto:null,vehiclePhoto:null};pendingPhotoTransforms={profilePhoto:null,vehiclePhoto:null};paintPersonalizationPreviews()});
+bindRoleDom('clearPersonalization','click',()=>{pendingPersonalPhotos={profilePhoto:null,vehiclePhoto:null};pendingPhotoTransforms={profilePhoto:null,vehiclePhoto:null};byId('personalProfileFile').value='';byId('personalVehicleFile').value='';paintPersonalizationPreviews();byId('personalizationStatus').textContent='Cambios pendientes descartados.'});
+bindRoleDom('savePersonalization','click',async()=>{
  const uid=selectedPhotoTarget(),target=STAFF_PHOTO_USERS[uid],admin=currentUser?.uid===ADMIN_UID;
  if(!target||(!admin&&uid!==currentUser?.uid)||(!admin&&!['driver','operator'].includes(currentRole?.role))){notify('No tenés permiso para modificar este perfil.');return}
  if(!pendingPersonalPhotos.profilePhoto&&!pendingPersonalPhotos.vehiclePhoto&&!pendingPhotoTransforms.profilePhoto&&!pendingPhotoTransforms.vehiclePhoto){notify('No hay cambios para guardar.');return}
