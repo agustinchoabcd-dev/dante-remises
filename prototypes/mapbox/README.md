@@ -14,7 +14,7 @@ Esta rama integra la primera capa de migración dentro de la aplicación real, s
 
 ## Configuración del token público
 
-El token público `pk.` se inyecta mediante `window.DANTE_MAPBOX_TOKEN` en `js/mapbox-config.js` durante el build experimental de Android. El archivo versionado permanece vacío por defecto. El workflow requiere un secreto de repositorio llamado `MAPBOX_PUBLIC_TOKEN`; no lo imprime ni lo guarda en Git. El paso de copia de Capacitor incluye `js/dante-map.js` y `js/mapbox-config.js` dentro de `www/js/`.
+El token público `pk.` se inyecta mediante `window.DANTE_MAPBOX_TOKEN` en `js/mapbox-config.js` durante el build experimental de Android. El archivo versionado permanece vacío por defecto. Los workflows de APK y de Cloudflare Pages staging requieren un secreto de repositorio llamado `MAPBOX_PUBLIC_TOKEN`; no lo imprimen ni lo guardan en Git. El paso de copia de Capacitor incluye `js/dante-map.js` y `js/mapbox-config.js` dentro de `www/js/`. La vista web experimental se publica como preview aislado en el proyecto Pages `dante-remises-staging`, usando el nombre de rama `mapbox-migration-prototype`; no apunta a producción.
 
 GitHub Secret Scanning rechazó el token público facilitado para la prueba al clasificarlo como `MAPBOX_SECRET_ACCESS_TOKEN`. No se eludió ese control ni se incluyó el token en el código. El mecanismo de inyección quedó implementado, pero todavía requiere que exista el secreto `MAPBOX_PUBLIC_TOKEN` en Settings → Secrets and variables → Actions. Sin ese secreto, el build experimental se detiene antes de empaquetar la APK. El fallback Leaflet/LocationIQ se conserva temporalmente sólo para no romper dispositivos hasta verificar WebGL2 en los teléfonos reales.
 
