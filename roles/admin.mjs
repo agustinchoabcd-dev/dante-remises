@@ -1,13 +1,22 @@
 export async function activate(context) {
+  if (context.isCurrent && !context.isCurrent()) return { stale: true };
   context.showView("central");
   context.setAdminTripAlertPanel(true);
 
   const background = (async () => {
     const driverModule = await import("./driver.mjs");
+    const isCurrent = () => !context.isCurrent || context.isCurrent();
+    if (!isCurrent()) return;
+
+    const runIfCurrent = async task => {
+      if (!isCurrent()) return;
+      await task();
+    };
+
     const results = await Promise.allSettled([
-      context.loadAdminProfiles(),
-      context.initializeAdminCars(),
-      driverModule.activateDriverOperations(context)
+      runIfCurrent(context.loadAdminProfiles),
+      runIfCurrent(context.initializeAdminCars),
+      runIfCurrent(() => driverModule.activateDriverOperations(context))
     ]);
 
     for (const result of results) {
