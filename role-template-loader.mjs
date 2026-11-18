@@ -11,7 +11,8 @@ export function createRoleTemplateLoader({
   document: documentRef = globalThis.document,
   fetch: fetchImpl = globalThis.fetch,
   mountId = "roleViewMount",
-  parseTemplate
+  parseTemplate,
+  onMounted = () => {}
 } = {}) {
   if (!documentRef?.getElementById || typeof fetchImpl !== "function") {
     throw new TypeError("A document and fetch implementation are required");
@@ -59,6 +60,7 @@ export function createRoleTemplateLoader({
     if (requestGeneration !== generation) return { stale: true, role };
     mount.replaceChildren(fragment);
     if (mount.dataset) mount.dataset.role = role;
+    onMounted({ role, mount });
     return { stale: false, role, mounted: true };
   }
 
