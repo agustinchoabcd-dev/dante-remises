@@ -20,6 +20,7 @@ function createHarness({token="pk.test-public-token", supported=true, fetchImpl}
     getLayer(id) { return state.layers.get(id); }
     removeLayer(id) { state.layers.delete(id); }
     easeTo(options) { this.lastEase=options; }
+    jumpTo(options) { this.lastJump=options; }
     fitBounds(bounds, options) { this.lastBounds={bounds,options}; }
     resize() { this.resized=true; }
     remove() { this.removed=true; }
@@ -95,6 +96,14 @@ test("Mapbox markers can be updated and removed through the adapter handle",()=>
   assert.equal(state.markers[0].removed,true);
 });
 
+test("Mapbox focuses a selected search result without animating the camera",()=>{
+  const {api,state}=createHarness();
+  const map=api.create({},[-32.1,-64.5],14,"unused");
+  map.fitPoints([{lat:-31.9,lon:-64.7}]);
+  assert.deepEqual(state.maps[0].lastJump,{center:[-64.7,-31.9],zoom:16});
+  assert.equal(state.maps[0].lastEase,undefined);
+});
+
 test("Mapbox route layers are added, fitted and removed without leaving map sources",()=>{
   const {api,state}=createHarness();
   const map=api.create({},[-32.1,-64.5],14,"unused");
@@ -104,6 +113,8 @@ test("Mapbox route layers are added, fitted and removed without leaving map sour
   assert.equal(state.layers.get("dante-route-trip-line").paint["line-color"],"#123456");
   map.fitGeometry(geometry);
   assert.equal(state.maps[0].lastBounds.bounds.points.length,2);
+  assert.equal(state.maps[0].lastBounds.options.animate,false);
+  assert.equal(state.maps[0].lastBounds.options.duration,0);
   map.removeRoute("trip");
   assert.equal(state.sources.has("dante-route-trip"),false);
   assert.equal(state.layers.has("dante-route-trip-line"),false);
