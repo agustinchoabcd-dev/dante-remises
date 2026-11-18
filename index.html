@@ -1160,14 +1160,15 @@ async function registerDriverPresence(user,role){
  }
  driverPresenceRef=target;
 }
+const GEOAPIFY_ATTRIBUTION_HTML='<div class="hint">Direcciones: <a href="https://www.geoapify.com" target="_blank" rel="noopener">Geoapify</a> · Datos © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.</div>';
 function renderDriverActiveTrip(trip,id){
  activeTripId=id;activeTripData=trip;
  const startButton=trip.status==='accepted'?'<button class="primary" id="startTripButton">Iniciar viaje</button>':'';
  const created=trip.createdAt?new Date(trip.createdAt).toLocaleString('es-AR'):'No informado';
- const html='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Solicitado: '+esc(created)+'</div><div class="hint">Origen (recogida): '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div><div id="driverTripMap" class="real-map" style="height:300px" aria-label="Mapa del viaje"></div><div id="driverTripMapStatus" class="hint">Cargando recorrido…</div><div class="actions"><button class="secondary" id="openTripChatButton">Chat con pasajero</button>'+startButton+'<button class="secondary" id="finishTripButton">Finalizar viaje</button></div>';
+ const html='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Solicitado: '+esc(created)+'</div><div class="hint">Origen (recogida): '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div><div id="driverTripMap" class="real-map" style="height:300px" aria-label="Mapa del viaje"></div><div id="driverTripMapStatus" class="hint">Cargando recorrido…</div>'+GEOAPIFY_ATTRIBUTION_HTML+'<div class="actions"><button class="secondary" id="openTripChatButton">Chat con pasajero</button>'+startButton+'<button class="secondary" id="finishTripButton">Finalizar viaje</button></div>';
  byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML=html;
  const adminBox=byId('adminDriverActiveTrip');
- if(adminBox){adminBox.classList.remove('hidden');adminBox.innerHTML='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Recogida: '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div><div class="hint">Usá “Mi espacio de personal” para ver el mapa e iniciar o finalizar el viaje.</div>';}
+ if(adminBox){adminBox.classList.remove('hidden');adminBox.innerHTML='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Recogida: '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div>'+GEOAPIFY_ATTRIBUTION_HTML+'<div class="hint">Usá “Mi espacio de personal” para ver el mapa e iniciar o finalizar el viaje.</div>';}
  renderDriverTripMap(trip,id);
 }
 function renderDriverTripPreview(trip,id){
@@ -1175,7 +1176,7 @@ function renderDriverTripPreview(trip,id){
  showView('chofer');
  const created=trip.createdAt?new Date(trip.createdAt).toLocaleString('es-AR'):'No informado';
  byId('driverActiveTrip').classList.remove('hidden');
- byId('driverActiveTrip').innerHTML='<strong>Solicitud pendiente · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Solicitado: '+esc(created)+'</div><div class="hint">Punto de recogida: '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div><div id="driverTripMap" class="real-map" style="height:300px" aria-label="Mapa del viaje solicitado"></div><div id="driverTripMapStatus" class="hint">Cargando recorrido…</div><div class="actions"><button class="primary" data-preview-accept="'+esc(id)+'">Aceptar viaje</button><button class="danger" data-preview-reject="'+esc(id)+'">Rechazar viaje</button></div>';
+ byId('driverActiveTrip').innerHTML='<strong>Solicitud pendiente · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Solicitado: '+esc(created)+'</div><div class="hint">Punto de recogida: '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div><div id="driverTripMap" class="real-map" style="height:300px" aria-label="Mapa del viaje solicitado"></div><div id="driverTripMapStatus" class="hint">Cargando recorrido…</div>'+GEOAPIFY_ATTRIBUTION_HTML+'<div class="actions"><button class="primary" data-preview-accept="'+esc(id)+'">Aceptar viaje</button><button class="danger" data-preview-reject="'+esc(id)+'">Rechazar viaje</button></div>';
  renderDriverTripMap(trip,id);
 }
 function renderDriverTripMap(trip,id){
