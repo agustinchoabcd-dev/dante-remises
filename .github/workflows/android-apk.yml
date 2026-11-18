@@ -29,9 +29,17 @@ on:
       - chat-ui-fixes-4b564f
       - trip-request-alerts
       - mapbox-migration-prototype
+      - role-modularization
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
+      - 'role-transition.mjs'
+      - 'role-runtime.mjs'
+      - 'map-runtime-loader.mjs'
+      - 'roles/**'
+      - 'role-transition.test.mjs'
+      - 'role-runtime.test.mjs'
+      - 'map-runtime-loader.test.mjs'
       - 'chat-ui.test.mjs'
       - 'chat-client.mjs'
       - 'trip-alerts-client.mjs'
@@ -110,13 +118,20 @@ jobs:
           Path("/tmp/dante-audio-system.mjs").write_text(scripts[0], encoding="utf-8")
           PY
           node --check /tmp/dante-audio-system.mjs
+          node --check role-transition.mjs
+          node --check role-runtime.mjs
+          node --check map-runtime-loader.mjs
+          node --check roles/passenger.mjs
+          node --check roles/driver.mjs
+          node --check roles/operator.mjs
+          node --check roles/admin.mjs
           node --check chat-client.mjs
           node --check trip-alerts-client.mjs
           node --check media-cache.mjs
           node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
           node --check scripts/patch-android-trip-alerts.mjs
-          node --test chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
+          node --test role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs map-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
