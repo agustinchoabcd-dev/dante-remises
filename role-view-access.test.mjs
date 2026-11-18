@@ -22,13 +22,13 @@ function createDocument() {
   return { getElementById(id) { return elements[id] || null; }, querySelectorAll(selector) { return selector === ".tab" ? tabs : []; }, elements, tabs };
 }
 const allowed = {
-  passenger: ["pasajero", "chat", "configuracion"],
+  passenger: ["pasajero", "passengerOnboarding", "chat", "configuracion"],
   driver: ["chofer", "chat", "configuracion"],
   operator: ["central", "chat", "configuracion"],
   admin: ["central", "chofer", "chat", "configuracion"]
 };
 test("each role can access only its own workspace and shared screens", () => {
-  const allViews = ["pasajero", "chofer", "central", "chat", "configuracion"];
+  const allViews = ["pasajero", "passengerOnboarding", "chofer", "central", "chat", "configuracion"];
   for (const role of Object.keys(allowed)) for (const view of allViews) assert.equal(canAccessRoleView(role, view), allowed[role].includes(view));
 });
 test("unknown roles and unknown views are denied by default", () => {
