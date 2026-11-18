@@ -550,8 +550,7 @@ import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.
 import { activateRole } from "./role-runtime.mjs";
 import { createRoleTransitionController } from "./role-transition.mjs";
 import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
-import { ChatApiClient, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";
-import { chatHistoryCache } from "./chat-history-cache.mjs";
+import { createChatRuntimeLoader } from "./chat-runtime-loader.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getDatabase, ref, onValue as firebaseOnValue, get as firebaseGet, set as firebaseSet, update as firebaseUpdate, remove as firebaseRemove, push as firebasePush, runTransaction as firebaseRunTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
@@ -559,6 +558,19 @@ perf.mark("app.module.start");
 diagnostics.mark("app.start");
 const roleTransition = createRoleTransitionController(document);
 const ensureMapRuntime = createMapRuntimeLoader();
+const ensureChatRuntime = createChatRuntimeLoader();
+let ChatApiClient = null;
+let createClientMessageId = null;
+let mergeChatMessagePages = null;
+let chatHistoryCache = null;
+async function ensureChatModules(){
+ const modules=await ensureChatRuntime();
+ ChatApiClient=modules.ChatApiClient;
+ createClientMessageId=modules.createClientMessageId;
+ mergeChatMessagePages=modules.mergeChatMessagePages;
+ chatHistoryCache=modules.chatHistoryCache;
+ return modules;
+}
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
  navigator.serviceWorker.register("./service-worker.js", { scope: "./" })
   .then(() => perf.mark("service-worker.registered"))
@@ -1128,7 +1140,7 @@ function showView(v){
  ['pasajero','chofer','central','chat','configuracion'].forEach(id=>byId(id).classList.toggle('hidden',id!==v));
  const greetingView=currentRole?.role==='passenger'?v==='pasajero':currentRole?.role==='driver'?v==='chofer':currentRole?.role==='operator'?v==='central':currentRole?.role==='admin'?(v==='central'||v==='chofer'):false;
  byId('postLoginGreeting').classList.toggle('hidden',!greetingView);
- if(v==='chat')loadChatView();else stopChatPolling();
+ if(v==='chat')void loadChatView().catch(error=>{console.error('No se pudo cargar el chat:',error);setChatStatus('No se pudo cargar el módulo de chat. Revisá tu conexión e intentá nuevamente.')});else stopChatPolling();
  if(v==='chofer')void ensureDriverTripAlertPermissions();
  if(v==='configuracion'&&['driver','admin'].includes(currentRole?.role))void refreshTripAlertPermissionStatus();
 }
@@ -1379,15 +1391,19 @@ function ensureChatSessionForCurrentUser(){
  return true;
 }
 function getChatApiClient(){
- if(!CHAT_API_BASE_URL||!currentUser)return null;
+ if(!ChatApiClient||!CHAT_API_BASE_URL||!currentUser)return null;
  if(!chatApiClient)chatApiClient=new ChatApiClient({baseUrl:CHAT_API_BASE_URL,getIdToken:()=>currentUser.getIdToken()});
  return chatApiClient;
 }
 async function sendOperatorPresence(){
  if(currentRole?.role!=='operator'||operatorPresenceBusy)return;
- const api=getChatApiClient();if(!api)return;
  operatorPresenceBusy=true;
- try{await api.setOperatorPresence()}catch(error){
+ try{
+  await ensureChatModules();
+  if(currentRole?.role!=='operator')return;
+  const api=getChatApiClient();if(!api)return;
+  await api.setOperatorPresence();
+ }catch(error){
   if(error?.status===404||error?.status===501){
    operatorPresenceUnavailable=true;
    if(operatorPresenceTimer!==null){clearInterval(operatorPresenceTimer);operatorPresenceTimer=null}
@@ -1399,15 +1415,24 @@ function startOperatorPresence(){
  if(operatorPresenceTimer!==null)clearInterval(operatorPresenceTimer);
  operatorPresenceTimer=null;
  operatorPresenceUnavailable=false;
- if(currentRole?.role!=='operator'||!getChatApiClient())return;
- void sendOperatorPresence();
- operatorPresenceTimer=setInterval(sendOperatorPresence,10_000);
+ if(currentRole?.role!=='operator')return;
+ const uid=currentUser?.uid;
+ void ensureChatModules().then(()=>{
+  if(currentRole?.role!=='operator'||currentUser?.uid!==uid)return;
+  void sendOperatorPresence();
+  operatorPresenceTimer=setInterval(()=>void sendOperatorPresence(),10_000);
+ }).catch(error=>console.warn('No se pudo cargar el servicio de presencia del operador:',error));
 }
 async function stopOperatorPresence(){
  if(operatorPresenceTimer!==null)clearInterval(operatorPresenceTimer);
  operatorPresenceTimer=null;
- const api=currentRole?.role==='operator'?getChatApiClient():null;
- if(api){try{await api.clearOperatorPresence()}catch(error){console.warn('No se pudo cerrar la presencia del operador:',error)}}
+ if(currentRole?.role==='operator'){
+  try{
+   await ensureChatModules();
+   const api=getChatApiClient();
+   if(api)await api.clearOperatorPresence();
+  }catch(error){console.warn('No se pudo cerrar la presencia del operador:',error)}
+ }
 }
 function setChatStatus(message){byId('chatStatus').textContent=message}
 function stopChatEvents(){if(chatEventReconnectTimer!==null){clearTimeout(chatEventReconnectTimer);chatEventReconnectTimer=null}if(chatEventController){chatEventController.abort();chatEventController=null}}
@@ -2257,7 +2282,9 @@ async function refreshChatConversations(silent=false){
  finally{chatRefreshing=false;if(chatRefreshPending){chatRefreshPending=false;void refreshChatConversations(true)}}
 }
 async function loadChatView(){
- if(!currentUser||!currentRole||!ensureChatSessionForCurrentUser())return;
+ if(!currentUser||!currentRole)return;
+ await ensureChatModules();
+ if(!ensureChatSessionForCurrentUser())return;
  const uid=currentUser.uid;
  const cachedList=await chatHistoryCache.getConversations(uid);
  if(currentUser?.uid!==uid)return;
@@ -2283,6 +2310,7 @@ async function loadChatView(){
  await refreshChatConversations();await ensurePassengerDefaultChat();startChatPolling();void prefetchChatConversationHistories();
 }
 async function openChatConversation(payload){
+ try{await ensureChatModules()}catch(error){setChatStatus('No se pudo cargar el módulo de chat. Revisá tu conexión e intentá nuevamente.');console.error(error);return}
  if(!ensureChatSessionForCurrentUser())return;
  const api=getChatApiClient();
  if(!api){showView('chat');setChatStatus('Modo demostración: el servicio de chat todavía no está configurado.');return}
@@ -2298,6 +2326,7 @@ async function openChatConversation(payload){
  finally{chatBusy=false;byId('chatStartButton').disabled=currentRole?.role==='driver'||!getChatApiClient()}
 }
 async function startChatFromSelection(){
+ try{await ensureChatModules()}catch(error){setChatStatus('No se pudo cargar el módulo de chat. Revisá tu conexión e intentá nuevamente.');return}
  if(!getChatApiClient()){setChatStatus('Modo demostración: el servicio de chat todavía no está configurado.');return}
  const role=currentRole?.role,value=byId('contactChoice').value;let payload={};
  if(role==='passenger'){
@@ -2373,6 +2402,7 @@ byId('chatInput').addEventListener('input',updateChatComposerAction);
 updateChatComposerAction();
 byId('chatForm').addEventListener('submit',async event=>{
  event.preventDefault();const input=byId('chatInput'),textValue=input.value.trim();if(!textValue)return;
+ try{await ensureChatModules()}catch(error){setChatStatus('No se pudo cargar el módulo de chat.');return}
  const api=getChatApiClient();
  if(!api){
   const mine=document.createElement('div');mine.className='msg mine';mine.textContent=textValue;byId('messages').appendChild(mine);
