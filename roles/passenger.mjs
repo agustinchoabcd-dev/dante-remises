@@ -1,4 +1,5 @@
 export async function activate(context) {
+  if (context.isCurrent && !context.isCurrent()) return { stale: true };
   const photoReady = await context.loadPassengerPhoto();
   if (context.isCurrent && !context.isCurrent()) return { stale: true };
 
