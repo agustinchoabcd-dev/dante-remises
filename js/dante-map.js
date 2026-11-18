@@ -184,19 +184,19 @@
       const valid = (points || []).filter(validPoint);
       if (!valid.length) return;
       if (valid.length === 1) {
-        this.map.easeTo({center:[Number(valid[0].lon),Number(valid[0].lat)],zoom:16});
+        this.map.jumpTo({center:[Number(valid[0].lon),Number(valid[0].lat)],zoom:16});
         return;
       }
       const bounds = new mapboxgl.LngLatBounds();
       valid.forEach(point => bounds.extend([Number(point.lon),Number(point.lat)]));
-      this.map.fitBounds(bounds,{padding:Math.max(24,Math.round(48 + padding * 100)),maxZoom:16});
+      this.map.fitBounds(bounds,{padding:Math.max(24,Math.round(48 + padding * 100)),maxZoom:16,animate:false,duration:0});
     }
     fitGeometry(geometry, padding = .15) {
       const coordinates = geoCoordinates(geometry);
       if (!coordinates.length) return;
       const bounds = new mapboxgl.LngLatBounds();
       coordinates.forEach(point => bounds.extend(point));
-      this.map.fitBounds(bounds,{padding:Math.max(24,Math.round(48 + padding * 100)),maxZoom:17});
+      this.map.fitBounds(bounds,{padding:Math.max(24,Math.round(48 + padding * 100)),maxZoom:17,animate:false,duration:0});
     }
     removeLayer(handle) { if (handle?.remove) handle.remove(); }
     invalidateSize() { requestAnimationFrame(() => this.map?.resize()); }
