@@ -181,7 +181,9 @@ jobs:
                   self.handle_starttag(tag, attrs)
 
           parser = IdCollector()
+          passenger_template = Path("views/passenger.html").read_text(encoding="utf-8")
           parser.feed(source)
+          parser.feed(passenger_template)
           duplicates = sorted(key for key, count in Counter(parser.ids).items() if count > 1)
           if duplicates:
               raise SystemExit("Duplicate HTML IDs: " + ", ".join(duplicates))
