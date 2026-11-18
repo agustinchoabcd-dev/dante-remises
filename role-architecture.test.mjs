@@ -50,5 +50,5 @@ test("all dynamically imported runtime modules are included in the Capacitor web
 test("service worker does not pre-download the map engine and caches app modules on demand", () => {
   assert.doesNotMatch(serviceWorker, /STATIC_ASSETS/);
   assert.match(serviceWorker, /url\.origin === self\.location\.origin/);
-  assert.match(serviceWorker, /\.(?:mjs|js)$/);
+  assert.ok(serviceWorker.includes('/\\.(?:mjs|js)$/.test(url.pathname)'));
 });
