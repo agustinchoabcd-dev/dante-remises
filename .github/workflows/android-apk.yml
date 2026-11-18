@@ -45,6 +45,8 @@ on:
       - 'role-runtime.mjs'
       - 'role-view-access.mjs'
       - 'role-template-loader.mjs'
+      - 'role-dom-bindings.mjs'
+      - 'role-dom-bindings.test.mjs'
       - 'role-template-loader.test.mjs'
       - 'views/**'
       - 'role-view-access.test.mjs'
