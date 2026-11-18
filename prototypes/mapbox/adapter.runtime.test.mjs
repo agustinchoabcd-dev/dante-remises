@@ -22,7 +22,7 @@ function createHarness({token="pk.test-public-token", supported=true, fetchImpl}
     easeTo(options) { this.lastEase=options; }
     jumpTo(options) { this.lastJump=options; }
     fitBounds(bounds, options) { this.lastBounds={bounds,options}; }
-    resize() { this.resized=true; }
+    resize() { this.resized=true; this.resizeCount=(this.resizeCount||0)+1; }
     remove() { this.removed=true; }
   }
   class FakeMarker {
@@ -53,8 +53,20 @@ function createHarness({token="pk.test-public-token", supported=true, fetchImpl}
     state.fetchCalls.push(String(url));
     return {ok:true,json:async()=>({code:"Ok",routes:[{distance:1200,duration:300,geometry:{type:"LineString",coordinates:[[-64.5,-32.1],[-64.49,-32.09]]}}]})};
   });
+  const windowListeners = new Map();
+  const viewportListeners = new Map();
+  const fakeWindow = {
+    DANTE_MAPBOX_TOKEN:token,
+    mapboxgl,
+    addEventListener:(name,callback)=>windowListeners.set(name,callback),
+    removeEventListener:name=>windowListeners.delete(name),
+    visualViewport:{
+      addEventListener:(name,callback)=>viewportListeners.set(name,callback),
+      removeEventListener:name=>viewportListeners.delete(name)
+    }
+  };
   const context = {
-    window:{DANTE_MAPBOX_TOKEN:token,mapboxgl},
+    window:fakeWindow,
     mapboxgl,
     document:{createElement:()=>({style:{}})},
     fetch:fakeFetch,
@@ -71,7 +83,7 @@ function createHarness({token="pk.test-public-token", supported=true, fetchImpl}
     Error
   };
   vm.runInNewContext(source,context,{filename:"dante-map.js"});
-  return {api:context.window.DanteMap,state,mapboxgl};
+  return {api:context.window.DanteMap,state,mapboxgl,windowListeners,viewportListeners};
 }
 
 test("Mapbox renderer initializes with longitude/latitude order and navigation controls",()=>{
@@ -82,6 +94,19 @@ test("Mapbox renderer initializes with longitude/latitude order and navigation c
   assert.deepEqual(Array.from(state.maps[0].options.center),[-64.5,-32.1]);
   assert.equal(mapboxgl.accessToken,"pk.test-public-token");
   assert.equal(state.maps[0].control.position,"top-right");
+});
+
+test("Mapbox defers automatic resize and removes viewport listeners on disposal",()=>{
+  const {api,state,windowListeners,viewportListeners}=createHarness();
+  const map=api.create({},[-32.1,-64.5],14,"unused");
+  assert.equal(state.maps[0].options.trackResize,false);
+  assert.equal(windowListeners.has("resize"),true);
+  assert.equal(viewportListeners.has("resize"),true);
+  map.invalidateSize();
+  assert.equal(state.maps[0].resized,true);
+  map.remove();
+  assert.equal(windowListeners.has("resize"),false);
+  assert.equal(viewportListeners.has("resize"),false);
 });
 
 test("Mapbox markers can be updated and removed through the adapter handle",()=>{
