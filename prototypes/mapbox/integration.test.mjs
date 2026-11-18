@@ -5,6 +5,8 @@ import { readFile } from "node:fs/promises";
 const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
 const adapter = await readFile(new URL("../../js/dante-map.js", import.meta.url), "utf8");
 const config = await readFile(new URL("../../js/mapbox-config.js", import.meta.url), "utf8");
+const geocoding = await readFile(new URL("../../js/dante-geocoding.js", import.meta.url), "utf8");
+const geocodingConfig = await readFile(new URL("../../js/geocoding-config.js", import.meta.url), "utf8");
 const copyScript = await readFile(new URL("../../scripts/copy-web.mjs", import.meta.url), "utf8");
 
 test("the app pins Mapbox GL JS 3.35.0 and keeps the compatibility renderer isolated", () => {
@@ -13,6 +15,8 @@ test("the app pins Mapbox GL JS 3.35.0 and keeps the compatibility renderer isol
   assert.match(html, /leaflet@1\.9\.4\/dist\/leaflet\.js/);
   assert.match(html, /js\/dante-map\.js/);
   assert.match(html, /js\/mapbox-config\.js/);
+  assert.match(html, /js\/dante-geocoding\.js/);
+  assert.match(html, /js\/geocoding-config\.js/);
 });
 
 test("passenger and driver maps use the shared adapter rather than direct Leaflet construction", () => {
@@ -41,15 +45,29 @@ test("all road routing is performed by Mapbox Directions without a LocationIQ fa
   assert.equal((html.match(/DanteMap\.getDrivingRoute\(points\)/g) || []).length, 2);
 });
 
+test("Geoapify handles address autocomplete and reverse geocoding for Argentina", () => {
+  assert.match(geocoding, /api\.geoapify\.com\/v1\/geocode\//);
+  assert.match(geocoding, /countrycode:ar/);
+  assert.match(geocoding, /Santa Rosa de Calamuchita, Córdoba, Argentina/);
+  assert.match(geocoding, /function normalizeFeature/);
+  assert.match(geocodingConfig, /window\.DANTE_GEOAPIFY_KEY = window\.DANTE_GEOAPIFY_KEY \|\| ''/);
+  assert.doesNotMatch(html, /api\.locationiq\.com\/v1\/(autocomplete|reverse)/);
+  assert.match(html, /DanteGeocoding\.reverse\(point\)/);
+  assert.match(html, /Calle cercana no disponible/);
+});
+
 test("the token is injected at runtime and no access token is committed in source", () => {
   assert.match(adapter, /window\.DANTE_MAPBOX_TOKEN/);
   assert.match(config, /window\.DANTE_MAPBOX_TOKEN = window\.DANTE_MAPBOX_TOKEN \|\| ''/);
   assert.doesNotMatch(config, /pk\.[A-Za-z0-9_-]{20,}/);
   assert.doesNotMatch(adapter, /pk\.[A-Za-z0-9_-]{20,}/);
+  assert.doesNotMatch(geocodingConfig, /[A-Fa-f0-9]{32,}/);
 });
 
 test("the Capacitor web copy includes both Mapbox runtime files", () => {
   assert.match(copyScript, /"js\/dante-map\.js"/);
   assert.match(copyScript, /"js\/mapbox-config\.js"/);
+  assert.match(copyScript, /"js\/dante-geocoding\.js"/);
+  assert.match(copyScript, /"js\/geocoding-config\.js"/);
   assert.match(copyScript, /new URL\("js\/", destinationDirectory\)/);
 });
