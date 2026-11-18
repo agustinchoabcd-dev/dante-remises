@@ -43,14 +43,6 @@ body.chat-screen-open #chat .chat-peer-menu{position:fixed!important;top:calc(en
 body.chat-screen-open #chat .chatbox,body.chat-screen-open #chat .chatbox *{transform:none!important}
 body.chat-screen-open .image-lightbox{z-index:10002!important}
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js"></script>
-<script src="js/mapbox-config.js"></script>
-<script src="js/geocoding-config.js"></script>
-<script src="js/dante-geocoding.js"></script>
-<script src="js/dante-map.js"></script>
 <style>
 .real-map{height:340px;border:1px solid #d5dfd8;border-radius:14px;overflow:hidden;margin:10px 0 14px;z-index:0}.map-search-results{position:relative;z-index:1001;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 20px #0002;max-height:190px;overflow:auto}.map-search-results button{display:block;width:100%;text-align:left;background:#fff;color:var(--ink);border-radius:0;border-bottom:1px solid var(--line);font-size:13px;font-weight:500}.map-search-results button:last-child{border-bottom:0}.map-search-results button:hover{background:#eef8f1}.map-tools{display:flex;gap:8px;flex-wrap:wrap}.map-tools button.active{background:#147342;color:#fff}.map-meta{background:#f7faf8;border:1px solid var(--line);padding:10px 12px;border-radius:10px;font-size:13px;margin:8px 0}.trip-request{border:1px solid #f2d49b;background:#fffaf0;border-radius:12px;padding:13px;margin:10px 0}.trip-request .actions{margin-top:8px}.trip-status{font-weight:750;color:#176b3a}.leaflet-container,.mapboxgl-map{font:inherit}.leaflet-control-attribution,.mapboxgl-ctrl-attrib{font-size:10px!important}.mapboxgl-ctrl-group{border-radius:10px!important;overflow:hidden;box-shadow:0 2px 10px #0003!important}.mapboxgl-ctrl-group button{min-width:30px;min-height:30px;padding:0}.driver-location-note{font-size:12px;color:var(--muted);margin:8px 0}
 :root:not([data-theme="light"]) .mapboxgl-canvas{filter:brightness(.78) saturate(.82) contrast(1.04)}
@@ -399,6 +391,12 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
 @media(prefers-reduced-motion:reduce){#chat .chat-mic-button.is-dragging{transition:none!important}}
 </style>
 
+<style id="dante-role-transition-styles">
+body.dante-role-transition main{visibility:hidden!important;pointer-events:none!important}
+body.dante-role-transition #settingsGearButton,
+body.dante-role-transition #logoutButton,
+body.dante-role-transition #staffEntryButton{visibility:hidden!important;pointer-events:none!important}
+</style>
 </head>
 <body>
 <div id="startupScreen" class="startup-screen" role="status" aria-live="polite" aria-label="Iniciando Dante Remises">
@@ -549,6 +547,9 @@ import { createAvailabilityRefreshScheduler } from "./availability-refresh.mjs";
 import { diagnostics } from "./diagnostics-monitor.mjs";
 import { installAppTelemetry } from "./app-telemetry.mjs";
 import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.mjs";
+import { activateRole } from "./role-runtime.mjs";
+import { createRoleTransitionController } from "./role-transition.mjs";
+import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
 import { ChatApiClient, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";
 import { chatHistoryCache } from "./chat-history-cache.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -556,6 +557,8 @@ import { getDatabase, ref, onValue as firebaseOnValue, get as firebaseGet, set a
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 perf.mark("app.module.start");
 diagnostics.mark("app.start");
+const roleTransition = createRoleTransitionController(document);
+const ensureMapRuntime = createMapRuntimeLoader();
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
  navigator.serviceWorker.register("./service-worker.js", { scope: "./" })
   .then(() => perf.mark("service-worker.registered"))
@@ -806,11 +809,30 @@ let selectedPassengerDriver=null,realMap=null,originPoint=null,destinationPoint=
 let driverTripMapInstance=null,driverTripMapTripId=null,processingNativeTripAction=false;
 let driverPresenceGeneration=0;
 const carMarkers={};
-function choosePassengerDriver(id){const c=cars[id];if(!c||!c.online||c.status!=='libre'){notify('Ese chofer ya no está disponible.');render('invalid-driver-selection');return}selectedPassengerDriver=id;byId('passengerDriverScreen').classList.add('hidden');byId('passengerTripScreen').classList.remove('hidden');byId('selectedDriverCard').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${esc(c.driver)}</div><div class="model">Coche ${c.id} · ${esc(c.model)}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;byId('requestResult').classList.add('hidden');byId('requestResult').textContent='';originPoint=null;destinationPoint=null;byId('origin').value='';byId('destination').value='';if(realMap){if(routeLayer){realMap.removeLayer(routeLayer);routeLayer=null}if(window.originMarker){realMap.removeLayer(window.originMarker);window.originMarker=null}if(window.destinationMarker){realMap.removeLayer(window.destinationMarker);window.destinationMarker=null}}initRealMap();watchSelectedDriver(id);}
+async function choosePassengerDriver(id){const c=cars[id];if(!c||!c.online||c.status!=='libre'){notify('Ese chofer ya no está disponible.');render('invalid-driver-selection');return}selectedPassengerDriver=id;byId('passengerDriverScreen').classList.add('hidden');byId('passengerTripScreen').classList.remove('hidden');byId('selectedDriverCard').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${esc(c.driver)}</div><div class="model">Coche ${c.id} · ${esc(c.model)}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;byId('requestResult').classList.add('hidden');byId('requestResult').textContent='';originPoint=null;destinationPoint=null;byId('origin').value='';byId('destination').value='';if(realMap){if(routeLayer){realMap.removeLayer(routeLayer);routeLayer=null}if(window.originMarker){realMap.removeLayer(window.originMarker);window.originMarker=null}if(window.destinationMarker){realMap.removeLayer(window.destinationMarker);window.destinationMarker=null}}await initRealMap();watchSelectedDriver(id);}
 byId('passengerCars').addEventListener('click',e=>{if(e.target.closest('.avatar'))return;const btn=e.target.closest('[data-driver-id]');if(btn&&!btn.disabled)choosePassengerDriver(btn.dataset.driverId)});
 byId('randomFreeDriver').addEventListener('click',()=>{refreshExpired();const available=Object.values(cars).filter(c=>c.online&&c.status==='libre');if(!available.length){notify('En este momento no hay choferes libres.');return}const chosen=available[Math.floor(Math.random()*available.length)];choosePassengerDriver(chosen.id)});
 byId('backToDrivers').addEventListener('click',()=>{stopPassengerLocationWatch();byId('passengerTripScreen').classList.add('hidden');byId('passengerDriverScreen').classList.remove('hidden');selectedPassengerDriver=null;originPoint=null;destinationPoint=null;});
-function initRealMap(){if(!window.DanteMap||(!window.L&&!window.mapboxgl)){notify('No se pudo cargar el motor del mapa. Revisá tu conexión.');return}if(!realMap){realMap=DanteMap.create(byId('realMap'),HOME_CENTER,14,LOCATIONIQ_KEY);realMap.onClick(point=>{if(!mapPickMode)return;const kind=mapPickMode;mapPickMode=null;const selected={lat:point.lat,lon:point.lon,label:'Buscando dirección…'};setPoint(kind,selected);void resolvePointAddress(kind,selected);byId('pickOrigin').classList.remove('active');byId('pickDestination').classList.remove('active')});}realMap.invalidateSize();}
+async function initRealMap(){
+ try{
+  await ensureMapRuntime();
+  if(!window.DanteMap||(!window.L&&!window.mapboxgl))throw new Error('MAP_RUNTIME_UNAVAILABLE');
+  if(!realMap){
+   realMap=DanteMap.create(byId('realMap'),HOME_CENTER,14,LOCATIONIQ_KEY);
+   realMap.onClick(point=>{
+    if(!mapPickMode)return;
+    const kind=mapPickMode;mapPickMode=null;
+    const selected={lat:point.lat,lon:point.lon,label:'Buscando dirección…'};
+    setPoint(kind,selected);void resolvePointAddress(kind,selected);
+    byId('pickOrigin').classList.remove('active');byId('pickDestination').classList.remove('active');
+   });
+  }
+  realMap.invalidateSize();
+ }catch(error){
+  console.error('No se pudo inicializar el mapa del pasajero:',error);
+  notify('No se pudo cargar el motor del mapa. Revisá tu conexión e intentá nuevamente.');
+ }
+}
 async function resolvePointAddress(kind,point){let label=null;try{label=await DanteGeocoding.reverse(point)}catch(error){console.warn('No se pudo resolver la dirección del punto seleccionado:',error)}const current=kind==='origin'?originPoint:destinationPoint;if(!current||Number(current.lat)!==Number(point.lat)||Number(current.lon)!==Number(point.lon))return;const updated={...current,label:label||'Calle cercana no disponible'};if(kind==='origin'){originPoint=updated;byId('origin').value=updated.label}else{destinationPoint=updated;byId('destination').value=updated.label}}
 function setPoint(kind,point){if(kind==='origin'){originPoint=point;byId('origin').value=point.label;setMarker('origin',point)}else{destinationPoint=point;byId('destination').value=point.label;setMarker('destination',point)}updateRoute();}
 function setMarker(kind,p){if(!realMap)return;if(kind==='origin'){if(window.originMarker)realMap.removeLayer(window.originMarker);window.originMarker=realMap.addMarker('origin',p,'Origen')}else{if(window.destinationMarker)realMap.removeLayer(window.destinationMarker);window.destinationMarker=realMap.addMarker('destination',p,'Destino')}if(window.originMarker&&window.destinationMarker)realMap.fitPoints([originPoint,destinationPoint],.2);else realMap.fitPoints([p])}
@@ -1202,6 +1224,7 @@ function renderDriverTripPreview(trip,id){
 function renderDriverTripMap(trip,id){
  const draw=async()=>{
   const node=byId('driverTripMap');if(!node)return;
+  try{await ensureMapRuntime()}catch(error){console.error('No se pudo cargar el mapa del viaje:',error);const status=byId('driverTripMapStatus');if(status)status.textContent='No se pudo cargar el motor del mapa. Revisá tu conexión.';return}
   if(!window.DanteMap||(!window.L&&!window.mapboxgl)){const status=byId('driverTripMapStatus');if(status)status.textContent='No se pudo cargar el motor del mapa. Revisá tu conexión.';return}
   if(driverTripMapInstance){try{driverTripMapInstance.remove()}catch{}driverTripMapInstance=null}
   driverTripMapTripId=id;
@@ -2442,7 +2465,16 @@ function renderBuildInfo(){const info=window.DANTE_BUILD_INFO||{};byId("infoHtml
 renderBuildInfo();
 let startupScreenFinished=false;
 function finishStartupScreen(){if(startupScreenFinished)return;startupScreenFinished=true;const screen=byId('startupScreen');if(screen){screen.classList.add('is-leaving');window.setTimeout(()=>screen.remove(),550)}}
-const startupSafetyTimer=window.setTimeout(()=>finishStartupScreen(),12000);
+let activeRoleTransitionToken=null;
+const startupSafetyTimer=window.setTimeout(()=>{
+ if(!startupAuthReady){
+  ['pasajero','chofer','central','chat','configuracion','passengerOnboarding','staffAccess'].forEach(id=>byId(id)?.classList.add('hidden'));
+  byId('acceso').classList.remove('hidden');
+  byId('authStatus').textContent='La sesión está tardando más de lo esperado. Comprobá tu conexión y recargá la app.';
+  if(activeRoleTransitionToken!==null)roleTransition.finish(activeRoleTransitionToken);
+ }
+ finishStartupScreen();
+},12000);
 let authStateGeneration=0;
 onAuthStateChanged(auth,async user=>{
  const previousMediaUid=currentUser?.uid||'';
@@ -2452,6 +2484,9 @@ onAuthStateChanged(auth,async user=>{
   void mediaCache.clearPrivate(previousMediaUid).catch(error=>console.warn('No se pudo limpiar la caché privada de la cuenta anterior:',error?.name||'Error'));
  }
  const authGeneration=++authStateGeneration;
+ const transitionToken=roleTransition.begin();
+ activeRoleTransitionToken=transitionToken;
+ closeChatScreen();
  passengerPhotoLoadVersion++;chatPeerAvatarLoadVersion++;
  perf.mark("auth.callback.start");
  stopStaffPhotosSync();
@@ -2464,10 +2499,14 @@ onAuthStateChanged(auth,async user=>{
  currentUser=user;currentRole=null;activeTripRestoreVersion++;if(!user){activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden')}
  if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';await signOut(auth);notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
  byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
- if(user&&!currentRole&&registrationInProgress)return;
+ if(user&&!currentRole&&registrationInProgress){
+  ['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));
+  byId('acceso').classList.remove('hidden');
+  roleTransition.finish(transitionToken);
+  return;
+ }
  if(user&&!currentRole){byId('authStatus').textContent='Cuenta sin rol asignado. Contactá a Agustín.';await signOut(auth);notify('Esta cuenta no está habilitada en Dante Remises.');return}
- if(user){if(currentRole.role==='operator')startOperatorPresence();diagnostics.mark("firebase.presence.listener.attached");driverPresenceUnsub=onValue(ref(db,'driverPresence'),snap=>{latestDriverPresence=snap.val()||{};refreshCarPresenceFromSnapshot();diagnostics.mark("firebase.presence.snapshot",{summary:initial.map(x=>x.id+":"+(cars[x.id].online?"1":"0")).join("|")});if(selectedPassengerDriver&&!cars[selectedPassengerDriver]?.online){stopPassengerLocationWatch();byId('driverLocationNote').textContent='El chofer se desconectó; su ubicación y disponibilidad ya no están disponibles.'}render('driver-presence')},error=>{diagnostics.mark("firebase.presence.error",{code:error?.code||"",name:error?.name||"Error"});console.error('No se pudo consultar la presencia de los choferes:',error);latestDriverPresence={};refreshCarPresenceFromSnapshot();render('driver-presence-error')});if(['driver','admin'].includes(currentRole.role)){const connectedRef=ref(db,'.info/connected');driverConnectionUnsub=onValue(connectedRef,snapshot=>{if(snapshot.val()!==true||currentUser?.uid!==user.uid||!['driver','admin'].includes(currentRole?.role))return;void registerDriverPresence(user,currentRole).then(()=>{perf.mark('auth.driver-presence.done');diagnostics.mark('firebase.presence.registered',{carId:currentRole?.carId||(currentRole?.role==='admin'?'144':'')});void diagnostics.flush()}).catch(error=>{diagnostics.mark('firebase.presence.error',{code:error?.code||'',name:error?.name||'Error'});console.error('No se pudo registrar la presencia del chofer:',error);notify('No se pudo confirmar tu conexión como chofer. No recibirás solicitudes hasta reconectar.')})})}}else{latestDriverPresence={};refreshCarPresenceFromSnapshot();render('unspecified')}
- if(user&&currentRole?.role==='passenger'){passengerPhotoReady=false;byId('pasajero').classList.add('hidden');byId('configuracion').classList.remove('hidden')}
+ if(user){diagnostics.mark("firebase.presence.listener.attached");driverPresenceUnsub=onValue(ref(db,'driverPresence'),snap=>{latestDriverPresence=snap.val()||{};refreshCarPresenceFromSnapshot();diagnostics.mark("firebase.presence.snapshot",{summary:initial.map(x=>x.id+":"+(cars[x.id].online?"1":"0")).join("|")});if(selectedPassengerDriver&&!cars[selectedPassengerDriver]?.online){stopPassengerLocationWatch();byId('driverLocationNote').textContent='El chofer se desconectó; su ubicación y disponibilidad ya no están disponibles.'}render('driver-presence')},error=>{diagnostics.mark("firebase.presence.error",{code:error?.code||"",name:error?.name||"Error"});console.error('No se pudo consultar la presencia de los choferes:',error);latestDriverPresence={};refreshCarPresenceFromSnapshot();render('driver-presence-error')});if(['driver','admin'].includes(currentRole.role)){const connectedRef=ref(db,'.info/connected');driverConnectionUnsub=onValue(connectedRef,snapshot=>{if(snapshot.val()!==true||currentUser?.uid!==user.uid||!['driver','admin'].includes(currentRole?.role))return;void registerDriverPresence(user,currentRole).then(()=>{perf.mark('auth.driver-presence.done');diagnostics.mark('firebase.presence.registered',{carId:currentRole?.carId||(currentRole?.role==='admin'?'144':'')});void diagnostics.flush()}).catch(error=>{diagnostics.mark('firebase.presence.error',{code:error?.code||'',name:error?.name||'Error'});console.error('No se pudo registrar la presencia del chofer:',error);notify('No se pudo confirmar tu conexión como chofer. No recibirás solicitudes hasta reconectar.')})})}}else{latestDriverPresence={};refreshCarPresenceFromSnapshot();render('unspecified')}
  const roleText=!user?'Sesión cerrada.':currentRole.role==='admin'?'Administrador total y chofer · '+currentRole.name:currentRole.role==='driver'?'Chofer · Coche '+currentRole.carId+' · '+currentRole.name:currentRole.role==='operator'?'Operador · '+currentRole.name:'Pasajero · '+currentRole.name;
  if(user){const pendingWelcome=sessionStorage.getItem('danteWelcomeName');if(pendingWelcome){sessionStorage.removeItem('danteWelcomeName')}}
  byId('staffAccess').classList.toggle('hidden',!!user);byId('staffEntryButton').classList.toggle('hidden',!!user);byId('settingsGearButton').classList.toggle('hidden',!user);
@@ -2486,20 +2525,78 @@ onAuthStateChanged(auth,async user=>{
  byId('central').classList.toggle('hidden',!user||!['admin','operator'].includes(currentRole.role));
  byId('chat').classList.toggle('hidden',!user);
  byId('configuracion').classList.toggle('hidden',!user);
- if(user){configurePersonalization();if(currentRole?.role==='passenger'){passengerPhotoReady=false;await loadPassengerPhoto();}}perf.mark('auth.photo-stage.done');
- document.querySelector('[data-view=\"chofer\"]').classList.toggle('hidden',!user||!['driver','admin'].includes(currentRole.role));
- document.querySelector('[data-view=\"central\"]').classList.toggle('hidden',!user||!['admin','operator'].includes(currentRole.role));
+ if(user)configurePersonalization();
+ perf.mark('auth.photo-stage.done');
+ byId('central').classList.toggle('hidden',!user||!['admin','operator'].includes(currentRole.role));
  byId('passengerAdmin').classList.toggle('hidden',!user||currentRole.role!=='admin');
- if(user&&currentRole.role==='admin'){try{const profSnap=await get(ref(db,'profiles'));const profiles=profSnap.val()||{};const entries=Object.values(profiles);byId('passengerList').innerHTML=entries.length?entries.map(p=>`<div class="choice-card"><strong>${esc((p.name||'')+' '+(p.lastName||''))}</strong><div class="muted">DNI: ${esc(p.dni||'—')} · Teléfono: ${esc(p.phone||'No informado')}</div></div>`).join(''):'Todavía no hay pasajeros registrados.'; }catch(e){byId('passengerList').textContent='No se pudieron consultar los perfiles. Revisá las reglas de Firebase.'}}
- perf.mark('auth.admin-profiles-stage.done');
- if(user&&!remoteReady&&currentRole.role==='admin'){try{const snap=await get(carsRef);const data=snap.val()||{};for(const x of initial){if(!data[x.id]){await update(ref(db,'cars/'+x.id),{driver:x.driver,model:x.model,status:'libre',until:null,indefinite:false,updatedAt:Date.now()})}}}catch(err){console.error(err);notify('No se pudo inicializar la base. Revisá las reglas de Firebase.')}}
- byId('adminTripAlertPanel')?.classList.toggle('hidden',currentRole?.role!=='admin');
- if(currentRole?.role==='operator')showView('central');else if(currentRole?.role==='driver')showView('chofer');else if(currentRole?.role==='admin')showView('central');else if(currentRole?.role==='passenger'){if(passengerPhotoReady)showView('pasajero');else showPassengerOnboarding();}
- if(user&&['driver','admin'].includes(currentRole.role)){void syncDriverPushRegistration(user,currentRole);listenDriverInbox();await restoreDriverActiveTrip();startDriverGps();await processPendingTripAction()}else{stopDriverGps();if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}}
- perf.mark('auth.trip-restore-stage.done');
+
+ let roleActivation=null;
+ if(user){
+  try{
+   roleActivation=await activateRole(currentRole.role,{
+    user,
+    role:currentRole,
+    loadPassengerPhoto:async()=>{passengerPhotoReady=false;return await loadPassengerPhoto()},
+    showView,
+    showPassengerOnboarding,
+    startOperatorPresence,
+    syncDriverPushRegistration,
+    listenDriverInbox,
+    restoreDriverActiveTrip,
+    startDriverGps,
+    processPendingTripAction,
+    loadAdminProfiles:async()=>{
+     try{
+      const profSnap=await get(ref(db,'profiles'));
+      const profiles=profSnap.val()||{};
+      const entries=Object.values(profiles);
+      byId('passengerList').innerHTML=entries.length?entries.map(p=>'<div class="choice-card"><strong>'+esc((p.name||'')+' '+(p.lastName||''))+'</strong><div class="muted">DNI: '+esc(p.dni||'—')+' · Teléfono: '+esc(p.phone||'No informado')+'</div></div>').join(''):'Todavía no hay pasajeros registrados.';
+     }catch(error){
+      byId('passengerList').textContent='No se pudieron consultar los perfiles. Revisá las reglas de Firebase.';
+      console.error('No se pudieron cargar los perfiles para administración:',error);
+     }
+     perf.mark('auth.admin-profiles-stage.done');
+    },
+    initializeAdminCars:async()=>{
+     if(!remoteReady){
+      try{
+       const snap=await get(carsRef),data=snap.val()||{};
+       for(const item of initial){
+        if(!data[item.id])await update(ref(db,'cars/'+item.id),{driver:item.driver,model:item.model,status:'libre',until:null,indefinite:false,updatedAt:Date.now()});
+       }
+      }catch(error){
+       console.error(error);
+       notify('No se pudo inicializar la base. Revisá las reglas de Firebase.');
+      }
+     }
+     perf.mark('auth.admin-cars-stage.done');
+    },
+    setAdminTripAlertPanel:enabled=>byId('adminTripAlertPanel')?.classList.toggle('hidden',!enabled)
+   });
+  }catch(error){
+   console.error('No se pudo activar el módulo del rol:',error);
+   byId('authStatus').textContent='No se pudo cargar tu espacio de trabajo. Intentá nuevamente.';
+   ['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));
+   byId('acceso').classList.remove('hidden');
+   roleTransition.finish(transitionToken);
+   await signOut(auth);
+   notify('No se pudo preparar la pantalla correspondiente a tu cuenta.');
+   return;
+  }
+ }else{
+  stopDriverGps();
+  if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}
+ }
+
+ if(authGeneration!==authStateGeneration)return;
  render('auth-complete');
  perf.mark('auth.callback.done');
-startupAuthReady=true;if(startupBrandingReady){window.clearTimeout(startupSafetyTimer);finishStartupScreen()}
+ if(!roleTransition.finish(transitionToken))return;
+ startupAuthReady=true;
+ if(startupBrandingReady){window.clearTimeout(startupSafetyTimer);finishStartupScreen()}
+ if(roleActivation?.background){
+  void Promise.resolve(roleActivation.background).catch(error=>console.error('Falló una tarea secundaria del rol:',error));
+ }
 });
 let carsFirstSnapshot=true;
 const carsListenerStartedAt=Date.now();
