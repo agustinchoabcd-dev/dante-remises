@@ -548,6 +548,7 @@ import { diagnostics } from "./diagnostics-monitor.mjs";
 import { installAppTelemetry } from "./app-telemetry.mjs";
 import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.mjs";
 import { activateRole } from "./role-runtime.mjs";
+import { canAccessRoleView } from "./role-view-access.mjs";
 import { createRoleTransitionController } from "./role-transition.mjs";
 import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
 import { createChatRuntimeLoader } from "./chat-runtime-loader.mjs";
@@ -1137,16 +1138,16 @@ function showView(v){
  diagnostics.mark("ui.view",{view:v});
  if(v!=='chat')closeChatScreen();
  if(v==='pasajero'&&currentRole?.role==='passenger'&&!passengerPhotoReady){showPassengerOnboarding();return}
- if(v==='configuracion'&&!currentUser){notify('Iniciá sesión para acceder a Configuración.');return}
- if(v==='chofer'&&(!currentRole||!['admin','driver'].includes(currentRole.role))){notify('Esta sección es exclusiva del personal.');return}
- if(v==='central'&&(!currentRole||!['admin','operator'].includes(currentRole.role))){notify('Esta sección requiere acceso de personal.');return}
- if(v==='chofer'&&!currentRole){notify('Iniciá sesión para acceder al panel del personal.')}
+ if(!canAccessRoleView(currentRole?.role,v)){notify('No tenés permiso para acceder a esta pantalla.');return}
  if(v==='configuracion'&&currentRole?.role==='passenger')byId('passengerPhotoSettingsContainer').appendChild(byId('passengerPhotoCard'));else byId('passengerPhotoCardHome').appendChild(byId('passengerPhotoCard'));
  byId('logoutButton').classList.toggle('hidden',!currentUser);
  byId('settingsGearButton').classList.toggle('hidden',!currentUser);
  byId('tripAlertPermissionsCard').classList.toggle('hidden',!isNativePlatform()||!['driver','admin'].includes(currentRole?.role));
  byId('passengerOnboarding').classList.add('hidden');
- document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===v));
+ document.querySelectorAll('.tab').forEach(x=>{
+  x.classList.toggle('hidden',!canAccessRoleView(currentRole?.role,x.dataset.view));
+  x.classList.toggle('active',x.dataset.view===v);
+ });
  ['pasajero','chofer','central','chat','configuracion'].forEach(id=>byId(id).classList.toggle('hidden',id!==v));
  const greetingView=currentRole?.role==='passenger'?v==='pasajero':currentRole?.role==='driver'?v==='chofer':currentRole?.role==='operator'?v==='central':currentRole?.role==='admin'?(v==='central'||v==='chofer'):false;
  byId('postLoginGreeting').classList.toggle('hidden',!greetingView);
@@ -2570,14 +2571,15 @@ onAuthStateChanged(auth,async user=>{
  byId('centralDescription').textContent=currentRole?.role==='operator'?'Panel de operador: consulta de disponibilidad. No podés modificar estados.': 'Panel de administración total.';
  if(user&&currentRole.role==='driver')activeDriver=currentRole.carId;
  if(user&&currentRole.role==='admin')activeDriver='144';
- byId('acceso').classList.toggle('hidden',!!user);if(!user){byId('staffAccess').classList.add('hidden');byId('passengerOnboarding').classList.add('hidden');byId('pasajero').classList.add('hidden');byId('staffEntryButton').classList.remove('hidden')}
- document.querySelectorAll('.tabs').forEach(el=>el.classList.toggle('hidden',!user));
- byId('pasajero').classList.toggle('hidden',!user);
- byId('chofer').classList.toggle('hidden',!user||!['driver','admin'].includes(currentRole.role));
- byId('central').classList.toggle('hidden',!user||!['admin','operator'].includes(currentRole.role));
- byId('chat').classList.toggle('hidden',!user);
- byId('configuracion').classList.toggle('hidden',!user);
- if(user)configurePersonalization();
+ byId('acceso').classList.toggle('hidden',!!user);
+  if(!user){
+   byId('staffAccess').classList.add('hidden');
+   byId('staffEntryButton').classList.remove('hidden');
+  }
+  document.querySelectorAll('.tabs').forEach(el=>el.classList.toggle('hidden',!user));
+  // Todas las vistas comienzan ocultas; el módulo del rol habilita solo su pantalla.
+  ['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));
+  if(user)configurePersonalization();
  perf.mark('auth.photo-stage.done');
  byId('central').classList.toggle('hidden',!user||!['admin','operator'].includes(currentRole.role));
  byId('passengerAdmin').classList.toggle('hidden',!user||currentRole.role!=='admin');
