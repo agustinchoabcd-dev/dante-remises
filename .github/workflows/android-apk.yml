@@ -12,6 +12,8 @@ on:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
       - 'role-template-loader.mjs'
+      - 'role-dom-bindings.mjs'
+      - 'role-dom-bindings.test.mjs'
       - 'role-template-loader.test.mjs'
       - 'role-architecture.test.mjs'
       - 'views/**'
@@ -137,6 +139,7 @@ jobs:
           node --check role-runtime.mjs
           node --check role-view-access.mjs
           node --check role-template-loader.mjs
+          node --check role-dom-bindings.mjs
           node --check map-runtime-loader.mjs
           node --check chat-runtime-loader.mjs
           node --check roles/passenger.mjs
@@ -149,7 +152,7 @@ jobs:
           node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
           node --check scripts/patch-android-trip-alerts.mjs
-          node --test role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs role-view-access.test.mjs role-template-loader.test.mjs role-architecture.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
+          node --test role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs role-view-access.test.mjs role-template-loader.test.mjs role-dom-bindings.test.mjs role-architecture.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
