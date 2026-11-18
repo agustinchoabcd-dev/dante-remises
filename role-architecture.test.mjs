@@ -98,6 +98,7 @@ test("auth callback hides role views before asynchronous cleanup and activation"
   assert.ok(hideIndex < asyncCleanup);
   assert.ok(hideIndex < roleActivation);
   assert.ok(callback.indexOf("roleTemplateLoader.unmount()") < callback.indexOf("await stopOperatorPresence()"));
+  assert.ok(callback.indexOf("roleTemplateLoader.unmount()") < callback.indexOf("await stopOperatorPresence()"));
 
   for (const view of ["pasajero", "chofer", "central", "chat", "configuracion", "passengerOnboarding"]) {
     assert.ok(roleViewAccess.includes('"' + view + '"'), "Missing role view in visibility controller: " + view);
