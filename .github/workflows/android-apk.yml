@@ -28,6 +28,7 @@ on:
       - chat-media-integration
       - chat-ui-fixes-4b564f
       - trip-request-alerts
+      - mapbox-migration-prototype
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
@@ -44,6 +45,9 @@ on:
       - 'media-cache.mjs'
       - 'service-worker.js'
       - 'scripts/copy-web.mjs'
+      - 'js/dante-map.js'
+      - 'js/mapbox-config.js'
+      - 'prototypes/mapbox/**'
 
 permissions:
   contents: read
@@ -236,6 +240,21 @@ jobs:
 
       - name: Install JavaScript dependencies
         run: npm install --include=optional
+
+      - name: Inject Mapbox public token for the experimental migration build
+        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype'
+        env:
+          MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          const token = process.env.MAPBOX_PUBLIC_TOKEN || '';
+          if (!token.startsWith('pk.') || token.length < 30) {
+            throw new Error('Missing or invalid MAPBOX_PUBLIC_TOKEN. Add the public pk.* token as a repository Actions secret; no token is written to Git.');
+          }
+          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(token) + ';\\n', {encoding:'utf8'});
+          console.log('Mapbox public token injected into this build only.');
+          NODE
 
       - name: Copy web application into Capacitor assets
         run: npm run copy:web
