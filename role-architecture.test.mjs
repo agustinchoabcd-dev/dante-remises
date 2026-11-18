@@ -70,7 +70,12 @@ test("auth callback keeps every role screen hidden until the selected role activ
   }
 });
 
-test("screen navigation checks the role policy and hides unauthorized tabs", () => {
-  assert.match(html, /if\(!canAccessRoleView\(currentRole\?\.role,v\)\)/);
-  assert.match(html, /x\.classList\.toggle\('hidden',!canAccessRoleView\(currentRole\?\.role,x\.dataset\.view\)\)/);
+test("role view controller is the only path that activates a workspace", () => {
+  const callbackStart = html.indexOf("onAuthStateChanged(auth,async user=>{");
+  const callbackEnd = html.indexOf("\\n});", callbackStart);
+  const callback = html.slice(callbackStart, callbackEnd);
+  assert.match(callback, /hideRoleViews\(document\)/);
+  assert.match(html, /applyRoleView\(document,currentRole\?\.role,v\)/);
+  assert.doesNotMatch(callback, /byId\(['"](?:pasajero|chofer|central|chat|configuracion)['"]\)\.classList\.toggle\(['"]hidden['"]/);
+  assert.doesNotMatch(callback, /byId\(['"]central['"]\)\.classList\.remove\(['"]hidden['"]/);
 });
