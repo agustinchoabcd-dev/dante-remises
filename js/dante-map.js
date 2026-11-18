@@ -219,35 +219,22 @@
     return new LeafletAdapter(container, center, zoom, locationIqKey);
   }
 
-  async function getDrivingRoute(points, locationIqKey) {
+  async function getDrivingRoute(points) {
     if (!Array.isArray(points) || points.length < 2 || points.some(point => !validPoint(point))) {
       throw new Error('Se necesitan al menos dos puntos válidos para calcular la ruta.');
     }
+    if (!MAPBOX_TOKEN) throw new Error('MAPBOX_TOKEN_NOT_CONFIGURED');
     const coordinates = points.map(point => Number(point.lon) + ',' + Number(point.lat)).join(';');
-    let mapboxError = null;
-    if (MAPBOX_TOKEN) {
-      try {
-        const url = 'https://api.mapbox.com/directions/v5/mapbox/driving/' + coordinates +
-          '?alternatives=false&geometries=geojson&overview=full&steps=false&access_token=' +
-          encodeURIComponent(MAPBOX_TOKEN);
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Mapbox Directions ' + response.status);
-        const data = await response.json();
-        if (data.code !== 'Ok' || !data.routes?.[0]) throw new Error(data.message || 'Mapbox no devolvió una ruta.');
-        return {...data.routes[0], provider:'Mapbox'};
-      } catch (error) {
-        mapboxError = error;
-        console.warn('Mapbox Directions no respondió; se intentará LocationIQ:', error);
-      }
-    }
-    const url = 'https://us1.locationiq.com/v1/directions/driving/' + coordinates +
-      '?key=' + encodeURIComponent(locationIqKey) + '&overview=full&geometries=geojson&steps=false';
+    const url = 'https://api.mapbox.com/directions/v5/mapbox/driving/' + coordinates +
+      '?alternatives=false&geometries=geojson&overview=full&steps=false&access_token=' +
+      encodeURIComponent(MAPBOX_TOKEN);
     const response = await fetch(url);
-    if (!response.ok) throw new Error('No se pudo calcular la ruta con Mapbox ni LocationIQ (' + response.status + ').');
+    if (!response.ok) throw new Error('Mapbox Directions ' + response.status);
     const data = await response.json();
-    const route = data.routes?.[0];
-    if (!route) throw mapboxError || new Error('No se encontró ruta.');
-    return {...route, provider:'LocationIQ'};
+    if (data.code !== 'Ok' || !data.routes?.[0]) {
+      throw new Error(data.message || 'Mapbox no devolvió una ruta.');
+    }
+    return {...data.routes[0], provider:'Mapbox'};
   }
 
   window.DanteMap = Object.freeze({
