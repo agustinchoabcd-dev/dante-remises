@@ -53,3 +53,24 @@ test("service worker does not pre-download the map engine and caches app modules
   assert.match(serviceWorker, /url\.origin === self\.location\.origin/);
   assert.ok(serviceWorker.includes('/\\.(?:mjs|js)$/.test(url.pathname)'));
 });
+
+test("auth callback keeps every role screen hidden until the selected role activates", () => {
+  const authStart = html.indexOf("onAuthStateChanged(auth,async user=>{");
+  const hiddenReset = html.indexOf("['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach", authStart);
+  const roleActivation = html.indexOf("roleActivation=await activateRole(currentRole.role", authStart);
+
+  assert.notEqual(authStart, -1);
+  assert.notEqual(hiddenReset, -1);
+  assert.notEqual(roleActivation, -1);
+  assert.ok(hiddenReset < roleActivation);
+
+  const reset = html.slice(hiddenReset, roleActivation);
+  for (const view of ["pasajero", "chofer", "central", "chat", "configuracion", "passengerOnboarding"]) {
+    assert.ok(reset.includes(view), "Missing hidden initial state for " + view);
+  }
+});
+
+test("screen navigation checks the role policy and hides unauthorized tabs", () => {
+  assert.match(html, /if\(!canAccessRoleView\(currentRole\?\.role,v\)\)/);
+  assert.match(html, /x\.classList\.toggle\('hidden',!canAccessRoleView\(currentRole\?\.role,x\.dataset\.view\)\)/);
+});
