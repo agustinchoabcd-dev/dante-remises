@@ -7,7 +7,7 @@ Esta rama integra la primera capa de migración dentro de la aplicación real, s
 - Mapbox GL JS fijado en la versión 3.35.0 para renderizado vectorial.
 - Adaptador común en `js/dante-map.js` para inicialización, eventos de toque, marcadores, marcador GPS, rutas GeoJSON, encuadre, resize y destrucción.
 - Leaflet 1.9.4 + tiles LocationIQ como fallback cuando no hay token Mapbox, no carga GL JS o WebGL no es compatible.
-- Mapbox Directions con el perfil `mapbox/driving`; si la llamada falla o el token no está configurado, el adaptador recurre al endpoint Directions actual de LocationIQ.
+- Mapbox Directions con el perfil `mapbox/driving` es ahora el único motor de rutas. Si falta el token o falla la API, la aplicación informa que no pudo calcular la ruta; no consume LocationIQ como respaldo.
 - LocationIQ sigue a cargo de autocomplete y reverse geocoding para Argentina.
 - Las vistas de pasajero y chofer usan el mismo adaptador. No se cambió el esquema de viajes ni Firebase.
 - El cálculo de ruta del pasajero descarta respuestas antiguas si el usuario cambia origen/destino mientras la solicitud está en curso.
@@ -38,3 +38,4 @@ Estas pruebas son estructurales. No prueban el renderizado WebGL real ni sustitu
 4. Revisar rendimiento, memoria, rotación, segundo plano, atribución y comportamiento sin conexión.
 5. Confirmar la política de retención de los resultados del geocoder antes de modificar su uso o persistencia.
 6. Mantener la rama experimental sin merge hasta la aprobación explícita de Agustín.
+7. El autocompletado y la geocodificación inversa siguen temporalmente en LocationIQ; su reemplazo requiere elegir un proveedor que permita almacenar resultados y tenga cobertura comprobada en Calamuchita.
