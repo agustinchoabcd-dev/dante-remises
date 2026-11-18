@@ -2,11 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [html, copyScript, serviceWorker, roleViewAccess] = await Promise.all([
+const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate] = await Promise.all([
   readFile(new URL("./index.html", import.meta.url), "utf8"),
   readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8"),
   readFile(new URL("./service-worker.js", import.meta.url), "utf8"),
-  readFile(new URL("./role-view-access.mjs", import.meta.url), "utf8")
+  readFile(new URL("./role-view-access.mjs", import.meta.url), "utf8"),
+  readFile(new URL("./role-template-loader.mjs", import.meta.url), "utf8"),
+  readFile(new URL("./views/passenger.html", import.meta.url), "utf8")
 ]);
 
 test("auth transition lock is applied before asynchronous account cleanup", () => {
@@ -38,6 +40,8 @@ test("all dynamically imported runtime modules are included in the Capacitor web
     "role-transition.mjs",
     "role-runtime.mjs",
     "role-view-access.mjs",
+    "role-template-loader.mjs",
+    "views/passenger.html",
     "map-runtime-loader.mjs",
     "chat-runtime-loader.mjs",
     "roles/passenger.mjs",
@@ -52,7 +56,12 @@ test("all dynamically imported runtime modules are included in the Capacitor web
 test("service worker does not pre-download the map engine and caches app modules on demand", () => {
   assert.doesNotMatch(serviceWorker, /STATIC_ASSETS/);
   assert.match(serviceWorker, /url\.origin === self\.location\.origin/);
-  assert.ok(serviceWorker.includes('/\\.(?:mjs|js)$/.test(url.pathname)'));
+  assert.ok(serviceWorker.includes('/\\.(?:mjs|js|html)$/.test(url.pathname)'));
+  assert.ok(roleTemplateLoader.includes('passenger: "./views/passenger.html"'));
+  assert.ok(roleTemplateLoader.includes("requestGeneration !== generation"));
+  assert.ok(passengerTemplate.includes('id="pasajero"'));
+  assert.ok(passengerTemplate.includes('id="passengerOnboarding"'));
+  assert.ok(!passengerTemplate.includes('id="central"'));
 });
 
 test("auth callback hides role views before asynchronous cleanup and activation", () => {
