@@ -59,3 +59,27 @@ test("operator activation does not load driver operations", async () => {
   await result.background;
   assert.deepEqual(calls, ["view:central", "operator-presence"]);
 });
+
+test("admin activation keeps central tools and the car 144 driver runtime", async () => {
+  const calls = [];
+  const result = await activateRole("admin", {
+    user: { uid: "admin-1" },
+    role: { role: "admin", carId: "144" },
+    showView: view => calls.push("view:" + view),
+    setAdminTripAlertPanel: enabled => calls.push("admin-alerts:" + enabled),
+    loadAdminProfiles: async () => calls.push("profiles"),
+    initializeAdminCars: async () => calls.push("cars"),
+    syncDriverPushRegistration: () => calls.push("push"),
+    listenDriverInbox: () => calls.push("inbox"),
+    restoreDriverActiveTrip: async () => calls.push("restore"),
+    startDriverGps: () => calls.push("gps"),
+    processPendingTripAction: async () => calls.push("pending")
+  });
+
+  assert.equal(result.view, "central");
+  await result.background;
+  assert.deepEqual(calls, [
+    "view:central", "admin-alerts:true", "profiles", "cars",
+    "push", "inbox", "restore", "gps", "pending"
+  ]);
+});
