@@ -829,6 +829,7 @@ byId('requestSelectedDriver').addEventListener('click',async()=>{
  if(!c||!c.online||c.status!=='libre'){notify('El chofer seleccionado ya no está disponible o se desconectó.');return}
  if(!passengerPhotoReady){showView('configuracion');notify('Primero completá y comprobá tu foto de perfil.');return}
  if(!originPoint||!destinationPoint){notify('Seleccioná el origen y el destino, usando el GPS, el buscador o el mapa.');return}
+  if(originPoint.label==='Buscando dirección…'||destinationPoint.label==='Buscando dirección…'){notify('Esperá a que se resuelva la dirección del punto seleccionado.');return}
  const driverUid=driverUidForCar(c.id);
  if(!driverUid){notify('No se encontró la cuenta del chofer seleccionado.');return}
  let serverCarStatus=null,serverPresence=null;
