@@ -38,7 +38,7 @@ button.secondary{background:#e8edf1;color:#182230}button:disabled{opacity:.5}
     <button id="show-token" class="secondary">Mostrar token</button>
   </div>
   <p class="muted">El token se conserva sólo en memoria durante esta sesión: no se guarda en el dispositivo ni se envía a Dante Remises.</p>
-  <div class="notice">Cada inicialización de un mapa Mapbox GL JS cuenta como una carga. Evitá pulsar Cargar repetidamente: cerrar y volver a crear el mapa puede consumir otra carga.</div>
+  <div class="notice">Este prototipo permite un solo intento de inicialización por sesión. Recargar la página reinicia el bloqueo y puede generar otra carga facturable; no recargues para reintentar.</div>
 </section>
 <section class="panel">
   <div id="status" role="status" aria-live="polite">Esperando token. Todavía no se realizó ninguna solicitud a Mapbox.</div>
