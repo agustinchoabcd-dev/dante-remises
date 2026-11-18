@@ -160,7 +160,7 @@ html[data-theme="dark"] .msg.mine{background:linear-gradient(135deg,#174b34,#1d6
 .whatsapp-entry{background:var(--greenbg);color:var(--green);border:1px solid color-mix(in srgb,var(--green) 22%,transparent);box-shadow:0 5px 16px rgba(8,123,82,.1);transition:transform .25s,box-shadow .25s}
 .whatsapp-entry:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 10px 24px rgba(8,123,82,.18)}
 .footer{opacity:.8}
-main>section:not(.hidden){animation:screen-in .42s cubic-bezier(.2,.75,.25,1) both}
+main>section:not(.hidden),#roleViewMount>section:not(.hidden){animation:screen-in .42s cubic-bezier(.2,.75,.25,1) both}
 .grid>.card,.grid>.driver-choice{animation:card-in .42s cubic-bezier(.2,.75,.25,1) both}
 .grid>*:nth-child(2){animation-delay:45ms}.grid>*:nth-child(3){animation-delay:90ms}.grid>*:nth-child(4){animation-delay:135ms}
 .card h3:first-child{margin-top:2px}
@@ -296,7 +296,7 @@ header .brand-wrap .brand-logo{width:100px!important;height:100px!important;min-
 .visual-effect-option input:disabled{opacity:.42;cursor:not-allowed}
 html.dante-effects-off *,html.dante-effects-off *::before,html.dante-effects-off *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 html.dante-transitions-off *,html.dante-transitions-off *::before,html.dante-transitions-off *::after{transition:none!important;scroll-behavior:auto!important}
-html.dante-transitions-off main>section:not(.hidden){animation:none!important}
+html.dante-transitions-off main>section:not(.hidden),html.dante-transitions-off #roleViewMount>section:not(.hidden){animation:none!important}
 html.dante-micro-off button:not(:disabled),html.dante-micro-off .card,html.dante-micro-off .panel,html.dante-micro-off .driver-choice{transition:none!important}
 html.dante-micro-off button:not(:disabled):active{transform:none!important}
 /* Scroll de página: solo vertical; el fondo no participa del gesto horizontal. */
@@ -417,28 +417,7 @@ body.dante-role-transition #imageLightbox{visibility:hidden!important;pointer-ev
 <button class="tab" data-view="chat">Chat</button>
 </nav>
 <div class="post-login-greeting hidden" id="postLoginGreeting"></div>
-<section id="pasajero" class="hidden">
-<div id="passengerDriverScreen">
-<h2>Elegí tu chofer</h2><p class="muted">Seleccioná un remisero disponible para continuar con tu solicitud.</p>
-<div class="actions" style="margin:0 0 14px"><button class="secondary" id="randomFreeDriver" type="button">🎲 Cualquier chofer libre</button></div>
-<div class="grid" id="passengerCars"></div>
-</div>
-<div id="passengerTripScreen" class="hidden">
-<button class="secondary" id="backToDrivers" type="button">← Volver a los choferes</button>
-<div class="card panel" style="margin-top:12px" id="selectedDriverCard"></div>
-<div class="card panel" style="margin-top:14px"><h3>Tu viaje</h3>
-<div class="field"><label for="origin">Lugar de partida</label><input id="origin" autocomplete="off" placeholder="Escribí una dirección o elegí en el mapa"><div id="originResults" class="map-search-results hidden"></div></div>
-<div class="actions map-tools"><button type="button" class="secondary" id="useMyLocation">📍 Usar mi ubicación actual</button><button type="button" class="secondary" id="pickOrigin">Marcar origen en el mapa</button></div>
-<div class="field"><label for="destination">Destino</label><input id="destination" autocomplete="off" placeholder="Escribí una dirección o lugar"><div id="destinationResults" class="map-search-results hidden"></div></div>
-<div class="actions map-tools"><button type="button" class="secondary" id="pickDestination">Marcar destino en el mapa</button></div>
-<h3>Mapa y recorrido</h3><div id="realMap" class="real-map" aria-label="Mapa interactivo de Dante Remises"></div>
-<div id="routeSummary" class="map-meta">Elegí el origen y el destino para calcular el recorrido.</div>
-<div id="driverLocationNote" class="driver-location-note">La ubicación del coche aparecerá cuando esté disponible.</div><div class="hint">Búsqueda de direcciones por <a href="https://www.geoapify.com" target="_blank" rel="noopener">Geoapify</a> · Datos cartográficos © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.</div>
-</div>
-<div class="actions"><button class="primary" id="requestSelectedDriver" type="button">Solicitar viaje</button></div><div id="requestResult" class="request hidden"></div>
-<p class="hint">El GPS funciona con permiso del dispositivo. Para compartir ubicación, el chofer debe mantener abierta la aplicación.</p>
-</div>
-</section>
+
 <section id="acceso">
 <h2 class="login-welcome">Bienvenido a la app oficial de Dante Remises</h2>
 <p class="login-location">Santa Rosa de Calamuchita</p>
@@ -473,6 +452,7 @@ body.dante-role-transition #imageLightbox{visibility:hidden!important;pointer-ev
 <p class="hint" id="staffAuthStatus"></p>
 </div>
 </section>
+<div id="roleViewMount"></div>
 <section id="chofer" class="hidden">
 <h2>Mi espacio de personal</h2><p class="muted">Gestioná tu estado. Agustín también puede administrar los estados de todos los coches desde la Central.</p>
 <div class="card panel" id="driverControls" style="margin-top:12px">
@@ -491,13 +471,7 @@ body.dante-role-transition #imageLightbox{visibility:hidden!important;pointer-ev
 <div class="grid" id="centralCars"></div>
 <div class="card panel hidden" id="passengerAdmin" style="margin-top:16px"><h3>Pasajeros registrados</h3><p class="muted">Información visible únicamente para Agustín, administrador total.</p><div id="passengerList" class="muted">Cargando registros…</div></div>
 </section>
-<section id="passengerOnboarding" class="hidden">
- <div class="onboarding-shell">
-  <button class="secondary auth-back" id="passengerOnboardingBack" type="button">← Volver al inicio de sesión</button>
-  <div class="onboarding-heading"><span class="onboarding-step">PASO 2 DE 2</span><h2>Completá tu perfil</h2><p class="muted">Antes de entrar a Dante Remises, necesitamos que agregues una foto de perfil.</p></div>
-  <div id="passengerPhotoCardHome"><div class="card panel hidden" id="passengerPhotoCard" style="margin-top:12px"><h3>Foto de perfil del pasajero</h3><p class="muted">Necesitás una foto para pedir viajes. Podés elegirla de tu galería o tomarla con la cámara. La app comprobará que la imagen contenga un rostro visible.</p><div class="photo-frame profile"><img id="passengerProfilePhotoPreview" class="profile-photo-preview" alt="Foto de perfil del pasajero"></div><div class="field"><label>¿Cómo querés agregar tu foto?</label><div class="actions onboarding-photo-actions"><button class="primary" id="takePassengerPhoto" type="button">📷 Tomar foto</button><button class="secondary" id="choosePassengerPhoto" type="button">🖼️ Elegir de galería</button></div><input id="passengerProfilePhotoCamera" type="file" accept="image/*" capture="user" style="display:none"><input id="passengerProfilePhotoGallery" type="file" accept="image/*" style="display:none"></div><div class="actions"><button class="primary" id="savePassengerProfilePhoto" type="button">Guardar foto de perfil</button><button class="secondary" id="refreshPassengerProfilePhoto" type="button">Volver a cargar</button></div><p class="hint" id="passengerProfilePhotoStatus" aria-live="polite">La foto es necesaria para solicitar viajes.</p></div></div>
- </div>
-</section>
+
 <section id="configuracion" class="hidden">
 <div class="card panel hidden" id="tripAlertPermissionsCard" style="margin-top:12px"><h3>🔔 Permisos de alertas de viaje</h3><p class="muted">Dante Remises necesita permiso para mostrar notificaciones y, si querés la tarjeta flotante, permiso para mostrarse sobre otras aplicaciones. Podés revisarlos o volver a activarlos desde acá.</p><div class="actions"><button class="secondary" id="settingsEnableTripNotifications" type="button">Permitir notificaciones</button><button class="secondary" id="settingsEnableTripOverlay" type="button">Permitir tarjeta flotante</button></div><p class="hint" id="tripAlertPermissionStatus" role="status" aria-live="polite">Los permisos se solicitan al entrar por primera vez a Personal.</p><p class="hint" id="tripAlertRegistrationStatus" role="status" aria-live="polite">El registro de este dispositivo se comprueba al iniciar sesión.</p></div>
 <div class="card panel" id="appearanceSettingsCard" style="margin-top:12px"><h3>✨ Apariencia</h3><p class="muted">Personalizá el aspecto de Dante Remises sin modificar sus funciones.</p><div class="field"><label for="themePreference">Tema de la aplicación</label><select id="themePreference"><option value="system">Automático · según el dispositivo</option><option value="light">Claro</option><option value="dark">Oscuro</option><option value="electric">Verde Eléctrico · Dante</option></select></div><p class="hint">El cambio se aplica al instante y queda guardado en este dispositivo.</p><div class="visual-effects-settings"><h4>✨ Efectos y movimiento</h4><label class="visual-effect-option"><span><strong>Efectos visuales</strong><small>Activa o desactiva todos los movimientos y animaciones.</small></span><input id="visualEffectsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Parallax 3D táctil</strong><small>Toda la app responde al movimiento de tu dedo con profundidad tridimensional.</small></span><input id="parallaxEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Transiciones suaves</strong><small>Animaciones al cambiar de pantalla y abrir secciones.</small></span><input id="transitionsEnabled" type="checkbox" checked></label><label class="visual-effect-option"><span><strong>Microanimaciones</strong><small>Pequeños efectos en botones y tarjetas.</small></span><input id="microAnimationsEnabled" type="checkbox" checked></label><p class="hint" id="visualEffectsStatus" role="status" aria-live="polite">Deslizá el dedo por la pantalla para activar la perspectiva 3D en toda la app.</p></div><div class="sound-settings" id="danteSoundSettings"><h4>🔊 Sonidos de la aplicación</h4><label class="visual-effect-option"><span><strong>Efectos de sonido</strong><small>Sonidos de botones, navegación, controles, confirmaciones e inicio.</small></span><input id="danteSoundsEnabled" type="checkbox" checked></label><label class="visual-effect-option sound-volume-option"><span><strong>Volumen</strong><small>Ajustá la intensidad de los sonidos.</small></span><input id="danteSoundVolume" type="range" min="0" max="100" step="5" value="65"><output id="danteSoundVolumeValue">65%</output></label><p class="hint" id="danteSoundStatus" role="status" aria-live="polite">Sonidos activos · El primer gesto habilita el audio cuando el navegador lo requiere.</p></div></div>
@@ -550,6 +524,7 @@ import { resolveDriverUidForCar, resolveRoleFromProfile } from "./role-resolver.
 import { activateRole } from "./role-runtime.mjs";
 import { canAccessRoleView, applyRoleView, hideRoleViews } from "./role-view-access.mjs";
 import { createRoleDomBindings } from "./role-dom-bindings.mjs";
+import { createRoleTemplateLoader } from "./role-template-loader.mjs";
 import { createRoleTransitionController } from "./role-transition.mjs";
 import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
 import { createChatRuntimeLoader } from "./chat-runtime-loader.mjs";
@@ -719,6 +694,7 @@ const byId=id=>document.getElementById(id);
 const roleDomBindings=createRoleDomBindings(document);
 const bindRoleDom=roleDomBindings.bind;
 const flushRoleDomBindings=roleDomBindings.flush;
+const roleTemplateLoader=createRoleTemplateLoader({document,onMounted:()=>flushRoleDomBindings()});
 const fmtRemaining=ms=>{if(ms<=0)return 'vencido';let total=Math.ceil(ms/60000),h=Math.floor(total/60),m=total%60;return h?`${h} h ${m?m+' min':''}`.trim():`${m} min`};
 function refreshExpired(){const now=Date.now();Object.values(cars).forEach(c=>{if(c.until&&c.until<=now){c.status='libre';c.until=null;c.indefinite=false}})}
 function statusText(c){if(!remoteReady)return 'Consultando disponibilidad…';if(!c.online||c.status==='desconectado')return 'Desconectado';if(c.status==='libre')return 'Libre';if(c.status==='ocupado')return 'Ocupado'+(c.until?' · '+fmtRemaining(c.until-Date.now()):'');return 'Fuera de servicio'+(c.indefinite?' · sin vencimiento':c.until?' · '+fmtRemaining(c.until-Date.now()):'')}
@@ -729,8 +705,25 @@ function transformForCar(carId,key){const entry=Object.entries(STAFF_PHOTO_USERS
 function carCard(c,admin=false){return `<article class="card"><div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${c.driver}</div><div class="model">${c.id} · ${c.model}</div></div></div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span>${admin?`<div class="actions"><button class="secondary" onclick="quickSet('${c.id}','libre')">Libre</button><button class="secondary" onclick="quickSet('${c.id}','ocupado')">Ocupado 30 min</button><button class="secondary" onclick="quickSet('${c.id}','fuera')">Fuera de servicio</button></div>`:''}</article>`}
 function passengerDriverCard(c){return `<button class="driver-choice" type="button" data-driver-id="${c.id}" ${!c.online||c.status!=='libre'?'disabled':''}><div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${esc(c.driver)}</div><div class="model">Coche ${c.id} · ${esc(c.model)}</div></div></div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span><div class="hint">${c.online&&c.status==='libre'?'Tocá para elegir este chofer':'No disponible en este momento'}</div></button>`}
 function fillSelects(){}
-function renderContent(){refreshExpired();initial.forEach(x=>{cars[x.id].driverPhoto=photoForCar(x.id,'profilePhoto');cars[x.id].vehiclePhoto=photoForCar(x.id,'vehiclePhoto');cars[x.id].driverPhotoTransform=transformForCar(x.id,'profilePhoto');cars[x.id].vehiclePhotoTransform=transformForCar(x.id,'vehiclePhoto')});byId('passengerCars').innerHTML=initial.map(x=>passengerDriverCard(cars[x.id])).join('');byId('centralCars').innerHTML=initial.map(x=>carCard(cars[x.id],currentRole?.role==='admin')).join('');if(selectedPassengerDriver&& !byId('passengerTripScreen').classList.contains('hidden')){const chosen=cars[selectedPassengerDriver];if(chosen)byId('selectedDriverCard').innerHTML=`<div class="carhead"><div class="photos">${avatar(chosen.driverPhoto,'driver',chosen.driverPhotoTransform)}${avatar(chosen.vehiclePhoto,'vehicle',chosen.vehiclePhotoTransform)}</div><div><div class="carname">${esc(chosen.driver)}</div><div class="model">Coche ${chosen.id} · ${esc(chosen.model)}</div><span class="status ${cls(!chosen.online?'desconectado':chosen.status)}">${statusText(chosen)}</span></div></div>`}
-const c=cars[activeDriver];byId('driverStatus').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${c.driver}</div><div class="model">${c.id} · ${c.model}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;
+function renderContent(){
+  refreshExpired();
+  initial.forEach(x=>{
+   cars[x.id].driverPhoto=photoForCar(x.id,'profilePhoto');
+   cars[x.id].vehiclePhoto=photoForCar(x.id,'vehiclePhoto');
+   cars[x.id].driverPhotoTransform=transformForCar(x.id,'profilePhoto');
+   cars[x.id].vehiclePhotoTransform=transformForCar(x.id,'vehiclePhoto');
+  });
+  const passengerCars=byId('passengerCars');
+  if(passengerCars)passengerCars.innerHTML=initial.map(x=>passengerDriverCard(cars[x.id])).join('');
+  const centralCars=byId('centralCars');
+  if(centralCars)centralCars.innerHTML=initial.map(x=>carCard(cars[x.id],currentRole?.role==='admin')).join('');
+  const passengerTripScreen=byId('passengerTripScreen');
+  if(selectedPassengerDriver&&passengerTripScreen&&!passengerTripScreen.classList.contains('hidden')){
+   const chosen=cars[selectedPassengerDriver],selectedCard=byId('selectedDriverCard');
+   if(chosen&&selectedCard)selectedCard.innerHTML=`<div class="carhead"><div class="photos">${avatar(chosen.driverPhoto,'driver',chosen.driverPhotoTransform)}${avatar(chosen.vehiclePhoto,'vehicle',chosen.vehiclePhotoTransform)}</div><div><div class="carname">${esc(chosen.driver)}</div><div class="model">Coche ${chosen.id} · ${esc(chosen.model)}</div><span class="status ${cls(!chosen.online?'desconectado':chosen.status)}">${statusText(chosen)}</span></div></div>`;
+  }
+  const c=cars[activeDriver],driverStatus=byId('driverStatus');
+  if(c&&driverStatus)driverStatus.innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${c.driver}</div><div class="model">${c.id} · ${c.model}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;
 }
 function render(reason="unspecified"){
  const result=perf.measure(`ui.render.${reason}`,renderContent);
@@ -887,7 +880,7 @@ bindRoleDom('useMyLocation','click',async()=>{if(!isGeolocationAvailable()){noti
 bindRoleDom('pickOrigin','click',()=>{mapPickMode='origin';byId('pickOrigin').classList.add('active');byId('pickDestination').classList.remove('active');notify('Tocá el mapa para marcar el origen.')});bindRoleDom('pickDestination','click',()=>{mapPickMode='destination';byId('pickDestination').classList.add('active');byId('pickOrigin').classList.remove('active');notify('Tocá el mapa para marcar el destino.')});
 let passengerRouteRequestVersion=0;
 async function updateRoute(){if(!originPoint||!destinationPoint){byId('routeSummary').textContent='Elegí el origen y el destino para calcular el recorrido.';return}const requestVersion=++passengerRouteRequestVersion;const points=[{lat:originPoint.lat,lon:originPoint.lon},{lat:destinationPoint.lat,lon:destinationPoint.lon}];try{const route=await window.DanteMap.getDrivingRoute(points);if(requestVersion!==passengerRouteRequestVersion||!realMap)return;if(routeLayer)realMap.removeLayer(routeLayer);routeLayer=realMap.addRoute('passenger-route',route.geometry,{color:'#168447',weight:6,opacity:.85});realMap.fitGeometry(route.geometry,.15);byId('routeSummary').textContent=`Recorrido estimado: ${(route.distance/1000).toFixed(1)} km · ${Math.max(1,Math.round(route.duration/60))} min · ${route.provider} (estimación de ruta, no de espera del remis).`}catch(err){if(requestVersion!==passengerRouteRequestVersion)return;console.error(err);byId('routeSummary').textContent='No se pudo calcular la ruta. Podés continuar si ambos puntos están seleccionados.';}}
-function watchSelectedDriver(carId){stopPassengerLocationWatch();if(liveLocationUnsub){liveLocationUnsub();liveLocationUnsub=null}liveLocationUnsub=onValue(ref(db,'driverLocations/'+carId),snap=>{const loc=snap.val();if(loc&&cars[carId]?.online&&cars[carId]?.status==='libre'&&Date.now()-Number(loc.updatedAt||0)<45000){showDriverMarker(loc);byId('driverLocationNote').textContent='Ubicación en vivo del coche '+carId+' mientras figura Libre.'}else{if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}byId('driverLocationNote').textContent='El coche no está compartiendo ubicación en este momento.'}},err=>console.warn('No se pudo leer la ubicación pública',err));}
+function watchSelectedDriver(carId){stopPassengerLocationWatch();if(liveLocationUnsub){liveLocationUnsub();liveLocationUnsub=null}liveLocationUnsub=onValue(ref(db,'driverLocations/'+carId),snap=>{const loc=snap.val();if(loc&&cars[carId]?.online&&cars[carId]?.status==='libre'&&Date.now()-Number(loc.updatedAt||0)<45000){showDriverMarker(loc);if(byId('driverLocationNote'))byId('driverLocationNote').textContent='Ubicación en vivo del coche '+carId+' mientras figura Libre.'}else{if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}byId('driverLocationNote').textContent='El coche no está compartiendo ubicación en este momento.'}},err=>console.warn('No se pudo leer la ubicación pública',err));}
 function showDriverMarker(loc){if(!realMap)return;const point={lat:Number(loc.lat),lon:Number(loc.lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return;if(loc.updatedAt&&Date.now()-Number(loc.updatedAt)>45000){if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}byId('driverLocationNote').textContent='La ubicación del coche está desactualizada; esperando una nueva señal GPS.';return}if(selectedCarMarker)selectedCarMarker.setLatLng(point);else selectedCarMarker=realMap.addCircleMarker('selected-driver',point,{radius:9,color:'#fff',weight:3,fillColor:'#176b3a',fillOpacity:1,popup:'Ubicación del remis seleccionado'});}
 function stopPassengerLocationWatch(){if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}}
 bindRoleDom('requestSelectedDriver','click',async()=>{
@@ -945,13 +938,13 @@ bindRoleDom('requestSelectedDriver','click',async()=>{
 function listenPassengerTrip(id){if(passengerTripUnsub)passengerTripUnsub();passengerTripUnsub=onValue(ref(db,'trips/'+id),snap=>{const trip=snap.val();if(!trip)return;activeTripData=trip;const box=byId('requestResult');box.classList.remove('hidden');if(trip.status==='requested')box.innerHTML='<strong>Solicitud enviada.</strong><br>Esperando aceptación del chofer…<div class="hint">'+esc(tripPushStatusById.get(id)||'El estado de la alerta todavía no está confirmado.')+'</div><div class="actions"><button class="secondary" data-open-passenger-trip-chat="'+id+'">Chatear con el chofer</button></div>';else if(trip.status==='accepted'||trip.status==='in_progress'){box.innerHTML=`<strong class="trip-status">Viaje ${trip.status==='accepted'?'aceptado':'en curso'}</strong><br>${esc(trip.driverName)} · Coche ${esc(trip.carId)}<br>El mapa mostrará la ubicación del coche durante el servicio.<div class="actions"><button class="secondary" data-open-passenger-trip-chat="${esc(id)}">Chatear con el chofer</button></div>`;watchTripLocation(id)}else if(trip.status==='rejected'){box.innerHTML='<strong>El chofer rechazó la solicitud.</strong> Podés volver a elegir otro coche.';byId('requestSelectedDriver').disabled=false;}else if(trip.status==='completed'){box.innerHTML='<strong>Viaje finalizado.</strong> Gracias por viajar con Dante Remises.';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}else if(trip.status==='cancelled'){box.innerHTML='<strong>Solicitud cancelada.</strong>';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}},err=>console.error('No se pudo leer el viaje',err));}
 let tripLocationUnsub=null;function watchTripLocation(id){if(tripLocationUnsub)tripLocationUnsub();tripLocationUnsub=onValue(ref(db,'trips/'+id+'/driverLocation'),snap=>{const loc=snap.val();if(loc){showDriverMarker(loc);byId('driverLocationNote').textContent='Seguimiento GPS del coche durante tu viaje.'}},err=>console.warn(err))}function stopTripLocationWatch(){if(tripLocationUnsub){tripLocationUnsub();tripLocationUnsub=null}stopPassengerLocationWatch()}
 
-const passengerPhotoInput=byId('passengerProfilePhotoGallery');
-const passengerPhotoCameraInput=byId('passengerProfilePhotoCamera');
-bindRoleDom('takePassengerPhoto','click',()=>passengerPhotoCameraInput.click());
-bindRoleDom('choosePassengerPhoto','click',()=>passengerPhotoInput.click());
+const passengerPhotoInput=()=>byId('passengerProfilePhotoGallery');
+const passengerPhotoCameraInput=()=>byId('passengerProfilePhotoCamera');
+bindRoleDom('takePassengerPhoto','click',()=>passengerPhotoCameraInput()?.click());
+bindRoleDom('choosePassengerPhoto','click',()=>passengerPhotoInput()?.click());
 bindRoleDom('passengerOnboardingBack','click',()=>signOut(auth));
 let pendingPassengerPhotoBlob=null,passengerPhotoObjectUrl=null,passengerPhotoReady=false;
-function setPassengerPhotoStatus(message){byId('passengerProfilePhotoStatus').textContent=message}
+function setPassengerPhotoStatus(message){const status=byId('passengerProfilePhotoStatus');if(status)status.textContent=message}
 function passengerPhotoHeaders(token,json=true){return {Authorization:'Bearer '+token,...(json?{'Content-Type':'application/json'}:{})}}
 function canvasToJpeg(canvas,quality){return new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality))}
 async function compressPassengerPhoto(file){
@@ -1081,8 +1074,8 @@ async function handlePassengerPhotoSelection(event){
   notify(error.message||'No se pudo analizar la foto. Revisá tu conexión e intentá nuevamente.');
  }
 }
-passengerPhotoInput.addEventListener('change',handlePassengerPhotoSelection);
-passengerPhotoCameraInput.addEventListener('change',handlePassengerPhotoSelection);
+bindRoleDom('passengerProfilePhotoGallery','change',handlePassengerPhotoSelection);
+bindRoleDom('passengerProfilePhotoCamera','change',handlePassengerPhotoSelection);
 async function deletePassengerPhoto(key,token){
  const response=await fetch(PROFILE_PHOTO_WORKER+'/v1/profile-photo/delete',{method:'POST',headers:passengerPhotoHeaders(token),body:JSON.stringify({key})});
  return response.ok;
@@ -1107,7 +1100,7 @@ bindRoleDom('savePassengerProfilePhoto','click',async()=>{
   let newPhotoUrl=verifiedPhoto.readUrl;
   if(verifiedPhoto.blob){const cacheKey=`private:${currentUser.uid}:passenger-profile:${newKey}`;await mediaCache.put(cacheKey,verifiedPhoto.blob,{version:newKey,privateUid:currentUser.uid,category:'passenger-photo'});newPhotoUrl=await mediaCache.objectUrl(cacheKey)}
   byId('passengerProfilePhotoPreview').src=newPhotoUrl;passengerPhotoReady=true;
-  pendingPassengerPhotoBlob=null;passengerPhotoInput.value='';passengerPhotoCameraInput.value='';
+  pendingPassengerPhotoBlob=null;const galleryInput=passengerPhotoInput(),cameraInput=passengerPhotoCameraInput();if(galleryInput)galleryInput.value='';if(cameraInput)cameraInput.value='';
   setPassengerPhotoStatus('Foto de perfil guardada y cargada correctamente. Ya podés solicitar viajes.');
   if(oldKey&&oldKey!==newKey){try{const deleted=await deletePassengerPhoto(oldKey,token);if(deleted)await mediaCache.remove(`private:${currentUser.uid}:passenger-profile:${oldKey}`);else setPassengerPhotoStatus('La foto nueva está lista. No se pudo borrar la anterior; avisá a soporte.')}catch(cleanupError){console.warn('No se pudo borrar la foto anterior.',cleanupError);setPassengerPhotoStatus('La foto nueva está lista. No se pudo borrar la anterior; avisá a soporte.')}}
   notify('Foto de perfil guardada y comprobada.');showView('pasajero');
@@ -1127,16 +1120,17 @@ imageLightbox.addEventListener('click',e=>{if(e.target===imageLightbox)closeImag
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!imageLightbox.classList.contains('hidden'))closeImageLightbox()});
 
 function showPassengerOnboarding(){
- byId('passengerPhotoCardHome').appendChild(byId('passengerPhotoCard'));
- ['pasajero','chofer','central','chat','configuracion','acceso','staffAccess'].forEach(id=>byId(id).classList.add('hidden'));
- byId('passengerOnboarding').classList.remove('hidden');
+ const home=byId('passengerPhotoCardHome'),photoCard=byId('passengerPhotoCard');
+ if(home&&photoCard)home.appendChild(photoCard);
+ if(!applyRoleView(document,currentRole?.role,'passengerOnboarding'))return;
+ ['acceso','staffAccess'].forEach(id=>byId(id)?.classList.add('hidden'));
  document.querySelectorAll('.tabs').forEach(el=>el.classList.add('hidden'));
- byId('postLoginGreeting').classList.add('hidden');
- byId('settingsGearButton').classList.add('hidden');
- byId('logoutButton').classList.add('hidden');
- byId('staffEntryButton').classList.add('hidden');
- byId('versionNote').classList.add('hidden');
- byId('appFooter').classList.add('hidden');
+ byId('postLoginGreeting')?.classList.add('hidden');
+ byId('settingsGearButton')?.classList.add('hidden');
+ byId('logoutButton')?.classList.add('hidden');
+ byId('staffEntryButton')?.classList.add('hidden');
+ byId('versionNote')?.classList.add('hidden');
+ byId('appFooter')?.classList.add('hidden');
 }
 function showView(v){
  diagnostics.mark("ui.view",{view:v});
@@ -2549,7 +2543,7 @@ onAuthStateChanged(auth,async user=>{
  try{await clearDriverPresence()}catch(error){console.warn('No se pudo limpiar la presencia anterior; se continúa con la autenticación:',error)}
  if(authGeneration!==authStateGeneration)return;perf.mark('auth.presence-cleanup.done');if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
  currentUser=user;currentRole=null;activeTripRestoreVersion++;if(!user){activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden')}
- if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';try{await signOut(auth)}catch(signOutError){console.error('No se pudo cerrar la sesión no verificable:',signOutError);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
+ if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';try{await signOut(auth)}catch(signOutError){console.error('No se pudo cerrar la sesión no verificable:',signOutError);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id)?.classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
  byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress){
   ['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));
@@ -2589,6 +2583,7 @@ onAuthStateChanged(auth,async user=>{
    roleActivation=await activateRole(currentRole.role,{
     user,
     role:currentRole,
+    loadRoleView:async role=>{const result=await roleTemplateLoader.load(role);if(authGeneration!==authStateGeneration){roleTemplateLoader.unmount();return {stale:true}}return result},
     loadPassengerPhoto:async()=>{passengerPhotoReady=false;return await loadPassengerPhoto()},
     showView,
     showPassengerOnboarding,
@@ -3147,7 +3142,7 @@ main>.tabs .tab{white-space:nowrap;min-height:42px;padding:10px 16px;border-radi
 main>.tabs .tab.active{background:linear-gradient(120deg,#008b43,#00d96a 70%,#00f58a);color:#03170b;box-shadow:0 0 19px rgba(0,238,112,.2)}
 #postLoginGreeting{max-width:850px;margin:0 auto 20px;padding:16px 19px;border:1px solid rgba(0,238,112,.35);border-radius:16px;background:linear-gradient(110deg,rgba(0,238,112,.12),var(--card));box-shadow:inset 3px 0 var(--accent),0 8px 25px rgba(0,0,0,.12);line-height:1.5}
 #toast{z-index:2000;max-width:min(92vw,520px);width:max-content;padding:13px 18px;border-radius:14px;border:1px solid rgba(0,255,125,.42);background:rgba(3,20,10,.96);color:#f0fff6;box-shadow:0 14px 42px #0008,0 0 22px rgba(0,238,112,.15);backdrop-filter:blur(15px);font-weight:650;line-height:1.4}
-main>section:not(.hidden){transform-origin:top center}
+main>section:not(.hidden),#roleViewMount>section:not(.hidden){transform-origin:top center}
 @media(max-width:600px){
  header{min-height:165px;padding:20px 58px}
  header .brand-logo{width:76px;height:76px;border-radius:22px}
@@ -3176,7 +3171,7 @@ main>section:not(.hidden){transform-origin:top center}
  0%,100%{box-shadow:0 0 0 1px rgba(0,238,112,.25),0 0 12px rgba(0,238,112,.08)}
  50%{box-shadow:0 0 0 1px rgba(0,238,112,.5),0 0 22px rgba(0,238,112,.17)}
 }
-main>section:not(.hidden){animation:dante-view-enter .34s cubic-bezier(.2,.75,.25,1) both}
+main>section:not(.hidden),#roleViewMount>section:not(.hidden){animation:dante-view-enter .34s cubic-bezier(.2,.75,.25,1) both}
 main>.tabs .tab{position:relative;transition:background .22s,color .22s,box-shadow .22s,transform .22s}
 main>.tabs .tab:not(.active):hover{background:rgba(0,238,112,.1);color:var(--accent);transform:translateY(-1px)}
 button:not(:disabled){transition:background .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s}
@@ -3188,7 +3183,7 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible{outline:2px sol
 #appFooter a:hover{color:var(--accent-bright);text-shadow:0 0 12px rgba(0,238,112,.35)}
 .note{border-color:rgba(0,238,112,.25);background:linear-gradient(110deg,rgba(0,238,112,.1),var(--surface-2));box-shadow:inset 3px 0 var(--accent)}
 @media(prefers-reduced-motion:reduce){
- main>section:not(.hidden){animation:none!important}
+ main>section:not(.hidden),#roleViewMount>section:not(.hidden){animation:none!important}
  main>.tabs .tab,button:not(:disabled),.card,.panel,.driver-choice{transition:none!important}
  button:not(:disabled):active{transform:none}
 }
