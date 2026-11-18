@@ -64,7 +64,7 @@ test("native trip overlay exposes accept, view and reject as separate actions", 
 test("pending native actions are processed after the app becomes visible and are cleared only after handling", () => {
   assert.match(html, /document\.addEventListener\('visibilitychange',processNativeTripActionWhenVisible\)/);
   assert.match(html, /\['accept','view','reject'\]/);
-  assert.match(html, /if\(processed\)await clearPendingTripAction\(\)/);
+  assert.match(html, /if\(sessionIsCurrent\(\)&&processed\)await clearPendingTripAction\(\)/);
 });
 
 test("viewing and accepting a driver trip show its pickup and destination map", () => {
