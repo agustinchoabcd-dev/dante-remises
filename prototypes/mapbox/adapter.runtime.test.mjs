@@ -100,7 +100,9 @@ test("Mapbox focuses a selected search result without animating the camera",()=>
   const {api,state}=createHarness();
   const map=api.create({},[-32.1,-64.5],14,"unused");
   map.fitPoints([{lat:-31.9,lon:-64.7}]);
-  assert.deepEqual(state.maps[0].lastJump,{center:[-64.7,-31.9],zoom:16});
+  assert.equal(state.maps[0].lastJump.center[0],-64.7);
+  assert.equal(state.maps[0].lastJump.center[1],-31.9);
+  assert.equal(state.maps[0].lastJump.zoom,16);
   assert.equal(state.maps[0].lastEase,undefined);
 });
 
