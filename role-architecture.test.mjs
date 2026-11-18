@@ -2,14 +2,34 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate] = await Promise.all([
+const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, roleDomBindings, passengerModule] = await Promise.all([
   readFile(new URL("./index.html", import.meta.url), "utf8"),
   readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8"),
   readFile(new URL("./service-worker.js", import.meta.url), "utf8"),
   readFile(new URL("./role-view-access.mjs", import.meta.url), "utf8"),
   readFile(new URL("./role-template-loader.mjs", import.meta.url), "utf8"),
-  readFile(new URL("./views/passenger.html", import.meta.url), "utf8")
+  readFile(new URL("./views/passenger.html", import.meta.url), "utf8"),
+  readFile(new URL("./role-dom-bindings.mjs", import.meta.url), "utf8"),
+  readFile(new URL("./roles/passenger.mjs", import.meta.url), "utf8")
 ]);
+
+test("passenger HTML is physically extracted and mounted only after role resolution", () => {
+  assert.ok(html.includes('<div id="roleViewMount"></div>'));
+  assert.doesNotMatch(html, /<section id="pasajero"/);
+  assert.doesNotMatch(html, /<section id="passengerOnboarding"/);
+  assert.match(html, /createRoleTemplateLoader\(\{document,onMounted:\(\)=>flushRoleDomBindings\(\)\}\)/);
+  assert.match(passengerModule, /loadRoleView\("passenger"\)/);
+  assert.ok(passengerTemplate.includes('<section id="pasajero"'));
+  assert.ok(passengerTemplate.includes('<section id="passengerOnboarding"'));
+});
+
+test("role event bindings survive a view being absent and mounted later", () => {
+  assert.match(html, /createRoleDomBindings\(document\)/);
+  assert.match(html, /const flushRoleDomBindings=roleDomBindings\.flush/);
+  assert.doesNotMatch(html, /byId\(['"][^'"]+['"]\)\.addEventListener\(/);
+  assert.match(html, /bindRoleDom\('passengerCars'/);
+  assert.match(roleDomBindings, /function flush\(\)/);
+});
 
 test("auth transition lock is applied before asynchronous account cleanup", () => {
   const callbackStart = html.indexOf("onAuthStateChanged(auth,async user=>");
@@ -41,6 +61,7 @@ test("all dynamically imported runtime modules are included in the Capacitor web
     "role-runtime.mjs",
     "role-view-access.mjs",
     "role-template-loader.mjs",
+    "role-dom-bindings.mjs",
     "views/passenger.html",
     "map-runtime-loader.mjs",
     "chat-runtime-loader.mjs",
@@ -76,6 +97,7 @@ test("auth callback hides role views before asynchronous cleanup and activation"
   assert.notEqual(roleActivation, -1);
   assert.ok(hideIndex < asyncCleanup);
   assert.ok(hideIndex < roleActivation);
+  assert.ok(callback.indexOf("roleTemplateLoader.unmount()") < callback.indexOf("await stopOperatorPresence()"));
 
   for (const view of ["pasajero", "chofer", "central", "chat", "configuracion", "passengerOnboarding"]) {
     assert.ok(roleViewAccess.includes('"' + view + '"'), "Missing role view in visibility controller: " + view);
