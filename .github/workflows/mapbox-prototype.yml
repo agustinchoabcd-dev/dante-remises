@@ -1,4 +1,4 @@
-name: Mapbox prototype checks
+name: Mapbox migration checks
 on:
   push:
     branches:
@@ -15,6 +15,9 @@ on:
     paths:
       - '.github/workflows/mapbox-prototype.yml'
       - 'prototypes/mapbox/**'
+      - 'index.html'
+      - 'js/dante-map.js'
+      - 'js/mapbox-config.js'
 permissions:
   contents: read
 jobs:
