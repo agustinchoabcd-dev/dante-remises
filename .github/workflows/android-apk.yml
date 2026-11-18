@@ -11,6 +11,11 @@ on:
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
+      - 'role-template-loader.mjs'
+      - 'role-template-loader.test.mjs'
+      - 'role-architecture.test.mjs'
+      - 'views/**'
+      - 'scripts/copy-web.mjs'
       - 'service-worker.js'
       - 'scripts/native-bridge.js'
       - 'scripts/build-native-bridge.mjs'
