@@ -29,20 +29,17 @@ self.addEventListener("fetch", event => {
       !url.pathname.endsWith("/service-worker.js")) {
     event.respondWith((async () => {
       const cache = await caches.open(STATIC_CACHE);
-      const cached = await cache.match(request);
-      if (cached) {
-        event.waitUntil(fetch(request).then(response => {
-          if (response.ok) return cache.put(request, response.clone());
-          return undefined;
-        }).catch(() => undefined));
-        return cached;
+      try {
+        const response = await fetch(request);
+        if (response.ok) {
+          try { await cache.put(request, response.clone()); } catch {}
+        }
+        return response;
+      } catch (error) {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        throw error;
       }
-
-      const response = await fetch(request);
-      if (response.ok) {
-        try { await cache.put(request, response.clone()); } catch {}
-      }
-      return response;
     })());
     return;
   }
