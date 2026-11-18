@@ -9,6 +9,8 @@ on:
       - 'index.html'
       - 'js/dante-map.js'
       - 'js/mapbox-config.js'
+      - 'js/dante-geocoding.js'
+      - 'js/geocoding-config.js'
       - 'scripts/copy-web.mjs'
   pull_request:
     branches:
@@ -19,6 +21,8 @@ on:
       - 'index.html'
       - 'js/dante-map.js'
       - 'js/mapbox-config.js'
+      - 'js/dante-geocoding.js'
+      - 'js/geocoding-config.js'
       - 'scripts/copy-web.mjs'
 permissions:
   contents: read
@@ -36,6 +40,8 @@ jobs:
         run: |
           node --check js/dante-map.js
           node --check js/mapbox-config.js
+          node --check js/dante-geocoding.js
+          node --check js/geocoding-config.js
           node -e "const fs=require('node:fs');const html=fs.readFileSync('index.html','utf8');const match=html.match(/<script type=\"module\">([\\s\\S]*?)<\\/script>/);if(!match)throw new Error('No se encontró el módulo principal');fs.writeFileSync('/tmp/dante-main.mjs',match[1]);"
           node --check /tmp/dante-main.mjs
       - name: Run prototype and application integration checks
@@ -50,5 +56,7 @@ jobs:
             index.html
             js/dante-map.js
             js/mapbox-config.js
+            js/dante-geocoding.js
+            js/geocoding-config.js
           if-no-files-found: error
           retention-days: 14
