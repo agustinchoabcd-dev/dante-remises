@@ -108,7 +108,7 @@ test("auth callback hides role views before asynchronous cleanup and activation"
   assert.notEqual(roleActivation, -1);
   assert.ok(hideIndex < asyncCleanup);
   assert.ok(hideIndex < roleActivation);
-  assert.ok(callback.indexOf("roleTemplateLoader.unmount()") < callback.indexOf("await stopOperatorPresence()"));
+  const callback = html.slice(authStart, html.indexOf("\n});", authStart));
   assert.ok(callback.indexOf("roleTemplateLoader.unmount()") < callback.indexOf("await stopOperatorPresence()"));
 
   for (const view of ["pasajero", "chofer", "central", "chat", "configuracion", "passengerOnboarding"]) {
