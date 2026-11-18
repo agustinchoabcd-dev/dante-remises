@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
 const adapter = await readFile(new URL("../../js/dante-map.js", import.meta.url), "utf8");
 const config = await readFile(new URL("../../js/mapbox-config.js", import.meta.url), "utf8");
+const copyScript = await readFile(new URL("../../scripts/copy-web.mjs", import.meta.url), "utf8");
 
 test("the app pins Mapbox GL JS 3.35.0 and keeps the compatibility renderer isolated", () => {
   assert.match(html, /mapbox-gl-js\/v3\.35\.0\/mapbox-gl\.js/);
@@ -45,4 +46,10 @@ test("the token is injected at runtime and no access token is committed in sourc
   assert.match(config, /window\.DANTE_MAPBOX_TOKEN = window\.DANTE_MAPBOX_TOKEN \|\| ''/);
   assert.doesNotMatch(config, /pk\.[A-Za-z0-9_-]{20,}/);
   assert.doesNotMatch(adapter, /pk\.[A-Za-z0-9_-]{20,}/);
+});
+
+test("the Capacitor web copy includes both Mapbox runtime files", () => {
+  assert.match(copyScript, /"js\/dante-map\.js"/);
+  assert.match(copyScript, /"js\/mapbox-config\.js"/);
+  assert.match(copyScript, /new URL\("js\/", destinationDirectory\)/);
 });
