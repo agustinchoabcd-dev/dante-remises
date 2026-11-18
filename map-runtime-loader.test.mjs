@@ -9,10 +9,12 @@ function fakeBrowser({ failAt = null } = {}) {
     head: {
       appendChild(element) {
         appended.push(element.href || element.src);
-        if (element.src === failAt) {
+        if ((element.src || element.href) === failAt) {
           element.onerror?.();
           return;
         }
+        if (element.src === "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js") window.L = {};
+        if (element.src === "https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js") window.mapboxgl = {};
         if (element.src === "js/dante-geocoding.js") window.DanteGeocoding = {};
         if (element.src === "js/dante-map.js") window.DanteMap = {};
         element.onload?.();
@@ -51,6 +53,8 @@ test("failed map loading rejects and permits a later retry", async () => {
   const firstAttemptCount = browser.appended.length;
   browser.document.head.appendChild = element => {
     browser.appended.push(element.href || element.src);
+    if (element.src === "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js") browser.window.L = {};
+    if (element.src === "https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js") browser.window.mapboxgl = {};
     if (element.src === "js/dante-geocoding.js") browser.window.DanteGeocoding = {};
     if (element.src === "js/dante-map.js") browser.window.DanteMap = {};
     element.onload?.();
@@ -59,4 +63,41 @@ test("failed map loading rejects and permits a later retry", async () => {
   const map = await ensureMapRuntime();
   assert.equal(map, browser.window.DanteMap);
   assert.deepEqual(browser.appended.slice(firstAttemptCount), ["js/dante-map.js"]);
+});
+
+test("Mapbox CDN failure falls back to the Leaflet engine", async () => {
+  const browser = fakeBrowser({ failAt: "https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js" });
+  const ensureMapRuntime = createMapRuntimeLoader(browser);
+
+  const map = await ensureMapRuntime();
+
+  assert.equal(map, browser.window.DanteMap);
+  assert.ok(browser.window.L);
+  assert.equal(browser.window.mapboxgl, undefined);
+});
+
+test("Leaflet CDN failure falls back to the Mapbox engine", async () => {
+  const browser = fakeBrowser({ failAt: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" });
+  const ensureMapRuntime = createMapRuntimeLoader(browser);
+
+  const map = await ensureMapRuntime();
+
+  assert.equal(map, browser.window.DanteMap);
+  assert.equal(browser.window.L, undefined);
+  assert.ok(browser.window.mapboxgl);
+});
+
+test("loading fails only when neither rendering engine is available", async () => {
+  const browser = fakeBrowser();
+  const originalAppend = browser.document.head.appendChild;
+  browser.document.head.appendChild = element => {
+    if (element.src === "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" ||
+        element.src === "https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js") {
+      element.onerror?.();
+      return;
+    }
+    originalAppend(element);
+  };
+
+  await assert.rejects(createMapRuntimeLoader(browser)(), /No se pudo cargar ningún motor cartográfico/);
 });
