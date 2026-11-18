@@ -7,6 +7,9 @@ const webAssets = [
   "role-transition.mjs",
   "role-runtime.mjs",
   "role-view-access.mjs",
+  "role-template-loader.mjs",
+  "role-template-loader.test.mjs",
+  "views/passenger.html",
   "map-runtime-loader.mjs",
   "chat-runtime-loader.mjs",
   "roles/passenger.mjs",
@@ -34,6 +37,7 @@ await mkdir(destinationDirectory, { recursive: true });
 await mkdir(new URL("assets/", destinationDirectory), { recursive: true });
 await mkdir(new URL("js/", destinationDirectory), { recursive: true });
 await mkdir(new URL("roles/", destinationDirectory), { recursive: true });
+await mkdir(new URL("views/", destinationDirectory), { recursive: true });
 
 for (const asset of webAssets) {
   await copyFile(
