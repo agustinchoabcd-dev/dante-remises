@@ -1,4 +1,4 @@
-const STATIC_CACHE = "dante-static-v2";
+const STATIC_CACHE = "dante-static-v3";
 const ALLOWED_HOSTS = new Set(["unpkg.com", "cdn.jsdelivr.net", "storage.googleapis.com"]);
 
 self.addEventListener("install", event => {
@@ -25,7 +25,7 @@ self.addEventListener("fetch", event => {
   // This keeps role/chat/map chunks out of first-install downloads while
   // preserving their availability after the user has opened those features.
   if (url.origin === self.location.origin &&
-      /\.(?:mjs|js)$/.test(url.pathname) &&
+      /\.(?:mjs|js|html)$/.test(url.pathname) &&
       !url.pathname.endsWith("/service-worker.js")) {
     event.respondWith((async () => {
       const cache = await caches.open(STATIC_CACHE);
