@@ -38,6 +38,10 @@ test("passenger map resources are disposed and stale async work is invalidated o
   assert.match(html, /autocompleteRequestIds\.origin\+\+/);
 });
 
+test("passenger address inputs register handlers before their HTML is mounted", () => {
+  assert.ok(html.includes("['origin','destination'].forEach(id=>bindRoleDom(id,'input'"));
+});
+
 test("auth transition lock is applied before asynchronous account cleanup", () => {
   const callbackStart = html.indexOf("onAuthStateChanged(auth,async user=>");
   const callbackEnd = html.indexOf("\n});", callbackStart);
