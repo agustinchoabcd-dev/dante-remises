@@ -103,8 +103,21 @@
         center: [Number(center[1]), Number(center[0])],
         zoom, attributionControl: true,
         antialias: false, fadeDuration: 0,
-        pitchWithRotate: false, dragRotate: false
+        pitchWithRotate: false, dragRotate: false,
+        // Android WebView changes its visual viewport while the software keyboard opens/closes.
+        // Resize manually after that transition instead of resizing Mapbox mid-animation.
+        trackResize: false
       });
+      this._resizeTimer = 0;
+      this._resizeHandler = () => {
+        if (this._resizeTimer) clearTimeout(this._resizeTimer);
+        this._resizeTimer = setTimeout(() => {
+          this._resizeTimer = 0;
+          this.map?.resize();
+        }, 320);
+      };
+      window.addEventListener('resize', this._resizeHandler, {passive:true});
+      window.visualViewport?.addEventListener('resize', this._resizeHandler, {passive:true});
       this.map.addControl(new mapboxgl.NavigationControl({showCompass:false}), 'top-right');
       this.markers = new Map();
       this.routes = new Map();
@@ -199,8 +212,14 @@
       this.map.fitBounds(bounds,{padding:Math.max(24,Math.round(48 + padding * 100)),maxZoom:17,animate:false,duration:0});
     }
     removeLayer(handle) { if (handle?.remove) handle.remove(); }
-    invalidateSize() { requestAnimationFrame(() => this.map?.resize()); }
+    invalidateSize() {
+      if (this._resizeTimer) { clearTimeout(this._resizeTimer); this._resizeTimer = 0; }
+      requestAnimationFrame(() => this.map?.resize());
+    }
     remove() {
+      if (this._resizeTimer) clearTimeout(this._resizeTimer);
+      window.removeEventListener('resize', this._resizeHandler);
+      window.visualViewport?.removeEventListener('resize', this._resizeHandler);
       this.markers.forEach(marker => marker.remove());
       this.routes.forEach(route => route.remove());
       this.markers.clear(); this.routes.clear();
