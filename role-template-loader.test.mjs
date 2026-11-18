@@ -95,3 +95,19 @@ test("unmount clears the mounted role and invalidates pending responses", async 
   assert.deepEqual(document.mount.children, []);
   assert.equal(document.mount.dataset.role, undefined);
 });
+
+
+test("onMounted runs after the fragment is attached", async () => {
+  const document = makeDocument();
+  let mounted = false;
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: async () => response('<section id="pasajero"></section>'),
+    parseTemplate: parseIds,
+    onMounted: ({ role, mount }) => {
+      mounted = role === "passenger" && mount.children.length === 1;
+    }
+  });
+  await loader.load("passenger");
+  assert.equal(mounted, true);
+});
