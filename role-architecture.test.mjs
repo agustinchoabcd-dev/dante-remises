@@ -31,6 +31,13 @@ test("role event bindings survive a view being absent and mounted later", () => 
   assert.match(roleDomBindings, /function flush\(\)/);
 });
 
+test("passenger map resources are disposed and stale async work is invalidated on role changes", () => {
+  assert.match(html, /passengerViewGeneration\+\+/);
+  assert.match(html, /passengerRouteRequestVersion\+\+/);
+  assert.match(html, /realMap\.remove\(\)/);
+  assert.match(html, /autocompleteRequestIds\.origin\+\+/);
+});
+
 test("auth transition lock is applied before asynchronous account cleanup", () => {
   const callbackStart = html.indexOf("onAuthStateChanged(auth,async user=>");
   const callbackEnd = html.indexOf("\n});", callbackStart);
