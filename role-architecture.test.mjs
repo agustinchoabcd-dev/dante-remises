@@ -36,6 +36,7 @@ test("all dynamically imported runtime modules are included in the Capacitor web
   for (const asset of [
     "role-transition.mjs",
     "role-runtime.mjs",
+    "role-view-access.mjs",
     "map-runtime-loader.mjs",
     "chat-runtime-loader.mjs",
     "roles/passenger.mjs",
