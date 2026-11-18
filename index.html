@@ -2580,6 +2580,7 @@ onAuthStateChanged(auth,async user=>{
     startDriverGps,
     processPendingTripAction,
     loadAdminProfiles:async()=>{
+     byId('passengerList').textContent='Cargando pasajeros…';
      try{
       const profSnap=await get(ref(db,'profiles'));
       const profiles=profSnap.val()||{};
