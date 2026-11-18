@@ -2553,6 +2553,8 @@ onAuthStateChanged(auth,async user=>{
   ['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));
   byId('acceso').classList.remove('hidden');
   roleTransition.finish(transitionToken);
+  startupAuthReady=true;
+  if(startupBrandingReady){window.clearTimeout(startupSafetyTimer);finishStartupScreen()}
   return;
  }
  if(user&&!currentRole){byId('authStatus').textContent='Cuenta sin rol asignado. Contactá a Agustín.';try{await signOut(auth)}catch(error){console.error('No se pudo cerrar la sesión de una cuenta sin rol:',error);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify('Esta cuenta no está habilitada en Dante Remises.');return}
