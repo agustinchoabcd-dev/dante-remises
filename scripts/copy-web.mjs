@@ -6,6 +6,8 @@ const webAssets = [
   "index.html",
   "js/dante-map.js",
   "js/mapbox-config.js",
+  "js/dante-geocoding.js",
+  "js/geocoding-config.js",
   "assets/chat-wallpaper.jpg",
   "service-worker.js",
   "media-cache.mjs",
