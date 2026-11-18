@@ -64,3 +64,16 @@ test("an unauthorized view cannot be activated", () => {
   assert.equal(doc.elements.central.classList.contains("hidden"), false);
   assert.equal(doc.elements.pasajero.classList.contains("hidden"), false);
 });
+
+test("missing role templates are tolerated, but a missing target view is not activated", () => {
+  const partial = {
+    getElementById(id) {
+      return id === "pasajero" ? createElement() : null;
+    },
+    querySelectorAll() { return []; }
+  };
+  assert.doesNotThrow(() => hideRoleViews(partial));
+  assert.equal(applyRoleView(partial, "passenger", "pasajero"), true);
+  assert.equal(applyRoleView(partial, "passenger", "central"), false);
+  assert.equal(applyRoleView(partial, "driver", "chofer"), false);
+});
