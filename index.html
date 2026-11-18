@@ -395,7 +395,8 @@ body.chat-screen-open #chat .chat-mic-button.is-dragging{transform:translate3d(v
 body.dante-role-transition main{visibility:hidden!important;pointer-events:none!important}
 body.dante-role-transition #settingsGearButton,
 body.dante-role-transition #logoutButton,
-body.dante-role-transition #staffEntryButton{visibility:hidden!important;pointer-events:none!important}
+body.dante-role-transition #staffEntryButton,
+body.dante-role-transition #imageLightbox{visibility:hidden!important;pointer-events:none!important}
 </style>
 </head>
 <body>
@@ -2519,6 +2520,7 @@ onAuthStateChanged(auth,async user=>{
  const transitionToken=roleTransition.begin();
  activeRoleTransitionToken=transitionToken;
  closeChatScreen();
+ closeImageLightbox();
  passengerPhotoLoadVersion++;chatPeerAvatarLoadVersion++;
  perf.mark("auth.callback.start");
  stopStaffPhotosSync();
