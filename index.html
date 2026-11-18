@@ -1905,6 +1905,7 @@ function stopChatAudioRecording(){
  if(chatMediaRecorder?.state==='recording'){try{chatMediaRecorder.stop()}catch(error){console.warn('No se pudo detener la grabación:',error);cancelChatRecording()}}
 }
 async function sendChatAttachment(file,type,fileName){
+ await ensureChatModules();
  const conversationId=activeChatConversation?.conversationId,api=getChatApiClient();
  if(!api||!conversationId){notify('Primero abrí una conversación.');return}
  const controls=['chatAttachButton','chatRecordButton','chatSendButton'];
