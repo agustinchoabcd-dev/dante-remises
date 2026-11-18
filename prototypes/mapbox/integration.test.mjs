@@ -56,6 +56,12 @@ test("Geoapify handles address autocomplete and reverse geocoding for Argentina"
   assert.match(html, /Calle cercana no disponible/);
 });
 
+test("Geoapify attribution remains visible when saved trip addresses are reused by drivers", () => {
+  assert.match(html, /const GEOAPIFY_ATTRIBUTION_HTML=/);
+  assert.ok((html.match(/GEOAPIFY_ATTRIBUTION_HTML/g) || []).length >= 4);
+  assert.match(html, /https:\/\/www\.openstreetmap\.org\/copyright/);
+});
+
 test("the token is injected at runtime and no access token is committed in source", () => {
   assert.match(adapter, /window\.DANTE_MAPBOX_TOKEN/);
   assert.match(config, /window\.DANTE_MAPBOX_TOKEN = window\.DANTE_MAPBOX_TOKEN \|\| ''/);
