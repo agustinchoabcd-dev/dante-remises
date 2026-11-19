@@ -25,7 +25,7 @@ const allowed = {
   passenger: ["pasajero", "passengerOnboarding", "chat", "configuracion"],
   driver: ["inicio", "chofer", "chat", "configuracion"],
   operator: ["central", "chat", "configuracion"],
-  admin: ["central", "chofer", "chat", "configuracion"]
+  admin: ["central", "inicio", "chofer", "chat", "configuracion"]
 };
 test("each role can access only its own workspace and shared screens", () => {
   const allViews = ["pasajero", "passengerOnboarding", "inicio", "chofer", "central", "chat", "configuracion"];
