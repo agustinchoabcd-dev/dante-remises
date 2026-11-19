@@ -1398,6 +1398,8 @@ async function ensureDriverHomePendingRoute(force=false){
  try{
   const route=await getDriverHomeRequestRoute(trip,latestDriverLocation);
   if(version!==driverHomePendingRouteVersion||activeTripId||!driverHomeMap||!driverHomePendingTrips.some(item=>String(item.tripId)===String(trip.tripId)))return false;
+  const gpsStillFresh=latestDriverLocation&&Date.now()-Number(latestDriverLocation.updatedAt||0)<45000;
+  if(!gpsStillFresh||driverHomeDistanceMeters(driverHomePendingRouteLastLocation,latestDriverLocation)>100){driverHomePendingRouteLoading=false;return false;}
   const routeDistances=getDriverRequestRouteDistances(route);
   updateDriverHomeRequestDistanceLabels(trip.tripId,routeDistances.pickupMeters===null?'Distancia no disponible':formatDriverDistance(routeDistances.pickupMeters),routeDistances.destinationMeters===null?'Distancia no disponible':formatDriverDistance(routeDistances.destinationMeters));
   driverHomePendingRoute=route;driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
