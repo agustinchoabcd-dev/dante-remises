@@ -6,6 +6,7 @@ on:
   pull_request:
     branches:
       - main
+      - feat/driver-home-connected-map
       - trip-request-alerts
       - trip-alerts-corrections
     paths:
