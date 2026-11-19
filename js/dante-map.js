@@ -459,7 +459,7 @@
           if (now < pausedUntil) { frame = requestAnimationFrame(animate); return; }
           currentLeg = nextLeg;
           startedAt = now;
-        }
+        } else if (!startedAt) startedAt = now;
         if (now - lastFrameAt >= 40) {
           lastFrameAt = now;
           const progress = Math.max(0,Math.min(1,(now-startedAt)/duration));
