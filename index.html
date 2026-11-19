@@ -883,7 +883,7 @@ let driverWantsOnline=false,driverHomeMap=null,driverHomeMapMarker=null,driverHo
 let driverHomeCurtainExpanded=false,driverHomeMessage="Estás conectado",driverHomeMessageTimer=null,driverHomeDrag=null;
 let driverHomeConnectBusy=false,driverHomeDisconnectBusy=false;
 let driverHomePendingTrips=[],driverHomeRequestMarkers=new Map(),driverInboxRenderVersion=0;
-let driverHomeMapUserMoved=false,driverHomeMapUserMoveUnsub=null,driverHomeFocusTripId=null,driverHomePendingRoute=null,driverHomePendingRouteTripId=null,driverHomePendingRouteLastAttemptAt=0,driverHomePendingRouteLastLocation=null,driverHomePendingRouteVersion=0,driverHomePendingRouteLoading=false,driverHomeMarkerMode='dot',driverHomeLastHeading=null;
+let driverHomeMapUserMoved=false,driverHomeMapUserMoveUnsub=null,driverHomeFocusTripId=null,driverHomePendingRoute=null,driverHomePendingRouteTripId=null,driverHomePendingRouteLastAttemptAt=0,driverHomePendingRouteLastLocation=null,driverHomePendingRouteVersion=0,driverHomePendingRouteLoading=false,driverHomeNavigationLoading=false,driverHomeMarkerMode='dot',driverHomeLastHeading=null;
 let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0,failedAttempts:0};
 let driverHomeNavigationRequestVersion=0,driverHomeMapTransitionHandler=null;
 function isDriverCapableRole(){return ['driver','admin'].includes(currentRole?.role)}
@@ -1417,7 +1417,7 @@ async function focusDriverHomeMap(){
   if(latestDriverLocation)updateDriverHomeNavigationPosition(latestDriverLocation,true);
   return true;
  }
- if(activeTripId&&activeTripData)return await ensureDriverHomeNavigationRoute(true);
+ if(activeTripId&&activeTripData){if(driverHomeNavigationLoading)return false;return await ensureDriverHomeNavigationRoute(true)}
  if(driverHomePendingRoute){
   const trip=driverHomePendingTrips.find(item=>String(item.tripId)===String(driverHomePendingRouteTripId))||driverHomePendingTrips[0];
   const points=[latestDriverLocation,trip?.origin,trip?.destination].filter(Boolean);
@@ -1543,10 +1543,12 @@ async function ensureDriverHomeNavigationRoute(force=false){
   return false;
  }
  const now=Date.now(),same=driverHomeNavigation.tripId===activeTripId&&driverHomeNavigation.stage===target.stage;
+ if(!force&&same&&driverHomeNavigationLoading)return false;
  if(!force&&same&&driverHomeNavigation.route)return true;
  if(!force&&same&&(driverHomeNavigation.failedAttempts||0)>=3){showDriverHomeNavigationFailure(target.stage);return false}
  if(!force&&same&&now-driverHomeNavigation.lastAttemptAt<60000)return false;
  const version=++driverHomeNavigationRequestVersion;
+ driverHomeNavigationLoading=true;
  driverHomeNavigation={tripId:activeTripId,stage:target.stage,route:null,lastAttemptAt:now,lastRerouteAt:same?driverHomeNavigation.lastRerouteAt||0:0,rerouteCount:driverHomeNavigation.tripId===activeTripId?driverHomeNavigation.rerouteCount||0:0,failedAttempts:same?driverHomeNavigation.failedAttempts||0:0};
  driverHomeMap.removeRoute('driver-home-navigation-route');
  driverHomeMap.removeMarker('driver-home-navigation-target');
@@ -1554,6 +1556,7 @@ async function ensureDriverHomeNavigationRoute(force=false){
  try{
   const route=await window.DanteMap.getDrivingRoute([{lat:Number(latestDriverLocation.lat),lon:Number(latestDriverLocation.lon)},target.point],{steps:true});
   if(version!==driverHomeNavigationRequestVersion||activeTripId!==driverHomeNavigation.tripId||!driverHomeMap)return false;
+  driverHomeNavigationLoading=false;
   driverHomeNavigation.route=route;
   driverHomeNavigation.failedAttempts=0;
   if((latestDriverLocation?.heading===null||latestDriverLocation?.heading===undefined)&&driverHomeLastHeading===null){
@@ -1567,6 +1570,7 @@ async function ensureDriverHomeNavigationRoute(force=false){
   return true;
  }catch(error){
   if(version!==driverHomeNavigationRequestVersion)return false;
+  driverHomeNavigationLoading=false;
   console.warn('No se pudo calcular la navegación del viaje:',error);
   driverHomeNavigation.failedAttempts=(driverHomeNavigation.failedAttempts||0)+1;
   if(driverHomeNavigation.failedAttempts>=3)showDriverHomeNavigationFailure(target.stage);
@@ -1605,6 +1609,7 @@ function updateDriverHomeNavigationPosition(loc,skipCamera=false){
 }
 function destroyDriverHomeMap(){
  if(driverHomeMapUserMoveUnsub){try{driverHomeMapUserMoveUnsub()}catch{}driverHomeMapUserMoveUnsub=null}
+ driverHomeNavigationRequestVersion++;driverHomeNavigationLoading=false;driverHomeNavigation.lastAttemptAt=0;
  if(driverHomeMap){try{driverHomeMap.remove()}catch(error){console.warn('No se pudo desmontar el mapa de Inicio:',error)}}
  driverHomeMap=null;driverHomeMapMarker=null;driverHomeMapFirstFix=false;driverHomeMarkerMode='dot';driverHomeRequestMarkers.clear();driverHomeMapUserMoved=false;driverHomePendingRouteVersion++;driverHomePendingRoute=null;driverHomePendingRouteTripId=null;driverHomePendingRouteLoading=false;byId('driverHomeRecenterButton')?.classList.add('hidden');
 }
@@ -2061,7 +2066,7 @@ async function finishActiveDriverTrip(){
   await remove(ref(db,'trips/'+id+'/driverLocation'));
   activeTripId=null;activeTripData=null;driverHomeMapUserMoved=false;driverHomeLastHeading=null;if(latestDriverLocation)latestDriverLocation={...latestDriverLocation,heading:null};byId('driverHomeRecenterButton')?.classList.add('hidden');
   driverHomePendingRouteVersion++;driverHomePendingRoute=null;driverHomePendingRouteTripId=null;driverHomePendingRouteLoading=false;driverHomeMap?.removeRoute('driver-home-pending-route');
-  driverHomeNavigationRequestVersion++;
+  driverHomeNavigationRequestVersion++;driverHomeNavigationLoading=false;
   driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0,failedAttempts:0};
   driverHomeMap?.removeRoute('driver-home-navigation-route');
   driverHomeMap?.removeMarker('driver-home-navigation-target');
