@@ -877,7 +877,7 @@ let driverWantsOnline=false,driverHomeMap=null,driverHomeMapMarker=null,driverHo
 let driverHomeCurtainExpanded=false,driverHomeMessage="Estás conectado",driverHomeMessageTimer=null,driverHomeDrag=null;
 let driverHomeConnectBusy=false,driverHomeDisconnectBusy=false;
 let driverHomePendingTrips=[],driverHomeRequestMarkers=new Map(),driverInboxRenderVersion=0;
-let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0};
+let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0};
 let driverHomeNavigationRequestVersion=0;
 function isDriverCapableRole(){return ['driver','admin'].includes(currentRole?.role)}
 function currentDriverCarId(){return currentRole?.role==='admin'?'144':String(currentRole?.carId||'')}
@@ -1382,9 +1382,9 @@ async function ensureDriverHomeNavigationRoute(force=false){
  }
  const now=Date.now(),same=driverHomeNavigation.tripId===activeTripId&&driverHomeNavigation.stage===target.stage;
  if(!force&&same&&driverHomeNavigation.route)return true;
- if(!force&&same&&now-driverHomeNavigation.lastAttemptAt<25000)return false;
+ if(!force&&same&&now-driverHomeNavigation.lastAttemptAt<60000)return false;
  const version=++driverHomeNavigationRequestVersion;
- driverHomeNavigation={tripId:activeTripId,stage:target.stage,route:null,lastAttemptAt:now,lastRerouteAt:driverHomeNavigation.lastRerouteAt||0};
+ driverHomeNavigation={tripId:activeTripId,stage:target.stage,route:null,lastAttemptAt:now,lastRerouteAt:same?driverHomeNavigation.lastRerouteAt||0:0,rerouteCount:driverHomeNavigation.tripId===activeTripId?driverHomeNavigation.rerouteCount||0:0};
  driverHomeMap.removeRoute('driver-home-navigation-route');
  driverHomeMap.removeMarker('driver-home-navigation-target');
  ensureDriverHomeNavigationPanel(target.stage,'Calculando la mejor ruta…',target.label);
@@ -1417,8 +1417,9 @@ function updateDriverHomeNavigationPosition(loc){
  const distance=progress.distanceToManeuver===null?'':' · Próxima maniobra a '+formatDriverDistance(progress.distanceToManeuver);
  const meta=formatDriverDistance(progress.remainingDistanceMeters)+' restantes · '+Math.max(1,Math.ceil(progress.remainingDurationSeconds/60))+' min'+distance;
  ensureDriverHomeNavigationPanel(target.stage,progress.instruction,meta);
- if(shouldRerouteDriver({offRouteMeters:progress.offRouteMeters,thresholdMeters:Math.max(65,(Number(loc.accuracy)||0)*1.5),lastRerouteAt:driverHomeNavigation.lastRerouteAt,now:Date.now()})){
+ if((driverHomeNavigation.rerouteCount||0)<2&&shouldRerouteDriver({offRouteMeters:progress.offRouteMeters,thresholdMeters:Math.max(65,(Number(loc.accuracy)||0)*1.5),lastRerouteAt:driverHomeNavigation.lastRerouteAt,now:Date.now()})){
   driverHomeNavigation.lastRerouteAt=Date.now();
+  driverHomeNavigation.rerouteCount=(driverHomeNavigation.rerouteCount||0)+1;
   void ensureDriverHomeNavigationRoute(true);
  }
 }
@@ -1822,7 +1823,7 @@ async function finishActiveDriverTrip(){
   await remove(ref(db,'trips/'+id+'/driverLocation'));
   activeTripId=null;activeTripData=null;
   driverHomeNavigationRequestVersion++;
-  driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0};
+  driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0};
   driverHomeMap?.removeRoute('driver-home-navigation-route');
   driverHomeMap?.removeMarker('driver-home-navigation-target');
   byId('driverActiveTrip')?.classList.add('hidden');
