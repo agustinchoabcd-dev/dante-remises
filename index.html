@@ -1278,7 +1278,11 @@ async function initDriverHomeMap(){
   if(latestDriverLocation)updateDriverHomeLocation(latestDriverLocation);
   renderDriverHomeRequests(driverHomePendingTrips);
   if(driverHomeNavigation.route)driverHomeMap.addRoute('driver-home-navigation-route',driverHomeNavigation.route.geometry,{color:'#168447',weight:7,opacity:.92});
-  if(activeTripData)renderDriverHomeActiveTrip(activeTripData,activeTripId);
+  if(activeTripData){
+   renderDriverHomeActiveTrip(activeTripData,activeTripId);
+   const navigationTarget=getDriverNavigationTarget(activeTripData);
+   if(navigationTarget)driverHomeMap.addMarker('driver-home-navigation-target',navigationTarget.point,navigationTarget.label);
+  }
   if(activeTripId&&latestDriverLocation)void ensureDriverHomeNavigationRoute();
   return true;
  }catch(error){
