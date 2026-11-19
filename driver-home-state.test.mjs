@@ -16,9 +16,11 @@ test("driver presence is opt-in; Admin keeps automatic presence",()=>{
 });
 test("curtain uses the 45 percent viewport threshold in both directions",()=>{
  assert.equal(shouldExpandDriverCurtain({expanded:false,deltaY:-359,viewportHeight:800}),false);
- assert.equal(shouldExpandDriverCurtain({expanded:false,deltaY:-360,viewportHeight:800}),true);
+ assert.equal(shouldExpandDriverCurtain({expanded:false,deltaY:-360,viewportHeight:800}),false);
+ assert.equal(shouldExpandDriverCurtain({expanded:false,deltaY:-361,viewportHeight:800}),true);
  assert.equal(shouldExpandDriverCurtain({expanded:true,deltaY:359,viewportHeight:800}),true);
- assert.equal(shouldExpandDriverCurtain({expanded:true,deltaY:360,viewportHeight:800}),false);
+ assert.equal(shouldExpandDriverCurtain({expanded:true,deltaY:360,viewportHeight:800}),true);
+ assert.equal(shouldExpandDriverCurtain({expanded:true,deltaY:361,viewportHeight:800}),false);
 });
 test("connected message alternates between the two requested labels",()=>{
  assert.equal(nextDriverHomeMessage("Estás conectado"),"Buscando solicitud de viaje");
