@@ -11,7 +11,7 @@
     const lon = Number(properties.lon ?? feature?.geometry?.coordinates?.[0]);
     const label = String(properties.formatted || properties.address_line1 || properties.name || '').trim();
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || !label) return null;
-    return {lat, lon, label};
+    return {lat, lon, label, placeName:String(properties.name || "").trim(), street:String(properties.street || "").trim(), houseNumber:String(properties.housenumber || "").trim(), street2:String(properties.street2 || "").trim(), addressLine1:String(properties.address_line1 || "").trim()};
   }
   async function autocomplete(query) {
     requireKey();
@@ -23,7 +23,7 @@
     const data = await request(url);
     return (data.features || []).map(normalizeFeature).filter(Boolean);
   }
-  async function reverse(point) {
+  async function reverseDetails(point) {
     requireKey();
     const lat = Number(point?.lat), lon = Number(point?.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('INVALID_COORDINATES');
@@ -31,7 +31,10 @@
     url.searchParams.set('lat', String(lat)); url.searchParams.set('lon', String(lon));
     url.searchParams.set('lang', 'es'); url.searchParams.set('apiKey', API_KEY);
     const data = await request(url);
-    return normalizeFeature((data.features || [])[0])?.label || null;
+    return normalizeFeature((data.features || [])[0]);
   }
-  window.DanteGeocoding = Object.freeze({autocomplete, reverse, get configured(){return !!API_KEY;}});
+  async function reverse(point) {
+    return (await reverseDetails(point))?.label || null;
+  }
+  window.DanteGeocoding = Object.freeze({autocomplete, reverse, reverseDetails, get configured(){return !!API_KEY;}});
 })();
