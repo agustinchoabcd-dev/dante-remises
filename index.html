@@ -1326,6 +1326,7 @@ function renderDriverHomeRequests(trips){
 }
 function driverHomeMapPendingMarkers(){
  if(!driverHomeMap)return;
+ for(const id of driverHomeRequestMarkers.keys())driverHomeMap.removeMarker('driver-request-'+id);
  driverHomeRequestMarkers.clear();
  for(const trip of driverHomePendingTrips){
   const origin=trip.origin||{},lat=Number(origin.lat),lon=Number(origin.lon);
@@ -1800,7 +1801,7 @@ async function startActiveDriverTrip(){
   renderDriverActiveTrip(activeTripData,id);
   showView('inicio');
   const ready=await initDriverHomeMap();
-  if(ready){setDriverHomeFullscreen(true);void ensureDriverHomeNavigationRoute(true)}
+  if(ready){setDriverHomeFullscreen(true);void ensureDriverHomeNavigationRoute()}
   notify('Viaje iniciado. La navegación ahora apunta al destino del pasajero.');
  }catch(error){console.error(error);notify('No se pudo iniciar el viaje.')}
 }
