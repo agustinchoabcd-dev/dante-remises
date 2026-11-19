@@ -70,6 +70,14 @@ test("passenger HTML is physically extracted and mounted only after role resolut
   assert.ok(passengerTemplate.includes('<section id="passengerOnboarding"'));
 });
 
+test("temporary passenger photo verification errors do not look like logout", () => {
+  assert.match(html, /passengerPhotoCheckUnavailable=true/);
+  assert.match(html, /!passengerPhotoReady&&!passengerPhotoCheckUnavailable/);
+  assert.match(html, /Tu sesión sigue activa/);
+  assert.match(passengerModule, /photoReady === null/);
+  assert.match(passengerModule, /context\.showView\("pasajero"\)/);
+});
+
 test("role event bindings survive a view being absent and mounted later", () => {
   assert.match(html, /createRoleDomBindings\(document\)/);
   assert.match(html, /const flushRoleDomBindings=roleDomBindings\.flush/);
