@@ -1457,6 +1457,7 @@ function renderDriverHomeRequests(trips){
   driverHomePendingRouteVersion++;
   driverHomePendingRoute=null;
   driverHomePendingRouteTripId=null;
+  driverHomePendingRouteLoading=false;
   driverHomeMap?.removeRoute('driver-home-pending-route');
   return;
  }
