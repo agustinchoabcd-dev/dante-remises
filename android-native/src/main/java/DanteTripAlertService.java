@@ -207,7 +207,7 @@ public class DanteTripAlertService extends Service {
 
     private static String safe(String value, int max) {
         if (value == null) return "";
-        String clean = value.replace('\\n', ' ').replace('\\r', ' ').trim();
+        String clean = value.replace('\n', ' ').replace('\r', ' ').trim();
         return clean.substring(0, Math.min(clean.length(), max));
     }
 
