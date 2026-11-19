@@ -510,6 +510,7 @@ import { canAccessRoleView, applyRoleView, hideRoleViews } from "./role-view-acc
 import { createRoleDomBindings } from "./role-dom-bindings.mjs";
 import { createRoleTemplateLoader } from "./role-template-loader.mjs";
 import { createRoleTransitionController } from "./role-transition.mjs";
+import { completeLogout } from "./session-logout.mjs";
 import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
 import { createChatRuntimeLoader } from "./chat-runtime-loader.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
@@ -2489,7 +2490,38 @@ bindRoleDom('staffLoginButton','click',()=>performLogin(byId('staffIdentity').va
 bindRoleDom('staffPassword','keydown',e=>{if(e.key==='Enter')byId('staffLoginButton').click()});
 bindRoleDom('authPassword','keydown',e=>{if(e.key==='Enter')byId('loginButton').click()});
 bindRoleDom('registerButton','click',async()=>{const name=byId('regName').value.trim(),lastName=byId('regLastName').value.trim(),dni=cleanDni(byId('regDni').value),phone=byId('regPhone').value.trim(),password=byId('regPassword').value;if(!name||!lastName||dni.length<7||password.length<6){notify('Completá nombre, apellido, DNI válido y contraseña de al menos 6 caracteres.');return}let credential=null,reserved=false;registrationInProgress=true;try{credential=await createUserWithEmailAndPassword(auth,dniEmail(dni),password);const uid=credential.user.uid;await set(ref(db,'dniIndex/'+dni),uid);reserved=true;await set(ref(db,'profiles/'+uid),{name,lastName,dni,phone:phone||'',role:'passenger',createdAt:Date.now()});byId('authStatus').textContent='Cuenta creada correctamente.';sessionStorage.setItem('danteWelcomeName',name+' '+lastName);registrationInProgress=false;window.location.reload()}catch(err){console.error(err);if(reserved){try{await remove(ref(db,'dniIndex/'+dni))}catch(e){console.error(e)}}if(credential?.user){try{await deleteUser(credential.user)}catch(e){console.error(e)}}byId('authStatus').textContent=err.code==='PERMISSION_DENIED'?'No se pudo reservar ese DNI. Puede estar registrado o faltan publicar las reglas nuevas.':'No se pudo crear la cuenta. Revisá los datos e intentá nuevamente.';registrationInProgress=false;notify('No se pudo completar el registro')}});
-bindRoleDom('logoutButton','click',async()=>{await dismissNativeTripAlert();await unregisterDriverPushRegistration(currentUser,currentRole);await clearDriverPresence();await signOut(auth)});
+bindRoleDom('logoutButton','click',async()=>{
+ const button=byId('logoutButton');
+ if(button)button.disabled=true;
+ try{
+  await completeLogout({
+   cleanup:[
+    dismissNativeTripAlert,
+    ()=>unregisterDriverPushRegistration(currentUser,currentRole),
+    clearDriverPresence
+   ],
+   signOut:()=>signOut(auth),
+   onSignedOut:()=>{
+    roleTransition.invalidate();
+    hideRoleViews(document);
+    roleTemplateLoader.unmount();
+    showAuthPage('passenger');
+    byId('authStatus').textContent='Sesión cerrada.';
+    byId('postLoginGreeting').classList.add('hidden');
+    byId('settingsGearButton').classList.add('hidden');
+    byId('staffEntryButton').classList.remove('hidden');
+    byId('staffAccess').classList.add('hidden');
+    byId('versionNote').classList.add('hidden');
+    byId('appFooter').classList.add('hidden');
+   }
+  });
+ }catch(error){
+  console.error('No se pudo cerrar la sesión:',error);
+  notify('No se pudo cerrar la sesión. Intentá nuevamente.');
+ }finally{
+  if(button)button.disabled=false;
+ }
+});
 // Identidad visual compartida: el teléfono conserva la última versión y consulta sólo metadatos.
 let startupBrandingReady=false;
 let startupAuthReady=false;
