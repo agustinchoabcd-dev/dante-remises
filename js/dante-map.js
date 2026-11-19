@@ -270,6 +270,29 @@
       return handle;
     }
     removeMarker(id) { const marker = this.markers.get(id); if (marker) marker.remove(); }
+    addTripEndpointMarker(id, point, kind = 'pickup', popup = '') {
+      this.removeMarker(id);
+      if (!validPoint(point)) return null;
+      const pickup = kind === 'pickup';
+      const color = pickup ? '#ed9418' : '#dc3545';
+      const svg = pickup
+        ? '<svg viewBox="0 0 40 48" width="34" height="42" aria-hidden="true"><path d="M20 2C9.5 2 2 9.6 2 19.2 2 31 20 46 20 46s18-15 18-26.8C38 9.6 30.5 2 20 2Z" fill="'+color+'" stroke="#fff" stroke-width="2.4"/><circle cx="20" cy="16" r="5" fill="#fff"/><path d="M10.5 30c.8-6 4.2-9 9.5-9s8.7 3 9.5 9" fill="#fff"/></svg>'
+        : '<svg viewBox="0 0 40 48" width="34" height="42" aria-hidden="true"><path d="M20 2C9.5 2 2 9.6 2 19.2 2 31 20 46 20 46s18-15 18-26.8C38 9.6 30.5 2 20 2Z" fill="'+color+'" stroke="#fff" stroke-width="2.4"/><circle cx="20" cy="19" r="6" fill="#fff"/></svg>';
+      const element = document.createElement('div');
+      element.className = 'dante-trip-endpoint-icon';
+      element.innerHTML = svg;
+      Object.assign(element.style,{width:'34px',height:'42px',display:'block',filter:'drop-shadow(0 2px 3px #001b0d66)'});
+      const marker = new mapboxgl.Marker({element,anchor:'bottom',clickTolerance:3})
+        .setLngLat([Number(point.lon),Number(point.lat)]);
+      if (popup) marker.setPopup(new mapboxgl.Popup({offset:28}).setText(popup));
+      marker.addTo(this.map);
+      const handle = {
+        setLatLng: next => marker.setLngLat([Number(next.lon),Number(next.lat)]),
+        remove: () => { marker.remove(); this.markers.delete(id); }
+      };
+      this.markers.set(id,handle);
+      return handle;
+    }
     addRoute(id, geometry, style = {}) {
       this.removeRoute(id);
       const sourceId = 'dante-route-' + String(id).replace(/[^a-z0-9_-]/gi, '-');
