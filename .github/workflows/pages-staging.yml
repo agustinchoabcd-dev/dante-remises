@@ -6,6 +6,7 @@ on:
       - dante-test
       - mapbox-migration-prototype
       - role-modularization
+      - feat/driver-requests-navigation
   workflow_dispatch:
 
 permissions:
@@ -32,7 +33,7 @@ jobs:
         run: npm install --include=optional
 
       - name: Inject Mapbox and Geoapify public keys for the migration preview
-        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype' || github.ref_name == 'role-modularization' || github.head_ref == 'role-modularization'
+        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype' || github.ref_name == 'role-modularization' || github.head_ref == 'role-modularization' || github.ref_name == 'feat/driver-requests-navigation' || github.head_ref == 'feat/driver-requests-navigation'
         env:
           MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
           GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
