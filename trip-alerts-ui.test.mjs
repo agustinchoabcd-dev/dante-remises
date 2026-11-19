@@ -79,7 +79,7 @@ test("Personal keeps pending requests map-free and opens the complete trip in In
   assert.doesNotMatch(personalCard, /data-accept-trip|driverTripMap/);
   assert.doesNotMatch(activeCard, /driverTripMap|renderDriverTripMap/);
   assert.match(html, /async function ensureDriverHomePendingRoute/);
-  assert.match(html, /getDrivingRoute\(points\)/);
+  assert.match(html, /getDrivingRoute\(points(?:,\{steps:true\})?\)/);
   assert.match(html, /data-accept-trip/);
 });
 
@@ -120,7 +120,7 @@ test("driver request cards use structured places and separate road-leg distances
   assert.match(html, /getDrivingRoute\(points,\{steps:true\}\)/);
 });
 
-test("Mapbox preview animates two route legs and active navigation follows GPS progress", async () => {
+test("Mapbox preview animates all route legs and active navigation follows GPS progress", async () => {
   const [map, html] = await Promise.all([
     readFile(new URL("./js/dante-map.js", import.meta.url), "utf8"),
     readFile(new URL("./index.html", import.meta.url), "utf8")
