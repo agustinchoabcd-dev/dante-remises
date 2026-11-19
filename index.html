@@ -1417,7 +1417,7 @@ function updateDriverHomeNavigationPosition(loc){
  const distance=progress.distanceToManeuver===null?'':' · Próxima maniobra a '+formatDriverDistance(progress.distanceToManeuver);
  const meta=formatDriverDistance(progress.remainingDistanceMeters)+' restantes · '+Math.max(1,Math.ceil(progress.remainingDurationSeconds/60))+' min'+distance;
  ensureDriverHomeNavigationPanel(target.stage,progress.instruction,meta);
- if(shouldRerouteDriver({offRouteMeters:progress.offRouteMeters,lastRerouteAt:driverHomeNavigation.lastRerouteAt,now:Date.now()})){
+ if(shouldRerouteDriver({offRouteMeters:progress.offRouteMeters,thresholdMeters:Math.max(65,(Number(loc.accuracy)||0)*1.5),lastRerouteAt:driverHomeNavigation.lastRerouteAt,now:Date.now()})){
   driverHomeNavigation.lastRerouteAt=Date.now();
   void ensureDriverHomeNavigationRoute(true);
  }
@@ -1436,7 +1436,7 @@ function setDriverCurtainExpanded(expanded){
  const sheet=byId('driverHomeCurtain');
  if(sheet){sheet.classList.toggle('expanded',driverHomeCurtainExpanded);sheet.style.height='';sheet.classList.remove('dragging')}
  const button=byId('driverHomeDisconnectButton');
- if(button)button.classList.toggle('hidden',!driverHomeCurtainExpanded);
+ if(button)button.classList.toggle('hidden',!driverHomeCurtainExpanded||currentRole?.role==='admin');
  const grip=byId('driverHomeCurtainGrip');
  if(grip)grip.setAttribute('aria-expanded',String(driverHomeCurtainExpanded));
 }
