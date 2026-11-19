@@ -1381,7 +1381,7 @@ async function ensureDriverHomePendingRoute(force=false){
  if(!driverHomeMap||activeTripId||!latestDriverLocation||Date.now()-Number(latestDriverLocation.updatedAt||0)>=45000||!driverHomePendingTrips.length)return false;
  const trip=driverHomePendingTrips.find(item=>String(item.tripId)===String(driverHomeFocusTripId))||driverHomePendingTrips[0];
  const points=driverHomeRequestRoutePoints(trip,latestDriverLocation);
- if(points.some(point=>!Number.isFinite(Number(point.lat))||!Number.isFinite(Number(point.lon))))return false;
+ if(!driverHomeRequestRouteCoordinates(trip)||points.some(point=>!Number.isFinite(Number(point.lat))||!Number.isFinite(Number(point.lon))))return false;
  const now=Date.now(),same=driverHomePendingRouteTripId===String(trip.tripId);
  const moved=same&&driverHomePendingRouteLastLocation&&driverHomeDistanceMeters(driverHomePendingRouteLastLocation,latestDriverLocation)>100;
  if(!force&&same&&driverHomePendingRouteLoading)return false;
