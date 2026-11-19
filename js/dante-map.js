@@ -95,6 +95,22 @@
     return expression;
   }
 
+  function interpolateHexColor(fromColor,toColor,amount) {
+    const parse = color => String(color).replace('#','').match(/.{2}/g)?.map(value=>parseInt(value,16)) || [0,0,0];
+    const from=parse(fromColor),to=parse(toColor),t=Math.max(0,Math.min(1,Number(amount)||0));
+    return '#'+from.map((value,index)=>Math.round(value+(to[index]-value)*t).toString(16).padStart(2,'0')).join('');
+  }
+
+  function movingGradientColorAt(progress,baseColor,highlightColor) {
+    const value=Math.max(0,Math.min(1,Number(progress)||0));
+    const start=Math.max(0.001,Math.min(0.72,value*0.72+0.001));
+    const middle=Math.min(0.999,start+0.14),end=Math.min(1,start+0.28);
+    if(value<=start)return baseColor;
+    if(value<=middle)return interpolateHexColor(baseColor,highlightColor,(value-start)/Math.max(0.001,middle-start));
+    if(value<=end)return interpolateHexColor(highlightColor,baseColor,(value-middle)/Math.max(0.001,end-middle));
+    return baseColor;
+  }
+
   class LeafletAdapter {
     constructor(container, center, zoom, locationIqKey) {
       if (!window.L) throw new Error('Leaflet no está disponible para el mapa alternativo.');
@@ -133,9 +149,9 @@
       this.removeMarker(id);
       const element = document.createElement('div');
       element.className = 'dante-driver-heading';
-      element.innerHTML = '<svg viewBox="0 0 34 34" width="38" height="38" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
-      Object.assign(element.style, {width:'38px',height:'38px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)',transform:'rotate('+(Number(heading)||0)+'deg)',transformOrigin:'center'});
-      const marker = L.marker([Number(point.lat),Number(point.lon)], {icon:L.divIcon({html:element,className:'dante-driver-heading-icon',iconSize:[38,38],iconAnchor:[19,19]}),interactive:false,keyboard:false}).addTo(this.map);
+      element.innerHTML = '<svg viewBox="0 0 34 34" width="42" height="42" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+      Object.assign(element.style, {width:'42px',height:'42px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)',transform:'rotate('+(Number(heading)||0)+'deg)',transformOrigin:'center'});
+      const marker = L.marker([Number(point.lat),Number(point.lon)], {icon:L.divIcon({html:element,className:'dante-driver-heading-icon',iconSize:[42,42],iconAnchor:[21,21]}),interactive:false,keyboard:false}).addTo(this.map);
       const handle = {
         setLatLng: next => marker.setLatLng([Number(next.lat),Number(next.lon)]),
         setHeading: value => { element.style.transform='rotate('+(Number(value)||0)+'deg)'; },
@@ -303,8 +319,8 @@
       this.removeMarker(id);
       const element = document.createElement('div');
       element.className = 'dante-driver-heading';
-      element.innerHTML = '<svg viewBox="0 0 34 34" width="38" height="38" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
-      Object.assign(element.style,{width:'38px',height:'38px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
+      element.innerHTML = '<svg viewBox="0 0 34 34" width="42" height="42" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+      Object.assign(element.style,{width:'42px',height:'42px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
       const marker = new mapboxgl.Marker({element,anchor:'center',rotationAlignment:'viewport',pitchAlignment:'viewport'})
         .setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
       let currentHeading=Number(heading)||0;
@@ -446,7 +462,8 @@
       if (!reduceMotion) {
         const element = document.createElement('div');
         element.className = 'dante-driver-preview-arrow';
-        element.innerHTML = '<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><path d="M20 2.5 35 36 20 27 5 36Z M20 12 24 29 20 25.5 16 29Z" fill="#18a86b" fill-rule="evenodd" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg>';
+        element.innerHTML = '<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><path d="M20 2.5 35 36 20 27 5 36Z M20 12 24 29 20 25.5 16 29Z" fill="#facc15" fill-rule="evenodd" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg>';
+        const arrowPath = element.querySelector('path');
         Object.assign(element.style,{width:'40px',height:'40px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
         const first = routePositionAt(validLegs[0].geometry,0);
         if (first) {
@@ -469,6 +486,7 @@
           const progress = Math.max(0,Math.min(1,(now-startedAt)/duration));
           const colors = palette[currentLeg] || palette[1];
           handles[currentLeg]?.setGradient(buildMovingGradient(progress,colors.base,colors.highlight));
+          arrowPath?.setAttribute('fill',movingGradientColorAt(progress,colors.base,colors.highlight));
           const position = routePositionAt(validLegs[currentLeg].geometry,progress);
           if (position && arrowMarker) {
             arrowMarker.setLngLat(position.coordinates);

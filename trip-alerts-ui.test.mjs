@@ -155,6 +155,9 @@ test("Mapbox preview animates all route legs and active navigation follows GPS p
   assert.match(map, /const validLegs = \(legs \|\| \[\]\)\.filter\(leg => leg\?\.geometry && geoCoordinates\(leg\.geometry\)\.length > 1\)/);
   assert.match(map, /palette\[currentLeg\] \|\| palette\[1\]/);
   assert.match(map, /const colors = palette\[index\] \|\| palette\[1\]/);
+  assert.match(map, /function movingGradientColorAt/);
+  assert.match(map, /arrowPath\?\.setAttribute\('fill',movingGradientColorAt/);
+  assert.match(map, /width="42" height="42"/);
   assert.match(map, /lineMetrics:true/);
   assert.match(map, /points\.length > 2 && legLines\.length === 1/);
   assert.match(map, /buildMovingGradient/);
