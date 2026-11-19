@@ -54,12 +54,18 @@ export function formatDriverTripPlace(point = {}) {
 
 export function getDriverRequestRouteDistances(route) {
   const legs = Array.isArray(route?.legs) ? route.legs : [];
-  const pickupRaw = legs[0]?.distance;
-  const destinationRaw = legs[1]?.distance;
-  const pickupMeters = pickupRaw === null || pickupRaw === undefined || pickupRaw === "" ? NaN : Number(pickupRaw);
-  const destinationMeters = destinationRaw === null || destinationRaw === undefined || destinationRaw === "" ? NaN : Number(destinationRaw);
+  const legDistances = legs.map(leg => {
+    const raw = leg?.distance;
+    const value = raw === null || raw === undefined || raw === "" ? NaN : Number(raw);
+    return Number.isFinite(value) && value >= 0 ? value : null;
+  });
+  const sum = values => values.length && values.every(Number.isFinite)
+    ? values.reduce((total,value) => total + value,0)
+    : null;
   return {
-    pickupMeters: Number.isFinite(pickupMeters) && pickupMeters >= 0 ? pickupMeters : null,
-    destinationMeters: Number.isFinite(destinationMeters) && destinationMeters >= 0 ? destinationMeters : null
+    pickupMeters: legDistances[0] ?? null,
+    destinationMeters: sum(legDistances.slice(1)),
+    totalRouteMeters: sum(legDistances),
+    legDistances
   };
 }
