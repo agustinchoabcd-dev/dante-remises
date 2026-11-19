@@ -41,7 +41,8 @@ export function formatDriverTripPlace(point = {}) {
 
   const label = cleanPlacePart(point.label);
   if (!label) return "Ubicación sin referencia";
-  const parts = label.split(",").map(cleanPlacePart).filter(Boolean);
+  const parts = label.split(",").map(cleanPlacePart).filter(Boolean).filter(part => !/^\\d{4,5}\\b/.test(part));
+  if (!parts.length) return "Ubicación sin referencia";
   if (parts.length < 2) return parts[0] || "Ubicación sin referencia";
   const first = parts[0];
   const second = parts[1];
