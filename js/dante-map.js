@@ -503,7 +503,7 @@
       if (this.map.isStyleLoaded()) add(); else this.map.once('load', add);
       const paintGradient=expression=>{
         currentGradient=expression;
-        if(glowLayerAdded&&this.map?.getLayer(glowLayerId))this.map.setPaintProperty(glowLayerId,'line-gradient',expression);
+        if(glowLayerAdded&&this.map?.getLayer(glowLayerId)){try{this.map.setPaintProperty(glowLayerId,'line-gradient',expression)}catch(error){console.warn('No se pudo actualizar el halo de navegación:',error)}}
         if(this.map?.getLayer(layerId))this.map.setPaintProperty(layerId,'line-gradient',expression);
       };
       const handle={
@@ -893,7 +893,6 @@
     normalizeRouteLegs,
     buildMovingGradient,
     buildProgressGradient,
-    routeGeometryLengthMeters,
     routeGeometryLengthMeters,
     get backendPreference() { return MAPBOX_TOKEN && window.mapboxgl && mapboxgl.supported() ? 'mapbox' : 'leaflet'; },
     get tokenConfigured() { return !!MAPBOX_TOKEN; },

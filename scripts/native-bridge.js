@@ -38,8 +38,6 @@ export function watchPosition(success, error, options = {}) {
     enableHighAccuracy: options.enableHighAccuracy ?? true,
     timeout: options.timeout ?? 15000,
     maximumAge: options.maximumAge ?? 1000,
-    timeout: options.timeout ?? 15000,
-    maximumAge: options.maximumAge ?? 1000,
     interval: options.interval ?? 1000,
     minimumUpdateInterval: options.minimumUpdateInterval ?? 750
   }, (position, err) => {

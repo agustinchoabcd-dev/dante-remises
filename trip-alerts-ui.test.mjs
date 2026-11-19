@@ -228,12 +228,6 @@ test("driver GPS uses a one-second high-accuracy watch and requires precise Andr
   assert.match(html,/maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750/);
   assert.match(html,/activeNavigation\?2000:4000/);
 });
-  assert.match(nativeBridge,/interval:\s*options\.interval\s*\?\?\s*1000/);
-  assert.match(nativeBridge,/minimumUpdateInterval:\s*options\.minimumUpdateInterval\s*\?\?\s*750/);
-  assert.match(nativeBridge,/maximumAge:\s*options\.maximumAge\s*\?\?\s*1000/);
-  assert.match(html,/maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750/);
-  assert.match(html,/activeNavigation\?2000:4000/);
-});
 
 test("stage-one preview refreshes with smaller GPS movement and keeps its micropause", () => {
   assert.match(html,/driverHomeDistanceMeters\(driverHomePendingRouteLastLocation,latestDriverLocation\)>25/);
