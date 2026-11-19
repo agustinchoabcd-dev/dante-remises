@@ -24,7 +24,7 @@ test("driver HTML is physically extracted and mounted for driver and admin roles
   assert.match(driverModule, /loadRoleView\("driver"\)/);
   assert.match(adminModule, /loadRoleView\("driver"\)/);
   assert.ok(html.includes("byId('driverControls')?.classList.toggle"));
-  assert.ok(html.includes("byId('roleSummary')?.textContent"));
+  assert.ok(html.includes("if(byId('roleSummary'))byId('roleSummary').textContent=roleText"));
 });
 
 test("driver view controls are registered through deferred role DOM bindings", () => {
