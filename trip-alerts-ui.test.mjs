@@ -212,7 +212,7 @@ test("preview gradient highlight is centered on arrow progress and arrow remains
   assert.equal(gradient[8],"#4ade80");
   assert.equal(gradient[9],0.59);
   assert.match(source,/fill="#198754" fill-rule="evenodd"/);
-  assert.match(source,/stroke="#fff" stroke-width="2\\.4"/);
-  assert.doesNotMatch(source,/arrowPath\\?\\.setAttribute\\('fill'/);
-  assert.match(source,/handles\\[currentLeg\\]\\?\\.setGradient\\(buildMovingGradient\\(progress/);
+  assert.ok(source.includes('stroke="#fff" stroke-width="2.4"'));
+  assert.equal(source.includes("arrowPath?.setAttribute('fill'"),false);
+  assert.ok(source.includes("handles[currentLeg]?.setGradient(buildMovingGradient(progress"));
 });
