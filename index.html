@@ -1429,7 +1429,7 @@ function updateDriverHomeNavigationPosition(loc){
  const provider=driverHomeNavigation.route?.provider==='Geoapify'?'Geoapify · OpenStreetMap':'Mapbox';
  const meta=formatDriverDistance(progress.remainingDistanceMeters)+' restantes · '+Math.max(1,Math.ceil(progress.remainingDurationSeconds/60))+' min'+distance+' · Rutas: '+provider;
  ensureDriverHomeNavigationPanel(target.stage,progress.instruction,meta);
- if((driverHomeNavigation.rerouteCount||0)<2&&shouldRerouteDriver({offRouteMeters:progress.offRouteMeters,thresholdMeters:Math.max(65,(Number(loc.accuracy)||0)*1.5),lastRerouteAt:driverHomeNavigation.lastRerouteAt,now:Date.now()})){
+ if((driverHomeNavigation.rerouteCount||0)<5&&shouldRerouteDriver({offRouteMeters:progress.offRouteMeters,thresholdMeters:Math.max(65,(Number(loc.accuracy)||0)*1.5),lastRerouteAt:driverHomeNavigation.lastRerouteAt,now:Date.now()})){
   driverHomeNavigation.lastRerouteAt=Date.now();
   driverHomeNavigation.rerouteCount=(driverHomeNavigation.rerouteCount||0)+1;
   void ensureDriverHomeNavigationRoute(true);
