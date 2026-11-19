@@ -2,16 +2,39 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, roleDomBindings, passengerModule] = await Promise.all([
+const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, roleDomBindings, passengerModule, driverModule, adminModule] = await Promise.all([
   readFile(new URL("./index.html", import.meta.url), "utf8"),
   readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8"),
   readFile(new URL("./service-worker.js", import.meta.url), "utf8"),
   readFile(new URL("./role-view-access.mjs", import.meta.url), "utf8"),
   readFile(new URL("./role-template-loader.mjs", import.meta.url), "utf8"),
   readFile(new URL("./views/passenger.html", import.meta.url), "utf8"),
+  readFile(new URL("./views/driver.html", import.meta.url), "utf8"),
   readFile(new URL("./role-dom-bindings.mjs", import.meta.url), "utf8"),
-  readFile(new URL("./roles/passenger.mjs", import.meta.url), "utf8")
+  readFile(new URL("./roles/passenger.mjs", import.meta.url), "utf8"),
+  readFile(new URL("./roles/driver.mjs", import.meta.url), "utf8"),
+  readFile(new URL("./roles/admin.mjs", import.meta.url), "utf8")
 ]);
+
+
+test("driver HTML is physically extracted and mounted for driver and admin roles", () => {
+  assert.doesNotMatch(html, /<section id="chofer"/);
+  assert.ok(driverTemplate.includes('<section id="chofer"'));
+  assert.match(roleTemplateLoader, /driver: "\.\/views\/driver\.html"/);
+  assert.match(driverModule, /loadRoleView\("driver"\)/);
+  assert.match(adminModule, /loadRoleView\("driver"\)/);
+  assert.ok(html.includes("byId('driverControls')?.classList.toggle"));
+  assert.ok(html.includes("byId('roleSummary')?.textContent"));
+});
+
+test("driver view controls are registered through deferred role DOM bindings", () => {
+  for (const id of ["driverStatus","driverTripInbox","driverActiveTrip","driverGpsStatus","busyDuration","setBusy","outDuration","setOut","setFree"]) {
+    assert.ok(driverTemplate.includes('id="' + id + '"'), "Missing driver control: " + id);
+  }
+  assert.match(html, /bindRoleDom\('setBusy'/);
+  assert.match(html, /bindRoleDom\('setOut'/);
+  assert.match(html, /bindRoleDom\('setFree'/);
+});
 
 test("passenger HTML is physically extracted and mounted only after role resolution", () => {
   assert.ok(html.includes('<div id="roleViewMount"></div>'));
@@ -77,6 +100,7 @@ test("all dynamically imported runtime modules are included in the Capacitor web
     "role-template-loader.mjs",
     "role-dom-bindings.mjs",
     "views/passenger.html",
+    "views/driver.html",
     "map-runtime-loader.mjs",
     "chat-runtime-loader.mjs",
     "roles/passenger.mjs",
