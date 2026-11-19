@@ -1579,7 +1579,12 @@ function destroyDriverHomeMap(){
  if(driverHomeMap){try{driverHomeMap.remove()}catch(error){console.warn('No se pudo desmontar el mapa de Inicio:',error)}}
  driverHomeMap=null;driverHomeMapMarker=null;driverHomeMapFirstFix=false;driverHomeMarkerMode='dot';driverHomeRequestMarkers.clear();driverHomeMapUserMoved=false;driverHomePendingRouteVersion++;driverHomePendingRoute=null;driverHomePendingRouteTripId=null;byId('driverHomeRecenterButton')?.classList.add('hidden');
 }
-function setDriverCurtainExpanded(expanded){
+function refitDriverHomeRoute(){
+ if(!driverHomeMap||driverHomeMapUserMoved)return;
+ const navigation=!!activeTripId,geometry=navigation?driverHomeNavigation.route?.geometry:driverHomePendingRoute?.geometry;
+ if(geometry)driverHomeMap.fitGeometry(geometry,navigation?driverHomeNavigationFitPadding():driverHomeFitPadding());
+}
+function setDriverHomeFullscreen(expanded){
  const mapNode=byId('driverHomeMap');
  const wasExpanded=document.body.classList.contains('driver-home-map-active');
  if(expanded){
