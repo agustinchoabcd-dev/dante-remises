@@ -1296,7 +1296,7 @@ async function initDriverHomeMap(){
   if(latestDriverLocation)updateDriverHomeLocation(latestDriverLocation);
   renderDriverHomeRequests(driverHomePendingTrips);
   if(driverHomeNavigation.route){
-   driverHomeMap.addRoute('driver-home-navigation-route',driverHomeNavigation.route.geometry,{color:'#168447',weight:7,opacity:.92});
+   driverHomeMap.addRoute('driver-home-navigation-route',driverHomeNavigation.route.geometry,{progress:0,completedColor:'#14532d',pendingStartColor:'#166534',pendingEndColor:'#4ade80',weight:7,opacity:.94});
    if(!driverHomeMapUserMoved){const target=getDriverNavigationTarget(activeTripData);driverHomeMap.fitGeometry(driverHomeNavigation.route.geometry,driverHomeNavigationFitPadding(),[latestDriverLocation,target?.point].filter(Boolean));}
   }
   if(activeTripData){
@@ -1402,7 +1402,9 @@ async function ensureDriverHomePendingRoute(force=false){
   const routeDistances=getDriverRequestRouteDistances(route);
   updateDriverHomeRequestDistanceLabels(trip.tripId,routeDistances.pickupMeters===null?'Distancia no disponible':formatDriverDistance(routeDistances.pickupMeters),routeDistances.destinationMeters===null?'Distancia no disponible':formatDriverDistance(routeDistances.destinationMeters));
   driverHomePendingRoute=route;driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
-  driverHomeMap.addRoute('driver-home-pending-route',route.geometry,{color:'#168447',weight:6,opacity:.9});
+  const previewLegs=(route.legs||[]).filter(leg=>leg?.geometry?.coordinates?.length>1);
+  if(driverHomeMap.addRoutePreview&&previewLegs.length>=2)driverHomeMap.addRoutePreview('driver-home-pending-route',previewLegs,{durationMs:3400,pauseMs:240,weight:6,opacity:.94});
+  else driverHomeMap.addRoute('driver-home-pending-route',route.geometry,{color:'#168447',weight:6,opacity:.9});
   if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeFitPadding(),points);
   return true;
  }catch(error){
@@ -1556,7 +1558,7 @@ async function getDriverHomeRequestRoute(trip,location=latestDriverLocation){
  const points=location
   ? [{lat:Number(location.lat),lon:Number(location.lon)},{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}]
   : [{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}];
- const promise=window.DanteMap.getDrivingRoute(points).then(route=>{
+ const promise=window.DanteMap.getDrivingRoute(points,{steps:true}).then(route=>{
   driverHomeRequestDistanceCache.set(id,{key,route,location:location?{lat:Number(location.lat),lon:Number(location.lon)}:null,updatedAt:Date.now()});
   return route;
  }).finally(()=>{if(driverHomeRequestDistancePending.get(id)?.promise===promise)driverHomeRequestDistancePending.delete(id)});
@@ -1621,7 +1623,7 @@ async function ensureDriverHomeNavigationRoute(force=false){
    const routeHeading=driverHomeFirstRouteBearing(route.geometry);
    if(routeHeading!==null){driverHomeLastHeading=routeHeading;updateDriverHomeLocation(latestDriverLocation)}
   }
-  driverHomeMap.addRoute('driver-home-navigation-route',route.geometry,{color:'#168447',weight:7,opacity:.92});
+  driverHomeMap.addRoute('driver-home-navigation-route',route.geometry,{progress:0,completedColor:'#14532d',pendingStartColor:'#166534',pendingEndColor:'#4ade80',weight:7,opacity:.94});
   driverHomeMap.addMarker('driver-home-navigation-target',target.point,target.label);
   if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeNavigationFitPadding(),[latestDriverLocation,target.point]);
   updateDriverHomeNavigationPosition(latestDriverLocation,true);
@@ -1655,6 +1657,7 @@ function updateDriverHomeNavigationPosition(loc,skipCamera=false){
  if(!same||!driverHomeNavigation.route){void ensureDriverHomeNavigationRoute();return}
  const progress=getDriverNavigationProgress(driverHomeNavigation.route,point);
  if(!progress)return;
+ driverHomeMap.setRouteProgress?.('driver-home-navigation-route',progress.progress);
  const distance=progress.distanceToManeuver===null?'':' · Próxima maniobra a '+formatDriverDistance(progress.distanceToManeuver);
  const meta=formatDriverDistance(progress.remainingDistanceMeters)+' restantes · '+Math.max(1,Math.ceil(progress.remainingDurationSeconds/60))+' min'+distance;
  ensureDriverHomeNavigationPanel(target.stage,progress.instruction,meta);
