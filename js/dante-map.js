@@ -26,6 +26,74 @@
     return output;
   }
 
+
+  function coordinateDistanceMeters(a, b) {
+    const radians = value => value * Math.PI / 180;
+    const lat1 = radians(Number(a[1])), lat2 = radians(Number(b[1]));
+    const dLat = lat2 - lat1, dLon = radians(Number(b[0]) - Number(a[0]));
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    return 6371008.8 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+  }
+
+  function routePositionAt(geometry, progress) {
+    const coordinates = geometry?.type === 'MultiLineString'
+      ? geometry.coordinates.flat()
+      : geometry?.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+    const lengths = [];
+    let total = 0;
+    for (let index = 0; index < coordinates.length - 1; index++) {
+      const length = coordinateDistanceMeters(coordinates[index], coordinates[index + 1]);
+      lengths.push(length);
+      total += length;
+    }
+    if (!total) return null;
+    let remaining = total * Math.max(0, Math.min(1, Number(progress) || 0));
+    for (let index = 0; index < lengths.length; index++) {
+      const length = lengths[index];
+      if (remaining <= length || index === lengths.length - 1) {
+        const fraction = length ? Math.max(0, Math.min(1, remaining / length)) : 0;
+        const a = coordinates[index], b = coordinates[index + 1];
+        const lat1 = Number(a[1]) * Math.PI / 180, lat2 = Number(b[1]) * Math.PI / 180;
+        const dLon = (Number(b[0]) - Number(a[0])) * Math.PI / 180;
+        const y = Math.sin(dLon) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+        return {
+          coordinates: [
+            Number(a[0]) + (Number(b[0]) - Number(a[0])) * fraction,
+            Number(a[1]) + (Number(b[1]) - Number(a[1])) * fraction
+          ],
+          bearing: (Math.atan2(y, x) * 180 / Math.PI + 360) % 360
+        };
+      }
+      remaining -= length;
+    }
+    return null;
+  }
+
+  function buildProgressGradient(progress, style = {}) {
+    const value = Math.max(0, Math.min(1, Number(progress) || 0));
+    const completed = style.completedColor || '#14532d';
+    const pendingStart = style.pendingStartColor || '#166534';
+    const pendingEnd = style.pendingEndColor || '#4ade80';
+    if (value <= 0) return ['interpolate', ['linear'], ['line-progress'], 0, pendingStart, 1, pendingEnd];
+    if (value >= 1) return ['interpolate', ['linear'], ['line-progress'], 0, completed, 1, completed];
+    const boundary = Math.max(0.001, Math.min(0.999, value));
+    const after = Math.min(1, boundary + 0.001);
+    const expression = ['interpolate', ['linear'], ['line-progress'], 0, completed, boundary, completed, after, pendingStart];
+    if (after < 1) expression.push(1, pendingEnd);
+    return expression;
+  }
+
+  function buildMovingGradient(progress, baseColor, highlightColor) {
+    const start = Math.max(0.001, Math.min(0.72, Number(progress) * 0.72 + 0.001));
+    const middle = Math.min(0.999, start + 0.14);
+    const end = Math.min(1, start + 0.28);
+    const expression = ['interpolate', ['linear'], ['line-progress'], 0, baseColor, start, baseColor, middle, highlightColor, end, baseColor];
+    if (end < 1) expression.push(1, baseColor);
+    return expression;
+  }
+
   class LeafletAdapter {
     constructor(container, center, zoom, locationIqKey) {
       if (!window.L) throw new Error('Leaflet no está disponible para el mapa alternativo.');
@@ -115,6 +183,21 @@
       this.routes.set(id, handle);
       return handle;
     }
+    addRoutePreview(id, legs) {
+      this.removeRoute(id);
+      const colors = ['#eab308', '#166534'];
+      const childIds = [];
+      (legs || []).forEach((leg, index) => {
+        if (!leg?.geometry || geoCoordinates(leg.geometry).length < 2) return;
+        const childId = id + '-leg-' + index;
+        this.addRoute(childId, leg.geometry, {color:colors[index] || '#168447',weight:6,opacity:.92});
+        childIds.push(childId);
+      });
+      const handle = {remove:() => childIds.forEach(childId => this.removeRoute(childId))};
+      this.routes.set(id, handle);
+      return handle;
+    }
+    setRouteProgress() {}
     removeRoute(id) { const route = this.routes?.get(id); if (route) { route.remove(); this.routes.delete(id); } }
     centerOn(point, zoom = 16) {
       if(!validPoint(point))return false;
@@ -298,25 +381,38 @@
       const sourceId = 'dante-route-' + String(id).replace(/[^a-z0-9_-]/gi, '-');
       const layerId = sourceId + '-line';
       let cancelled = false;
+      let currentGradient = style.gradient || (style.progress !== undefined ? buildProgressGradient(style.progress, style) : null);
       const add = () => {
         if (cancelled || !this.map || !this.map.isStyleLoaded()) return;
         if (this.map.getLayer(layerId)) this.map.removeLayer(layerId);
         if (this.map.getSource(sourceId)) this.map.removeSource(sourceId);
-        this.map.addSource(sourceId, {type:'geojson', data:{type:'Feature', geometry, properties:{}}});
+        this.map.addSource(sourceId, {
+          type:'geojson',
+          data:{type:'Feature', geometry, properties:{}},
+          ...(currentGradient ? {lineMetrics:true} : {})
+        });
+        const paint = {
+          'line-width':style.weight || 6,
+          'line-opacity':style.opacity ?? .9
+        };
+        if (currentGradient) paint['line-gradient'] = currentGradient;
+        else paint['line-color'] = style.color || '#168447';
         this.map.addLayer({
           id:layerId, type:'line', source:sourceId,
           layout:{'line-cap':'round','line-join':'round'},
-          paint:{
-            'line-color':style.color || '#168447',
-            'line-width':style.weight || 6,
-            'line-opacity':style.opacity ?? .85
-          }
+          paint
         });
       };
       if (this.map.isStyleLoaded()) add(); else this.map.once('load', add);
       const handle = {
+        setGradient: expression => {
+          currentGradient = expression;
+          if (this.map?.getLayer(layerId)) this.map.setPaintProperty(layerId,'line-gradient',expression);
+        },
+        setProgress: value => handle.setGradient(buildProgressGradient(value,style)),
         remove: () => {
           cancelled = true;
+          this.map?.off('load', add);
           if (!this.map) return;
           if (this.map.getLayer(layerId)) this.map.removeLayer(layerId);
           if (this.map.getSource(sourceId)) this.map.removeSource(sourceId);
@@ -325,6 +421,78 @@
       this.routes.set(id, handle);
       return handle;
     }
+    addRoutePreview(id, legs, options = {}) {
+      this.removeRoute(id);
+      const validLegs = (legs || []).filter(leg => leg?.geometry && geoCoordinates(leg.geometry).length > 1).slice(0, 2);
+      if (!validLegs.length) return null;
+      const palette = [
+        {base:'#facc15',highlight:'#ef4444'},
+        {base:'#14532d',highlight:'#4ade80'}
+      ];
+      const childIds = validLegs.map((leg,index) => id + '-leg-' + index);
+      const handles = validLegs.map((leg,index) => this.addRoute(childIds[index],leg.geometry,{
+        gradient:['interpolate',['linear'],['line-progress'],0,palette[index].base,1,palette[index].highlight],
+        weight:options.weight || 6,
+        opacity:options.opacity ?? .94
+      }));
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+      let arrowMarker = null, currentBearing = 0, frame = 0, cancelled = false;
+      let currentLeg = 0, nextLeg = 0, startedAt = 0, pausedUntil = 0, lastFrameAt = 0;
+      const updateRotation = () => arrowMarker?.setRotation(currentBearing - (this.map?.getBearing?.() || 0));
+      if (!reduceMotion) {
+        const element = document.createElement('div');
+        element.className = 'dante-driver-preview-arrow';
+        element.innerHTML = '<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><path d="M20 2.5 35 36 20 27 5 36Z M20 12 24 29 20 25.5 16 29Z" fill="#18a86b" fill-rule="evenodd" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg>';
+        Object.assign(element.style,{width:'40px',height:'40px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
+        const first = routePositionAt(validLegs[0].geometry,0);
+        if (first) {
+          arrowMarker = new mapboxgl.Marker({element,anchor:'center',rotationAlignment:'viewport',pitchAlignment:'viewport'})
+            .setLngLat(first.coordinates).addTo(this.map);
+          this.map.on('rotate',updateRotation);
+        }
+      }
+      const duration = Math.max(1400,Number(options.durationMs)||3400);
+      const pause = Math.max(100,Number(options.pauseMs)||240);
+      const animate = now => {
+        if (cancelled || !this.map) return;
+        if (currentLeg < 0) {
+          if (now < pausedUntil) { frame = requestAnimationFrame(animate); return; }
+          currentLeg = nextLeg;
+          startedAt = now;
+        }
+        if (now - lastFrameAt >= 40) {
+          lastFrameAt = now;
+          const progress = Math.max(0,Math.min(1,(now-startedAt)/duration));
+          const colors = palette[currentLeg] || palette[0];
+          handles[currentLeg]?.setGradient(buildMovingGradient(progress,colors.base,colors.highlight));
+          const position = routePositionAt(validLegs[currentLeg].geometry,progress);
+          if (position && arrowMarker) {
+            arrowMarker.setLngLat(position.coordinates);
+            currentBearing = position.bearing;
+            updateRotation();
+          }
+          if (progress >= 1) {
+            nextLeg = validLegs.length > 1 ? (currentLeg + 1) % validLegs.length : 0;
+            currentLeg = -1;
+            pausedUntil = now + pause;
+          }
+        }
+        frame = requestAnimationFrame(animate);
+      };
+      if (!reduceMotion) frame = requestAnimationFrame(animate);
+      const handle = {
+        remove:() => {
+          cancelled = true;
+          if (frame) cancelAnimationFrame(frame);
+          this.map?.off('rotate',updateRotation);
+          arrowMarker?.remove();
+          childIds.forEach(childId => this.removeRoute(childId));
+        }
+      };
+      this.routes.set(id,handle);
+      return handle;
+    }
+    setRouteProgress(id,progress) { this.routes.get(id)?.setProgress?.(progress); }
     removeRoute(id) { const route = this.routes.get(id); if (route) { route.remove(); this.routes.delete(id); } }
     fitPoints(points, padding = .15) {
       const valid = (points || []).filter(validPoint);
@@ -416,8 +584,18 @@
       if (!Array.isArray(line)) return;
       coordinates.push(...(coordinates.length ? line.slice(1) : line));
     });
+    let routeLegLines = legLines;
+    if (points.length === 3 && legLines.length === 1 && legLines[0].length > 2) {
+      const line = legLines[0], pickup = points[1];
+      let nearestIndex = 0, nearestDistance = Infinity;
+      line.forEach((coordinate,index) => {
+        const distance = coordinateDistanceMeters(coordinate,[Number(pickup.lon),Number(pickup.lat)]);
+        if (distance < nearestDistance) { nearestDistance = distance; nearestIndex = index; }
+      });
+      routeLegLines = [line.slice(0,nearestIndex+1),line.slice(nearestIndex)];
+    }
     const legs = (properties.legs || []).map((leg, legIndex) => {
-      const line = legLines[legIndex] || [];
+      const line = routeLegLines[legIndex] || [];
       const steps = options.steps === true ? (leg.steps || []).map(step => {
         const from = Math.max(0, Number(step.from_index) || 0);
         const to = Math.max(from, Number(step.to_index) || from);
@@ -435,7 +613,7 @@
           duration: step.time
         };
       }) : [];
-      return {distance:leg.distance, duration:leg.time, steps};
+      return {distance:leg.distance, duration:leg.time, geometry:line.length>1?{type:'LineString',coordinates:line}:null, steps};
     });
     if (coordinates.length < 2) throw new Error('Geoapify devolvió una geometría de ruta incompleta.');
     return {
@@ -459,7 +637,17 @@
     if (data.code !== 'Ok' || !data.routes?.[0]) {
       throw new Error(data.message || 'Mapbox no devolvió una ruta.');
     }
-    return {...data.routes[0], provider:'Mapbox'};
+    const route = data.routes[0];
+    const legs = (route.legs || []).map(leg => {
+      const coordinates = [];
+      (leg.steps || []).forEach(step => {
+        const line = step.geometry?.coordinates || [];
+        if (!Array.isArray(line)) return;
+        coordinates.push(...(coordinates.length ? line.slice(1) : line));
+      });
+      return {...leg,geometry:coordinates.length>1?{type:'LineString',coordinates}:null};
+    });
+    return {...route,legs,provider:'Mapbox'};
   }
 
   async function getDrivingRoute(points, options = {}) {
