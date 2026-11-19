@@ -52,7 +52,7 @@ test("driver HTML is physically extracted and mounted for driver and admin roles
 });
 
 test("driver view controls are registered through deferred role DOM bindings", () => {
-  for (const id of ["driverHomeStatus","driverHomeStatusText","driverHomeMap","driverHomeConnectButton","driverHomeMapHomeButton","driverHomeCurtain","driverHomeCurtainGrip","driverHomeConnectedMessage","driverHomeDisconnectButton","driverStatus","driverTripInbox","driverActiveTrip","driverGpsStatus","busyDuration","setBusy","outDuration","setOut","setFree"]) {
+  for (const id of ["driverHomeStatus","driverHomeStatusText","driverHomeMap","driverHomeMapShell","driverHomeNavigation","driverHomeNavigationStage","driverHomeNavigationInstruction","driverHomeNavigationMeta","driverHomeActiveTrip","driverHomeRequests","driverHomeTripInbox","driverHomeConnectButton","driverHomeMapHomeButton","driverHomeCurtain","driverHomeCurtainGrip","driverHomeConnectedMessage","driverHomeDisconnectButton","driverStatus","driverTripInbox","driverActiveTrip","driverGpsStatus","busyDuration","setBusy","outDuration","setOut","setFree"]) {
     assert.ok(driverTemplate.includes('id="' + id + '"'), "Missing driver control: " + id);
   }
   assert.match(html, /bindRoleDom\('setBusy'/);
@@ -114,6 +114,10 @@ test("map engines and chat/trip-alert clients are not eager application imports"
   assert.doesNotMatch(html, /import\s*\{[^}]*\}\s*from\s*["']\.\/chat-client\.mjs["']/);
   assert.doesNotMatch(html, /import\s*\{[^}]*\}\s*from\s*["']\.\/chat-history-cache\.mjs["']/);
   assert.doesNotMatch(html, /import\s*\{[^}]*\}\s*from\s*["']\.\/trip-alerts-client\.mjs["']/);
+  assert.match(html, /getDriverNavigationTarget/);
+  assert.match(html, /getDriverNavigationProgress/);
+  assert.match(html, /driverHomeMapShell/);
+  assert.match(html, /data-accept-trip/);
   assert.match(html, /await ensureMapRuntime\(\)/);
   assert.match(html, /await ensureChatModules\(\)/);
 });
@@ -126,6 +130,7 @@ test("all dynamically imported runtime modules are included in the Capacitor web
     "role-template-loader.mjs",
     "role-dom-bindings.mjs",
     "driver-home-state.mjs",
+    "driver-navigation-state.mjs",
     "views/passenger.html",
     "views/driver.html",
     "map-runtime-loader.mjs",
