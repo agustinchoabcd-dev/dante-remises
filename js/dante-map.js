@@ -211,7 +211,7 @@
     followLocation(point, bearing) {
       if (!validPoint(point) || !this.map) return;
       const options = {center:[Number(point.lon), Number(point.lat)], zoom:Math.max(this.map.getZoom(), 16), pitch:48, duration:550, essential:true};
-      if (Number.isFinite(Number(bearing))) options.bearing = Number(bearing);
+      if (bearing !== null && bearing !== undefined && Number.isFinite(Number(bearing))) options.bearing = Number(bearing);
       this.map.easeTo(options);
     }
     fitGeometry(geometry, padding = .15) {
