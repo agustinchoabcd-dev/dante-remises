@@ -245,7 +245,7 @@ test("preview gradient highlight is centered on arrow progress and arrow remains
   assert.match(source,/fill="#198754" fill-rule="evenodd"/);
   assert.ok(source.includes('stroke="#fff" stroke-width="2.4"'));
   assert.equal(source.includes("arrowPath?.setAttribute('fill'"),false);
-  assert.ok(source.includes("handles[currentLeg]?.setGradient(buildMovingGradient(progress"));
+  assert.ok(source.includes("routeLayers[currentLeg]?.setGradient("));
 });
 
 
@@ -309,12 +309,14 @@ test("Mapbox preview creates every leg in one style-ready pass and animates the 
   assert.equal(state.layers.size,4,"each leg must have a visible base line and a gradient line");
   assert.ok([...state.layers.keys()].some(id=>id.includes("leg-0-gradient")));
   assert.ok([...state.layers.keys()].some(id=>id.includes("leg-1-gradient")));
-  let frame=frames.shift();frame(1000);
-  frame=frames.shift();frame(1400);
+  let timestamp=1000;
+  for(let index=0;index<450;index++){
+    const frame=frames.shift();
+    assert.equal(typeof frame,"function","the animation must schedule its next frame");
+    frame(timestamp);
+    timestamp+=40;
+  }
   assert.ok(state.paintUpdates.some(update=>update.id.includes("leg-0-gradient")&&update.name==="line-gradient"));
-  frame=frames.shift();frame(4400);
-  frame=frames.shift();frame(4640);
-  frame=frames.shift();frame(4680);
   assert.ok(state.paintUpdates.some(update=>update.id.includes("leg-1-gradient")&&update.name==="line-gradient"));
 });
 
@@ -370,4 +372,34 @@ test("Mapbox preview keeps route legs visible and animates a color fallback if l
   state.nextFrame(1000);
   state.nextFrame(1400);
   assert.ok(state.paintUpdates.some(update=>update.name==="line-color"),"fallback line color must animate");
+});
+
+
+test("Geoapify MultiLineString response preserves the two legs from driver to pickup and destination", async () => {
+  const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
+  const legA=[[-64.53,-32.07],[-64.52,-32.07],[-64.51,-32.07]];
+  const legB=[[-64.51,-32.07],[-64.50,-32.06],[-64.49,-32.05]];
+  const response={features:[{
+    type:"Feature",
+    geometry:{type:"MultiLineString",coordinates:[legA,legB]},
+    properties:{distance:2500,time:300,legs:[{distance:1100,time:130,steps:[]},{distance:1400,time:170,steps:[]}]}
+  }]};
+  const sandbox={
+    window:{DANTE_GEOAPIFY_KEY:"test-geoapify-key"},
+    console,URLSearchParams,
+    fetch:async()=>({ok:true,json:async()=>response})
+  };
+  runInNewContext(source,sandbox);
+  const points=[
+    {lat:-32.07,lon:-64.53},
+    {lat:-32.07,lon:-64.51},
+    {lat:-32.05,lon:-64.49}
+  ];
+  const route=await sandbox.window.DanteMap.getDrivingRoute(points,{steps:true});
+  assert.equal(route.provider,"Geoapify");
+  assert.equal(route.legs.length,2);
+  assert.deepEqual(Array.from(route.legs[0].geometry.coordinates[0]),legA[0]);
+  assert.deepEqual(Array.from(route.legs[0].geometry.coordinates.at(-1)),legA.at(-1));
+  assert.deepEqual(Array.from(route.legs[1].geometry.coordinates[0]),legB[0]);
+  assert.deepEqual(Array.from(route.legs[1].geometry.coordinates.at(-1)),legB.at(-1));
 });
