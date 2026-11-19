@@ -28,13 +28,26 @@ export async function notifyDriverForTrip({
   apiBaseUrl,
   idToken,
   tripId,
+  originDistanceMeters,
+  destinationDistanceMeters,
   fetchImpl = globalThis.fetch,
   timeoutMs = DEFAULT_TIMEOUT_MS
 }) {
   if (typeof tripId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(tripId)) {
     throw new TypeError("tripId inválido");
   }
-  return postJson(apiBaseUrl, "/v1/trips/notify-driver", { tripId }, idToken, fetchImpl, timeoutMs);
+  const body = { tripId };
+  const originMeters = cleanDistanceMeters(originDistanceMeters);
+  const destinationMeters = cleanDistanceMeters(destinationDistanceMeters);
+  if (originMeters !== null) body.originDistanceMeters = originMeters;
+  if (destinationMeters !== null) body.destinationDistanceMeters = destinationMeters;
+  return postJson(apiBaseUrl, "/v1/trips/notify-driver", body, idToken, fetchImpl, timeoutMs);
+}
+
+function cleanDistanceMeters(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const meters = Number(value);
+  return Number.isFinite(meters) && meters >= 0 && meters <= 1_000_000 ? Math.round(meters) : null;
 }
 
 async function postJson(baseUrl, path, body, idToken, fetchImpl, timeoutMs) {

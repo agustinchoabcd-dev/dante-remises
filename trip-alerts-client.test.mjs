@@ -43,6 +43,18 @@ test("notifies the driver only by trip id and authenticated passenger token", as
   assert.equal(result.pushAccepted, 1);
 });
 
+test("sends optional road distances in meters with the authenticated trip alert", async () => {
+  let body;
+  await notifyDriverForTrip({apiBaseUrl:"https://worker.example",idToken:"firebase-id-token-long-enough",tripId:"trip-125",originDistanceMeters:500.4,destinationDistanceMeters:1200,fetchImpl:async(_url,init)=>{body=JSON.parse(init.body);return response(200,{pushAccepted:1})}});
+  assert.deepEqual(body,{tripId:"trip-125",originDistanceMeters:500,destinationDistanceMeters:1200});
+});
+
+test("omits invalid road distances instead of sending misleading values", async () => {
+  let body;
+  await notifyDriverForTrip({apiBaseUrl:"https://worker.example",idToken:"firebase-id-token-long-enough",tripId:"trip-126",originDistanceMeters:-1,destinationDistanceMeters:"NaN",fetchImpl:async(_url,init)=>{body=JSON.parse(init.body);return response(200,{pushAccepted:1})}});
+  assert.deepEqual(body,{tripId:"trip-126"});
+});
+
 test("rejects invalid trip ids before network access", async () => {
   let called = false;
   await assert.rejects(

@@ -90,6 +90,7 @@ test("native floating trip alert strips postal and administrative address detail
   assert.match(service, /destination = cleanAddress\(safe\(intent\.getStringExtra\("destination"\), 180\)\)/);
   assert.match(service, /private static String cleanAddress\(String value\)/);
   assert.match(service, /Ubicación sin referencia/);
+  assert.match(service, /result\.append\(", "\)\.append\(part\)/);
 });
 
 
@@ -99,6 +100,9 @@ test("native trip alerts can display optional road distances supplied by FCM", a
   assert.match(service, /destinationDistance = safe\(intent\.getStringExtra\("destinationDistance"\), 24\)/);
   assert.match(service, /distanceSuffix\(originDistance\)/);
   assert.match(service, /distanceSuffix\(destinationDistance\)/);
+  assert.match(service, /String\.format\(java\.util\.Locale\.US, "%.1f km", meters \/ 1000\.0\)/);
+  assert.match(service, /return " \(" \+ formatted \+ "\)"/);
+  assert.doesNotMatch(service, /meters < 1000/);
   assert.match(service, /safe\(data\.get\("originDistance"\), 24\)/);
 });
 
@@ -120,6 +124,28 @@ test("driver request cards use structured places and separate road-leg distances
   assert.match(html, /getDrivingRoute\(points,\{steps:true\}\)/);
 });
 
+test("passenger sends road distances from fresh driver GPS to the alert Worker", () => {
+  assert.match(html, /async function calculateTripAlertRoadDistances\(carId,origin,destination\)/);
+  assert.match(html, /driverLocations\/\'\+carId/);
+  assert.match(html, /getDrivingRoute\(points,\{steps:true\}\)/);
+  assert.match(html, /tripId,\.\.\.alertDistances/);
+});
+
+test("local GPS updates are not throttled by Firebase writes", () => {
+  const callback=html.match(/driverWatchId=watchPosition\(async pos=>\{([\s\S]*?)\},err=>/)?.[1]||"";
+  const mapUpdate=callback.indexOf("updateDriverHomeLocation(loc)");
+  const navigationUpdate=callback.indexOf("updateDriverHomeNavigationPosition(loc)");
+  const writeThrottle=callback.indexOf("if(now-driverLocationWriteAt<4000)return");
+  assert.ok(mapUpdate>=0&&navigationUpdate>mapUpdate&&writeThrottle>navigationUpdate);
+});
+
+test("active navigation requires fresh GPS and preserves progress across fixes", () => {
+  assert.match(html,/gpsAge>=45000/);
+  assert.match(html,/previousProgress:driverHomeNavigation\.lastProgress/);
+  assert.match(html,/driverHomeNavigation\.lastProgress=progress\.progress/);
+  assert.match(html,/La ubicación cambió durante el cálculo/);
+});
+
 test("Mapbox preview animates all route legs and active navigation follows GPS progress", async () => {
   const [map, html] = await Promise.all([
     readFile(new URL("./js/dante-map.js", import.meta.url), "utf8"),
@@ -128,6 +154,7 @@ test("Mapbox preview animates all route legs and active navigation follows GPS p
   assert.match(map, /addRoutePreview\(id, legs, options = \{\}\)/);
   assert.match(map, /const validLegs = \(legs \|\| \[\]\)\.filter\(leg => leg\?\.geometry && geoCoordinates\(leg\.geometry\)\.length > 1\)/);
   assert.match(map, /palette\[currentLeg\] \|\| palette\[1\]/);
+  assert.match(map, /const colors = palette\[index\] \|\| palette\[1\]/);
   assert.match(map, /lineMetrics:true/);
   assert.match(map, /points\.length > 2 && legLines\.length === 1/);
   assert.match(map, /buildMovingGradient/);

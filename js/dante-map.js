@@ -431,11 +431,14 @@
         {base:'#14532d',highlight:'#4ade80'}
       ];
       const childIds = validLegs.map((leg,index) => id + '-leg-' + index);
-      const handles = validLegs.map((leg,index) => this.addRoute(childIds[index],leg.geometry,{
-        gradient:['interpolate',['linear'],['line-progress'],0,palette[index].base,1,palette[index].highlight],
-        weight:options.weight || 6,
-        opacity:options.opacity ?? .94
-      }));
+      const handles = validLegs.map((leg,index) => {
+        const colors = palette[index] || palette[1];
+        return this.addRoute(childIds[index],leg.geometry,{
+          gradient:['interpolate',['linear'],['line-progress'],0,colors.base,1,colors.highlight],
+          weight:options.weight || 6,
+          opacity:options.opacity ?? .94
+        });
+      });
       const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
       let arrowMarker = null, currentBearing = 0, frame = 0, cancelled = false;
       let currentLeg = 0, nextLeg = 0, startedAt = 0, pausedUntil = 0, lastFrameAt = 0;

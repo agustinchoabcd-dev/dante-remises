@@ -37,6 +37,25 @@ test("route progress returns nearest route point and next localized maneuver", (
   assert.ok(progress.remainingDistanceMeters >= 0);
 });
 
+test("navigation progress does not jump to a nearby parallel segment ahead", () => {
+  const route={distance:2300,duration:900,geometry:{type:"LineString",coordinates:[[0,0],[0.01,0],[0.01,0.0005],[0,0.0005]]},legs:[]};
+  const location={lat:0.00045,lon:0.005},unconstrained=getDriverNavigationProgress(route,location);
+  const constrained=getDriverNavigationProgress(route,location,{previousProgress:0.25,maxForwardMeters:300});
+  assert.ok(unconstrained.progress>0.5);
+  assert.ok(constrained.progress>=0.25&&constrained.progress<0.4);
+  assert.ok(constrained.offRouteMeters<20);
+});
+
+test("navigation maneuver index never regresses after GPS jitter", () => {
+  const route={distance:300,duration:180,geometry:{type:"LineString",coordinates:[[0,0],[0.001,0],[0.002,0],[0.003,0]]},legs:[{steps:[
+   {geometry:{coordinates:[[0,0],[0.001,0]]},maneuver:{instruction:"Seguí"}},
+   {geometry:{coordinates:[[0.001,0],[0.002,0]]},maneuver:{instruction:"Girás"}},
+   {geometry:{coordinates:[[0.002,0],[0.003,0]]},maneuver:{instruction:"Llegás"}}
+  ]}]};
+  const progress=getDriverNavigationProgress(route,{lat:0,lon:0.001},{previousProgress:0.3,previousStepIndex:2});
+  assert.equal(progress.stepIndex,2);assert.equal(progress.instruction,"Llegás");
+});
+
 test("rerouting is distance-gated and throttled", () => {
   assert.equal(shouldRerouteDriver({ offRouteMeters: 50, lastRerouteAt: 0, now: 30000 }), false);
   assert.equal(shouldRerouteDriver({ offRouteMeters: 80, lastRerouteAt: 20000, now: 30000 }), false);

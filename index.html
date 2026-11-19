@@ -886,7 +886,7 @@ let driverHomeCurtainExpanded=false,driverHomeMessage="Estás conectado",driverH
 let driverHomeConnectBusy=false,driverHomeDisconnectBusy=false;
 let driverHomePendingTrips=[],driverHomeRequestMarkers=new Map(),driverInboxRenderVersion=0,driverHomeRequestDistanceCache=new Map(),driverHomeRequestDistancePending=new Map();
 let driverHomeMapUserMoved=false,driverHomeMapUserMoveUnsub=null,driverHomeFocusTripId=null,driverHomePendingRoute=null,driverHomePendingRouteTripId=null,driverHomePendingRouteLastAttemptAt=0,driverHomePendingRouteLastLocation=null,driverHomePendingRouteVersion=0,driverHomePendingRouteLoading=false,driverHomePendingRouteFailedAttempts=0,driverHomeNavigationLoading=false,driverHomeMarkerMode='dot',driverHomeLastHeading=null;
-let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0,failedAttempts:0};
+let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0,failedAttempts:0,lastProgress:0,lastStepIndex:0,lastProgressAt:0};
 let driverHomeNavigationRequestVersion=0,driverHomeMapTransitionHandler=null;
 function isDriverCapableRole(){return ['driver','admin'].includes(currentRole?.role)}
 function currentDriverCarId(){return currentRole?.role==='admin'?'144':String(currentRole?.carId||'')}
@@ -965,6 +965,24 @@ bindRoleDom('pickOrigin','click',()=>{mapPickMode='origin';byId('pickOrigin').cl
 let passengerRouteRequestVersion=0;
 async function updateRoute(){if(!originPoint||!destinationPoint){byId('routeSummary').textContent='Elegí el origen y el destino para calcular el recorrido.';return}const requestVersion=++passengerRouteRequestVersion,generation=passengerViewGeneration;const points=[{lat:originPoint.lat,lon:originPoint.lon},{lat:destinationPoint.lat,lon:destinationPoint.lon}];try{const route=await window.DanteMap.getDrivingRoute(points);if(requestVersion!==passengerRouteRequestVersion||generation!==passengerViewGeneration||currentRole?.role!=='passenger'||!realMap)return;if(routeLayer)realMap.removeLayer(routeLayer);routeLayer=realMap.addRoute('passenger-route',route.geometry,{color:'#168447',weight:6,opacity:.85});realMap.fitGeometry(route.geometry,.15);byId('routeSummary').textContent=`Recorrido estimado: ${(route.distance/1000).toFixed(1)} km · ${Math.max(1,Math.round(route.duration/60))} min · ${route.provider} (estimación de ruta, no de espera del remis).`}catch(err){if(requestVersion!==passengerRouteRequestVersion||generation!==passengerViewGeneration)return;console.error(err);byId('routeSummary').textContent='No se pudo calcular la ruta. Podés continuar si ambos puntos están seleccionados.';}}
 function watchSelectedDriver(carId){stopPassengerLocationWatch();if(liveLocationUnsub){liveLocationUnsub();liveLocationUnsub=null}const generation=passengerViewGeneration;liveLocationUnsub=onValue(ref(db,'driverLocations/'+carId),snap=>{if(generation!==passengerViewGeneration||currentRole?.role!=='passenger'||selectedPassengerDriver!==carId)return;const loc=snap.val();if(loc&&cars[carId]?.online&&cars[carId]?.status==='libre'&&Date.now()-Number(loc.updatedAt||0)<45000){showDriverMarker(loc);if(byId('driverLocationNote'))byId('driverLocationNote').textContent='Ubicación en vivo del coche '+carId+' mientras figura Libre.'}else{if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}if(byId('driverLocationNote'))byId('driverLocationNote').textContent='El coche no está compartiendo ubicación en este momento.'}},err=>console.warn('No se pudo leer la ubicación pública',err));}
+async function calculateTripAlertRoadDistances(carId,origin,destination){
+ const result={originDistanceMeters:null,destinationDistanceMeters:null};let driverLocation=null;
+ try{const snapshot=await get(ref(db,'driverLocations/'+carId)),candidate=snapshot.val(),age=Date.now()-Number(candidate?.updatedAt||0),accuracy=Number(candidate?.accuracy);if(candidate&&age>=0&&age<45000&&Number.isFinite(Number(candidate.lat))&&Number.isFinite(Number(candidate.lon))&&(!Number.isFinite(accuracy)||accuracy<=200))driverLocation={lat:Number(candidate.lat),lon:Number(candidate.lon)}}catch(error){console.warn('No se pudo leer el GPS reciente del coche para la alerta:',error?.code||error?.name||'Error')}
+ try{
+  const originPoint={lat:Number(origin?.lat),lon:Number(origin?.lon)},destinationPoint={lat:Number(destination?.lat),lon:Number(destination?.lon)};
+  if(![originPoint.lat,originPoint.lon,destinationPoint.lat,destinationPoint.lon].every(Number.isFinite))throw new Error('TRIP_ROUTE_COORDINATES_MISSING');
+  await ensureMapRuntime();if(!window.DanteMap)throw new Error('MAP_RUNTIME_UNAVAILABLE');
+  const points=[...(driverLocation?[driverLocation]:[]),originPoint,destinationPoint],route=await window.DanteMap.getDrivingRoute(points,{steps:true}),routeDistances=getDriverRequestRouteDistances(route);
+  const meters=value=>Number.isFinite(Number(value))&&Number(value)>=0?Math.round(Number(value)):null;
+  if(driverLocation){
+   result.originDistanceMeters=meters(routeDistances.pickupMeters);result.destinationDistanceMeters=meters(routeDistances.destinationMeters);
+   if(result.originDistanceMeters===null){const r=await window.DanteMap.getDrivingRoute([driverLocation,originPoint]);result.originDistanceMeters=meters(r.distance??r.legs?.[0]?.distance)}
+   if(result.destinationDistanceMeters===null){const r=await window.DanteMap.getDrivingRoute([originPoint,destinationPoint]);result.destinationDistanceMeters=meters(r.distance??r.legs?.[0]?.distance)}
+  }else result.destinationDistanceMeters=meters(routeDistances.totalRouteMeters??route.distance);
+  diagnostics.mark('trip.push.road-distances',{originAvailable:result.originDistanceMeters!==null,destinationAvailable:result.destinationDistanceMeters!==null,provider:route.provider||'unknown'});
+ }catch(error){diagnostics.mark('trip.push.road-distances.error',{code:error?.name||'ROUTE_CALCULATION_FAILED'});console.warn('No se pudieron calcular las distancias viales para la alerta:',error?.message||error)}
+ return result;
+}
 function showDriverMarker(loc){if(!realMap)return;const point={lat:Number(loc.lat),lon:Number(loc.lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return;if(loc.updatedAt&&Date.now()-Number(loc.updatedAt)>45000){if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}byId('driverLocationNote').textContent='La ubicación del coche está desactualizada; esperando una nueva señal GPS.';return}if(selectedCarMarker)selectedCarMarker.setLatLng(point);else selectedCarMarker=realMap.addCircleMarker('selected-driver',point,{radius:9,color:'#fff',weight:3,fillColor:'#176b3a',fillOpacity:1,popup:'Ubicación del remis seleccionado'});}
 function stopPassengerLocationWatch(){if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}}
 bindRoleDom('requestSelectedDriver','click',async()=>{
@@ -999,7 +1017,9 @@ bindRoleDom('requestSelectedDriver','click',async()=>{
   let pushNotice='El servidor todavía no confirmó la entrega de la alerta.';
   try{
    const {notifyDriverForTrip}=await import("./trip-alerts-client.mjs");
-   const pushResult=await notifyDriverForTrip({apiBaseUrl:CHAT_API_BASE_URL,idToken:await currentUser.getIdToken(),tripId});
+   result.textContent='Solicitud registrada. Calculando distancias y enviando aviso…';
+   const alertDistances=await calculateTripAlertRoadDistances(c.id,originPoint,destinationPoint);
+   const pushResult=await notifyDriverForTrip({apiBaseUrl:CHAT_API_BASE_URL,idToken:await currentUser.getIdToken(),tripId,...alertDistances});
    diagnostics.mark('trip.push.requested',{tripId,accepted:Number(pushResult.pushAccepted)||0,registered:pushResult.deviceRegistered===true});
    if(Number(pushResult.pushAccepted)>0||pushResult.duplicate===true){pushNotice='FCM aceptó el aviso para envío; falta confirmar que Android lo haya mostrado.';notify('Solicitud registrada. FCM aceptó el aviso, pero todavía no confirma su visualización.');}
    else if(pushResult.dispatchInProgress===true){pushNotice='El Worker está procesando el envío de la alerta.';notify('Solicitud registrada. El aviso al dispositivo se está procesando.');}
@@ -1556,11 +1576,12 @@ function driverHomeRequestRouteCoordinates(trip){
 async function getDriverHomeRequestRoute(trip,location=latestDriverLocation){
  if(!window.DanteMap||!driverHomeRequestRouteCoordinates(trip))throw new Error('TRIP_ROUTE_COORDINATES_MISSING');
  const id=String(trip.tripId||''),now=Date.now();
- const key=[driverHomeRequestRoutePoints(trip,null).map(point=>point.lat+','+point.lon).join(';'),location?'gps':'no-gps'].join('|');
+ const locationKey=location?'gps:'+Math.round(Number(location.lat)*1000)+':'+Math.round(Number(location.lon)*1000):'no-gps';
+ const key=[driverHomeRequestRoutePoints(trip,null).map(point=>point.lat+','+point.lon).join(';'),locationKey].join('|');
  const cached=driverHomeRequestDistanceCache.get(id);
  if(cached&&cached.key===key&&now-cached.updatedAt<90000&&(!location||driverHomeDistanceMeters(cached.location,location)<=100))return cached.route;
  const pending=driverHomeRequestDistancePending.get(id);
- if(pending?.key===key)return pending.promise;
+ if(pending?.key===key&&(!location||driverHomeDistanceMeters(pending.location,location)<=100))return pending.promise;
  const points=driverHomeRequestRoutePoints(trip,location);
  const promise=window.DanteMap.getDrivingRoute(points,{steps:true}).then(route=>{
   if(driverHomeRequestDistancePending.get(id)?.promise===promise){
@@ -1568,7 +1589,7 @@ async function getDriverHomeRequestRoute(trip,location=latestDriverLocation){
   }
   return route;
  }).finally(()=>{if(driverHomeRequestDistancePending.get(id)?.promise===promise)driverHomeRequestDistancePending.delete(id)});
- driverHomeRequestDistancePending.set(id,{key,promise});
+ driverHomeRequestDistancePending.set(id,{key,location:location?{lat:Number(location.lat),lon:Number(location.lon)}:null,promise});
  return promise;
 }
 async function ensureDriverHomeRequestCardDistances(trip){
@@ -1608,24 +1629,28 @@ async function ensureDriverHomeNavigationRoute(force=false){
   ensureDriverHomeNavigationPanel(activeTripData.status==='accepted'?'pickup':'destination','Faltan las coordenadas del destino para navegar.','Revisá la dirección del viaje.');
   return false;
  }
- if(!latestDriverLocation){
+ const gpsAge=Date.now()-Number(latestDriverLocation?.updatedAt||0);
+ if(!latestDriverLocation||gpsAge<0||gpsAge>=45000||!Number.isFinite(Number(latestDriverLocation.lat))||!Number.isFinite(Number(latestDriverLocation.lon))){
   ensureDriverHomeNavigationPanel(target.stage,'Esperando señal GPS para calcular la ruta…','Activá la ubicación precisa del dispositivo.');
   return false;
  }
  const now=Date.now(),same=driverHomeNavigation.tripId===activeTripId&&driverHomeNavigation.stage===target.stage;
  if(!force&&same&&driverHomeNavigationLoading)return false;
- if(!force&&same&&driverHomeNavigation.route)return true;
+ if(!force&&same&&driverHomeNavigation.route){updateDriverHomeNavigationPosition(latestDriverLocation,true);return true}
  if(!force&&same&&(driverHomeNavigation.failedAttempts||0)>=3){showDriverHomeNavigationFailure(target.stage);return false}
  if(!force&&same&&now-driverHomeNavigation.lastAttemptAt<60000)return false;
  const version=++driverHomeNavigationRequestVersion;
+ const routeStartLocation={lat:Number(latestDriverLocation.lat),lon:Number(latestDriverLocation.lon)};
  driverHomeNavigationLoading=true;
- driverHomeNavigation={tripId:activeTripId,stage:target.stage,route:null,lastAttemptAt:now,lastRerouteAt:same?driverHomeNavigation.lastRerouteAt||0:0,rerouteCount:driverHomeNavigation.tripId===activeTripId?driverHomeNavigation.rerouteCount||0:0,failedAttempts:same?driverHomeNavigation.failedAttempts||0:0};
+ driverHomeNavigation={tripId:activeTripId,stage:target.stage,route:null,lastAttemptAt:now,lastRerouteAt:same?driverHomeNavigation.lastRerouteAt||0:0,rerouteCount:driverHomeNavigation.tripId===activeTripId?driverHomeNavigation.rerouteCount||0:0,failedAttempts:same?driverHomeNavigation.failedAttempts||0:0,lastProgress:0,lastStepIndex:0,lastProgressAt:now};
  driverHomeMap.removeRoute('driver-home-navigation-route');
  driverHomeMap.removeMarker('driver-home-navigation-target');
  ensureDriverHomeNavigationPanel(target.stage,'Calculando la mejor ruta…',target.label);
  try{
-  const route=await window.DanteMap.getDrivingRoute([{lat:Number(latestDriverLocation.lat),lon:Number(latestDriverLocation.lon)},target.point],{steps:true});
+  const route=await window.DanteMap.getDrivingRoute([routeStartLocation,target.point],{steps:true});
   if(version!==driverHomeNavigationRequestVersion||activeTripId!==driverHomeNavigation.tripId||!driverHomeMap)return false;
+  const currentLocation=latestDriverLocation,gpsStillFresh=currentLocation&&Date.now()-Number(currentLocation.updatedAt||0)<45000;
+  if(!gpsStillFresh||driverHomeDistanceMeters(routeStartLocation,currentLocation)>100){driverHomeNavigationLoading=false;driverHomeNavigation.lastAttemptAt=0;ensureDriverHomeNavigationPanel(target.stage,'Actualizando la ruta…','La ubicación cambió durante el cálculo; se volverá a calcular con el GPS reciente.');return false}
   driverHomeNavigationLoading=false;
   driverHomeNavigation.route=route;
   driverHomeNavigation.failedAttempts=0;
@@ -1665,8 +1690,10 @@ function updateDriverHomeNavigationPosition(loc,skipCamera=false){
  if(driverHomeMapUserMoved)byId('driverHomeRecenterButton')?.classList.remove('hidden');
  const same=driverHomeNavigation.tripId===activeTripId&&driverHomeNavigation.stage===target.stage;
  if(!same||!driverHomeNavigation.route){void ensureDriverHomeNavigationRoute();return}
- const progress=getDriverNavigationProgress(driverHomeNavigation.route,point);
+ const now=Date.now(),elapsedMs=Math.max(1000,now-Number(driverHomeNavigation.lastProgressAt||now)),speed=Number(loc.speed)>0?Number(loc.speed):20;
+ const progress=getDriverNavigationProgress(driverHomeNavigation.route,point,{previousProgress:driverHomeNavigation.lastProgress,previousStepIndex:driverHomeNavigation.lastStepIndex,maxForwardMeters:Math.max(250,Math.min(5000,speed*elapsedMs/1000*2+100)),maxStepAdvance:Math.max(3,Math.min(10,Math.ceil(elapsedMs/3000)*3))});
  if(!progress)return;
+ driverHomeNavigation.lastProgress=progress.progress;driverHomeNavigation.lastStepIndex=progress.stepIndex;driverHomeNavigation.lastProgressAt=now;
  driverHomeMap.setRouteProgress?.('driver-home-navigation-route',progress.progress);
  const distance=progress.distanceToManeuver===null?'':' · Próxima maniobra a '+formatDriverDistance(progress.distanceToManeuver);
  const meta=formatDriverDistance(progress.remainingDistanceMeters)+' restantes · '+Math.max(1,Math.ceil(progress.remainingDurationSeconds/60))+' min'+distance;
@@ -1877,7 +1904,7 @@ async function startDriverGps(){
    byId('driverGpsStatus').textContent='Permiso de ubicación denegado. Habilitalo en Ajustes de Android y volvé a abrir la app.';
    return;
   }
-  driverWatchId=watchPosition(async pos=>{if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(gpsRole==='driver'&&!driverWantsOnline&&!activeTripId))return;const carId=currentRole?.carId||'144',c=cars[carId],now=Date.now();if(now-driverLocationWriteAt<4000)return;driverLocationWriteAt=now;const loc={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),heading:Number.isFinite(pos.coords.heading)?pos.coords.heading:null,speed:Number.isFinite(pos.coords.speed)?pos.coords.speed:null,updatedAt:now};updateDriverHomeLocation(loc);void updateDriverHomeNavigationPosition(loc);try{if(activeTripId&&activeTripData&&['accepted','in_progress'].includes(activeTripData.status)){const tripLocRef=ref(db,`trips/${activeTripId}/driverLocation`);await onDisconnect(tripLocRef).remove();await set(tripLocRef,loc)}else if(c?.status==='libre'){const publicLocRef=ref(db,`driverLocations/${carId}`);await onDisconnect(publicLocRef).remove();await set(publicLocRef,loc)}byId('driverGpsStatus').textContent='GPS activo · última actualización '+new Date(loc.updatedAt).toLocaleTimeString('es-AR')}catch(err){console.error(err);byId('driverGpsStatus').textContent='No se pudo compartir la ubicación. Revisá las reglas de Firebase.'}},err=>{driverWatchId=null;byId('driverGpsStatus').textContent=err.code===1?'Permiso de ubicación denegado. Habilitalo en Ajustes de Android.':'No se pudo obtener GPS. Comprobá que la ubicación del dispositivo esté activada.'},{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+  driverWatchId=watchPosition(async pos=>{if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(gpsRole==='driver'&&!driverWantsOnline&&!activeTripId))return;const carId=currentRole?.carId||'144',c=cars[carId],now=Date.now();const loc={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),heading:Number.isFinite(pos.coords.heading)?pos.coords.heading:null,speed:Number.isFinite(pos.coords.speed)?pos.coords.speed:null,updatedAt:now};updateDriverHomeLocation(loc);void updateDriverHomeNavigationPosition(loc);if(now-driverLocationWriteAt<4000)return;driverLocationWriteAt=now;try{if(activeTripId&&activeTripData&&['accepted','in_progress'].includes(activeTripData.status)){const tripLocRef=ref(db,`trips/${activeTripId}/driverLocation`);await onDisconnect(tripLocRef).remove();await set(tripLocRef,loc)}else if(c?.status==='libre'){const publicLocRef=ref(db,`driverLocations/${carId}`);await onDisconnect(publicLocRef).remove();await set(publicLocRef,loc)}byId('driverGpsStatus').textContent='GPS activo · última actualización '+new Date(loc.updatedAt).toLocaleTimeString('es-AR')}catch(err){console.error(err);byId('driverGpsStatus').textContent='No se pudo compartir la ubicación. Revisá las reglas de Firebase.'}},err=>{driverWatchId=null;byId('driverGpsStatus').textContent=err.code===1?'Permiso de ubicación denegado. Habilitalo en Ajustes de Android.':'No se pudo obtener GPS. Comprobá que la ubicación del dispositivo esté activada.'},{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
  }catch(error){
   driverWatchId=null;
   byId('driverGpsStatus').textContent='No se pudo iniciar GPS. Comprobá los permisos y la ubicación del dispositivo.';

@@ -221,12 +221,10 @@ public class DanteTripAlertService extends Service {
         try {
             double meters = Double.parseDouble(distance.replace(',', '.'));
             if (Double.isNaN(meters) || Double.isInfinite(meters) || meters < 0) return "";
-            String formatted = meters < 1000
-                ? Math.round(meters) + " m"
-                : String.format(java.util.Locale.getDefault(), "%.1f km", meters / 1000.0);
-            return " · " + formatted;
+            String formatted = String.format(java.util.Locale.US, "%.1f km", meters / 1000.0);
+            return " (" + formatted + ")";
         } catch (NumberFormatException ignored) {
-            return " · " + distance;
+            return "";
         }
     }
 
@@ -241,7 +239,7 @@ public class DanteTripAlertService extends Service {
             boolean road = part.matches("(?i).*\\b(calle|avenida|av\\.?|ruta|rp|rn|boulevard|bv\\.?|pasaje|camino|autopista)\\b.*") ||
                 part.matches(".*\\d+.*");
             if (result.length() == 0) result.append(part);
-            else if (road) { result.append(" · ").append(part); break; }
+            else if (road) { result.append(", ").append(part); break; }
         }
         return result.length() == 0 ? "Ubicación sin referencia" : result.toString();
     }
