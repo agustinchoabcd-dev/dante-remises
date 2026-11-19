@@ -21,7 +21,7 @@ const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, pass
 
 test("Central HTML is physically extracted and mounted for operators and administrators", () => {
   assert.ok(html.includes('<section id="central" class="hidden"><div id="centralViewMount"></div></section>'));
-  assert.doesNotMatch(html, /<h2>Central de Dante Remises<\\/h2>/);
+  assert.equal(html.includes('<h2>Central de Dante Remises</h2>'), false);
   assert.ok(centralTemplate.includes('<h2>Central de Dante Remises</h2>'));
   for (const id of ["centralDescription","centralAuthStatus","adminTripAlertPanel","adminDriverTripInbox","adminDriverActiveTrip","centralCars","passengerAdmin","passengerList"]) {
     assert.ok(centralTemplate.includes('id="' + id + '"'), "Missing Central control: " + id);
