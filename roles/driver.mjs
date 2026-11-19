@@ -19,7 +19,7 @@ export async function activate(context) {
   context.showView("inicio");
 
   return {
-    view: "chofer",
+    view: "inicio",
     background: activateDriverOperations(context)
   };
 }
