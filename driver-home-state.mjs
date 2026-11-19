@@ -16,7 +16,7 @@ export function nextDriverHomeMessage(current) {
 }
 
 function cleanPlacePart(value) {
-  return String(value || "").replace(/\\s+/g, " ").trim();
+  return String(value || "").replace(/\s+/g, " ").trim();
 }
 
 export function formatDriverTripPlace(point = {}) {
@@ -35,18 +35,18 @@ export function formatDriverTripPlace(point = {}) {
 
   const addressLine1 = cleanPlacePart(point.addressLine1 || point.address_line1);
   if (addressLine1) {
-    const parts = addressLine1.split(",").map(cleanPlacePart).filter(Boolean);
-    return parts.slice(0, 2).join(" · ");
+    const parts = addressLine1.split(",").map(cleanPlacePart).filter(Boolean).filter(part => !/^\d{4,5}\b/.test(part) && !/(argentina|c[oó]rdoba|santa rosa de calamuchita|calamuchita)/i.test(part));
+    return parts.slice(0, 2).join(" · ") || "Ubicación sin referencia";
   }
 
   const label = cleanPlacePart(point.label);
   if (!label) return "Ubicación sin referencia";
-  const parts = label.split(",").map(cleanPlacePart).filter(Boolean).filter(part => !/^\\d{4,5}\\b/.test(part));
+  const parts = label.split(",").map(cleanPlacePart).filter(Boolean).filter(part => !/^\d{4,5}\b/.test(part));
   if (!parts.length) return "Ubicación sin referencia";
   if (parts.length < 2) return parts[0] || "Ubicación sin referencia";
   const first = parts[0];
   const second = parts[1];
-  const looksLikeStreet = /\\d|\\b(calle|avenida|av\\.?|ruta|rp|rn|boulevard|bv\\.?|pasaje|camino|autopista)\\b/i.test(second);
+  const looksLikeStreet = /\d|\b(calle|avenida|av\.?|ruta|rp|rn|boulevard|bv\.?|pasaje|camino|autopista)\b/i.test(second);
   return looksLikeStreet ? first + " · " + second : first;
 }
 
