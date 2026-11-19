@@ -1480,7 +1480,7 @@ function driverHomeMapPendingMarkers(){
   const id=String(trip.tripId||''),origin=trip.origin||{},lat=Number(origin.lat),lon=Number(origin.lon);
   if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
   const markerId='driver-request-pickup-'+id;
-  const marker=driverHomeMap.addCircleMarker(markerId,{lat,lon},{radius:10,color:'#fff',weight:3,fillColor:'#e58a16',fillOpacity:1,popup:'Recogida · '+String(trip.passengerName||'Pasajero')});
+  const marker=driverHomeMap.addCircleMarker(markerId,{lat,lon},{radius:10,color:'#fff',weight:3,fillColor:'#e58a16',fillOpacity:1,popup:'Recogida · '+esc(trip.passengerName||'Pasajero')});
   driverHomeRequestMarkers.set(markerId,marker);
  }
  const focused=driverHomePendingTrips.find(item=>String(item.tripId)===String(driverHomeFocusTripId));
