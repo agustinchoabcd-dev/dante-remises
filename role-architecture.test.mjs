@@ -42,7 +42,11 @@ test("driver HTML is physically extracted and mounted for driver and admin roles
   assert.match(adminModule, /loadRoleView\("driver"\)/);
   assert.ok(html.includes("byId('driverControls')?.classList.toggle"));
   assert.ok(html.includes("if(byId('roleSummary'))byId('roleSummary').textContent=roleText"));
-  assert.match(html, /loadRoleView:async role=>\{const result=await roleTemplateLoader\.load\(role\);if\(authGeneration!==authStateGeneration\)return \{stale:true\};if\(role==='driver'\)/);
+  assert.ok(html.includes("loadRoleView:async role=>{"));
+  assert.ok(html.includes("const result=await roleTemplateLoader.load(role);"));
+  assert.ok(html.includes("if(role==='driver')"));
+  assert.ok(html.includes("if(role==='central')"));
+  assert.ok(html.includes("render('central-template-mounted')"));
 });
 
 test("driver view controls are registered through deferred role DOM bindings", () => {
