@@ -89,6 +89,7 @@ on:
       - 'service-worker.js'
       - 'scripts/copy-web.mjs'
       - 'js/dante-map.js'
+      - 'js/dante-geocoding.js'
       - 'js/mapbox-config.js'
       - 'js/dante-geocoding.js'
       - 'js/geocoding-config.js'
@@ -162,6 +163,7 @@ jobs:
           node --check driver-home-state.mjs
           node --check driver-navigation-state.mjs
           node --check js/dante-map.js
+          node --check js/dante-geocoding.js
           node --check map-runtime-loader.mjs
           node --check chat-runtime-loader.mjs
           node --check roles/passenger.mjs
@@ -308,7 +310,7 @@ jobs:
         run: npm install --include=optional
 
       - name: Inject Mapbox and Geoapify public keys for the experimental migration build
-        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype' || github.ref_name == 'role-modularization' || github.head_ref == 'role-modularization' || github.ref_name == 'feat/driver-home-connected-map' || github.head_ref == 'feat/driver-home-connected-map' || github.ref_name == 'feat/driver-requests-navigation' || github.head_ref == 'feat/driver-requests-navigation'
+        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype' || github.ref_name == 'role-modularization' || github.head_ref == 'role-modularization' || github.ref_name == 'feat/driver-home-connected-map' || github.head_ref == 'feat/driver-home-connected-map' || github.ref_name == 'feat/driver-requests-navigation' || github.head_ref == 'feat/driver-requests-navigation' || github.ref_name == 'dante-test' || github.head_ref == 'dante-test'
         env:
           MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
           GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
