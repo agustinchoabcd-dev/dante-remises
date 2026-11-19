@@ -163,7 +163,7 @@ test("auth callback hides role views before asynchronous cleanup and activation"
   const callback = html.slice(authStart, html.indexOf("\n});", authStart));
   assert.ok(callback.indexOf("roleTemplateLoader.unmount()") < callback.indexOf("await stopOperatorPresence()"));
 
-  for (const view of ["pasajero", "chofer", "central", "chat", "configuracion", "passengerOnboarding"]) {
+  for (const view of ["pasajero", "inicio", "chofer", "central", "chat", "configuracion", "passengerOnboarding"]) {
     assert.ok(roleViewAccess.includes('"' + view + '"'), "Missing role view in visibility controller: " + view);
   }
 });
@@ -176,7 +176,7 @@ test("role view controller is the only path that activates a workspace", () => {
   assert.match(html, /applyRoleView\(document,currentRole\?\.role,v\)/);
   assert.doesNotMatch(callback, /byId\(['"](?:pasajero|chofer|central|chat|configuracion)['"]\)\.classList\.toggle\(['"]hidden['"]/);
   assert.doesNotMatch(callback, /byId\(['"]central['"]\)\.classList\.remove\(['"]hidden['"]/);
-  for (const view of ["pasajero", "chofer", "central", "chat", "configuracion"]) {
+  for (const view of ["pasajero", "inicio", "chofer", "central", "chat", "configuracion"]) {
     const directMutations = [
       "byId('" + view + "').classList.remove('hidden')",
       "byId('" + view + "').classList.toggle('hidden'",
