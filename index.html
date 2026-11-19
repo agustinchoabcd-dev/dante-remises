@@ -1294,7 +1294,7 @@ async function initDriverHomeMap(){
   renderDriverHomeRequests(driverHomePendingTrips);
   if(driverHomeNavigation.route){
    driverHomeMap.addRoute('driver-home-navigation-route',driverHomeNavigation.route.geometry,{color:'#168447',weight:7,opacity:.92});
-   if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(driverHomeNavigation.route.geometry,driverHomeFitPadding());
+   if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(driverHomeNavigation.route.geometry,driverHomeNavigationFitPadding());
   }
   if(activeTripData){
    renderDriverHomeActiveTrip(activeTripData,activeTripId);
@@ -1358,6 +1358,11 @@ function updateDriverHomeLocation(loc){
 function driverHomeFitPadding(){
  return document.body.classList.contains('driver-home-map-active')?{top:112,bottom:180,left:36,right:36}:.18;
 }
+function driverHomeNavigationFitPadding(){
+ const padding=driverHomeFitPadding();
+ const values=typeof padding==='object'?padding:{top:Math.round(48+padding*100),bottom:Math.round(48+padding*100),left:Math.round(48+padding*100),right:Math.round(48+padding*100)};
+ return {...values,bearing:latestDriverLocation?.heading};
+}
 async function ensureDriverHomePendingRoute(force=false){
  if(!driverHomeMap||activeTripId||!latestDriverLocation||!driverHomePendingTrips.length)return false;
  const trip=driverHomePendingTrips.find(item=>String(item.tripId)===String(driverHomeFocusTripId))||driverHomePendingTrips[0];
@@ -1393,10 +1398,11 @@ async function focusDriverHomeMap(){
  driverHomeMapUserMoved=false;
  byId('driverHomeRecenterButton')?.classList.add('hidden');
  if(activeTripId&&driverHomeNavigation.route){
-  driverHomeMap.fitGeometry(driverHomeNavigation.route.geometry,driverHomeFitPadding());
+  driverHomeMap.fitGeometry(driverHomeNavigation.route.geometry,driverHomeNavigationFitPadding());
   if(latestDriverLocation)updateDriverHomeNavigationPosition(latestDriverLocation,true);
   return true;
  }
+ if(activeTripId&&activeTripData)return await ensureDriverHomeNavigationRoute(true);
  if(driverHomePendingRoute){
   driverHomeMap.fitGeometry(driverHomePendingRoute.geometry,driverHomeFitPadding());
   return true;
@@ -1533,7 +1539,7 @@ async function ensureDriverHomeNavigationRoute(force=false){
   driverHomeNavigation.failedAttempts=0;
   driverHomeMap.addRoute('driver-home-navigation-route',route.geometry,{color:'#168447',weight:7,opacity:.92});
   driverHomeMap.addMarker('driver-home-navigation-target',target.point,target.label);
-  if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeFitPadding());
+  if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeNavigationFitPadding());
   updateDriverHomeNavigationPosition(latestDriverLocation,true);
   return true;
  }catch(error){
