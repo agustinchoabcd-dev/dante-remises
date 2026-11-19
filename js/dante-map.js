@@ -335,7 +335,8 @@
       const fitPadding = padding && typeof padding === 'object'
         ? {top:Number(padding.top)||0,bottom:Number(padding.bottom)||0,left:Number(padding.left)||0,right:Number(padding.right)||0}
         : Math.max(24,Math.round(48 + (Number(padding)||.15) * 100));
-      const fitOptions={padding:fitPadding,maxZoom:16,animate:false,duration:0,bearing:0,pitch:0};
+      const requestedBearing=padding&&typeof padding==='object'&&padding.bearing!==null&&padding.bearing!==undefined&&Number.isFinite(Number(padding.bearing))?Number(padding.bearing):0;
+      const fitOptions={padding:fitPadding,maxZoom:16,animate:false,duration:0,bearing:requestedBearing,pitch:0};
       this.map.stop();
       this.map.fitBounds(bounds,fitOptions);
     }
