@@ -1,10 +1,10 @@
 const ROLE_VIEWS = Object.freeze({
   passenger: Object.freeze(["pasajero", "passengerOnboarding", "chat", "configuracion"]),
-  driver: Object.freeze(["chofer", "chat", "configuracion"]),
+  driver: Object.freeze(["inicio", "chofer", "chat", "configuracion"]),
   operator: Object.freeze(["central", "chat", "configuracion"]),
   admin: Object.freeze(["central", "chofer", "chat", "configuracion"])
 });
-const ROLE_VIEW_IDS = Object.freeze(["pasajero", "chofer", "central", "chat", "configuracion", "passengerOnboarding"]);
+const ROLE_VIEW_IDS = Object.freeze(["pasajero", "inicio", "chofer", "central", "chat", "configuracion", "passengerOnboarding"]);
 
 function setHidden(element, hidden) {
   if (!element?.classList) return false;
