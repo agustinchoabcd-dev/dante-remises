@@ -30,7 +30,7 @@ test("passenger without a ready photo uses onboarding, not another role view", a
   assert.equal(result.view, "passengerOnboarding");
 });
 
-test("driver activation shows the driver view and starts driver operations", async () => {
+test("driver activation opens Inicio and starts driver operations", async () => {
   const calls = [];
   const result = await activateRole("driver", {
     user: { uid: "driver-1" },
@@ -44,9 +44,9 @@ test("driver activation shows the driver view and starts driver operations", asy
     processPendingTripAction: async () => calls.push("pending")
   });
 
-  assert.equal(result.view, "chofer");
+  assert.equal(result.view, "inicio");
   await result.background;
-  assert.deepEqual(calls, ["mount:driver", "view:chofer", "push", "inbox", "restore", "gps", "pending"]);
+  assert.deepEqual(calls, ["mount:driver", "view:inicio", "push", "inbox", "restore", "gps", "pending"]);
 });
 
 test("operator activation does not load driver operations", async () => {
