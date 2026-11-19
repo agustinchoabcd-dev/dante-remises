@@ -28,29 +28,56 @@ export function distanceBetweenPointsMeters(a, b) {
   return 2 * EARTH_RADIUS_METERS * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
 }
 
+function pointToSegmentDistance(point, a, b) {
+  const latitude = Number(point.lat);
+  const longitude = Number(point.lon);
+  const aLat = Number(a[1]), aLon = Number(a[0]);
+  const bLat = Number(b[1]), bLon = Number(b[0]);
+  const scaleY = EARTH_RADIUS_METERS * Math.PI / 180;
+  const scaleX = scaleY * Math.cos(latitude * Math.PI / 180);
+  const ax = (aLon - longitude) * scaleX;
+  const ay = (aLat - latitude) * scaleY;
+  const bx = (bLon - longitude) * scaleX;
+  const by = (bLat - latitude) * scaleY;
+  const dx = bx - ax, dy = by - ay;
+  const lengthSquared = dx * dx + dy * dy;
+  const fraction = lengthSquared ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / lengthSquared)) : 0;
+  const projectedX = ax + fraction * dx;
+  const projectedY = ay + fraction * dy;
+  return { distance: Math.hypot(projectedX, projectedY), fraction };
+}
+
+function nearestOnLine(point, coordinates) {
+  if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+  let nearestDistance = Infinity, alongDistance = 0, totalDistance = 0;
+  for (let index = 0; index < coordinates.length - 1; index++) {
+    const a = coordinates[index], b = coordinates[index + 1];
+    const segmentLength = distanceBetweenPointsMeters(
+      { lat: a[1], lon: a[0] }, { lat: b[1], lon: b[0] }
+    );
+    const projection = pointToSegmentDistance(point, a, b);
+    if (projection.distance < nearestDistance) {
+      nearestDistance = projection.distance;
+      alongDistance = totalDistance + segmentLength * projection.fraction;
+    }
+    totalDistance += segmentLength;
+  }
+  return { distance: nearestDistance, alongDistance, totalDistance };
+}
+
 export function getDriverNavigationProgress(route, location) {
   const coordinates = route?.geometry?.coordinates;
   if (!Array.isArray(coordinates) || coordinates.length < 2 || !location) return null;
-  let nearestIndex = 0;
-  let nearestDistance = Infinity;
-  for (let index = 0; index < coordinates.length; index++) {
-    const coordinate = coordinates[index];
-    const distance = distanceBetweenPointsMeters(location, { lon: coordinate[0], lat: coordinate[1] });
-    if (distance < nearestDistance) {
-      nearestDistance = distance;
-      nearestIndex = index;
-    }
-  }
+  const nearestRoute = nearestOnLine(location, coordinates);
+  if (!nearestRoute) return null;
   const steps = (route.legs || []).flatMap(leg => leg.steps || []);
   let nearestStepIndex = 0;
   let nearestStepDistance = Infinity;
   steps.forEach((step, index) => {
-    for (const coordinate of step.geometry?.coordinates || []) {
-      const distance = distanceBetweenPointsMeters(location, { lon: coordinate[0], lat: coordinate[1] });
-      if (distance < nearestStepDistance) {
-        nearestStepDistance = distance;
-        nearestStepIndex = index;
-      }
+    const nearest = nearestOnLine(location, step.geometry?.coordinates);
+    if (nearest && nearest.distance < nearestStepDistance) {
+      nearestStepDistance = nearest.distance;
+      nearestStepIndex = index;
     }
   });
   const nextStepIndex = Math.min(nearestStepIndex + 1, Math.max(0, steps.length - 1));
@@ -59,18 +86,18 @@ export function getDriverNavigationProgress(route, location) {
   const distanceToManeuver = Array.isArray(maneuver)
     ? distanceBetweenPointsMeters(location, { lon: maneuver[0], lat: maneuver[1] })
     : null;
-  const progress = nearestIndex / Math.max(1, coordinates.length - 1);
+  const progress = nearestRoute.alongDistance / Math.max(1, nearestRoute.totalDistance);
+  const routeDistance = Number(route.distance || nearestRoute.totalDistance);
   return {
-    offRouteMeters: nearestDistance,
-    progress,
-    remainingDistanceMeters: Math.max(0, Number(route.distance || 0) * (1 - progress)),
+    offRouteMeters: nearestRoute.distance,
+    progress: Math.max(0, Math.min(1, progress)),
+    remainingDistanceMeters: Math.max(0, routeDistance * (1 - progress)),
     remainingDurationSeconds: Math.max(0, Number(route.duration || 0) * (1 - progress)),
     stepIndex: nextStepIndex,
     instruction: nextStep?.maneuver?.instruction || nextStep?.name || "Continuá por la ruta",
     distanceToManeuver
   };
 }
-
 export function shouldRerouteDriver({ offRouteMeters, lastRerouteAt = 0, now = Date.now(), thresholdMeters = 65, cooldownMs = 20000 } = {}) {
   return Number(offRouteMeters) > thresholdMeters && Number(now) - Number(lastRerouteAt) >= cooldownMs;
 }
