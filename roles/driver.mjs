@@ -16,7 +16,7 @@ export async function activate(context) {
   if (context.isCurrent && !context.isCurrent()) return { stale: true };
   const mounted = await context.loadRoleView("driver");
   if (mounted?.stale || (context.isCurrent && !context.isCurrent())) return { stale: true };
-  context.showView("chofer");
+  context.showView("inicio");
 
   return {
     view: "chofer",
