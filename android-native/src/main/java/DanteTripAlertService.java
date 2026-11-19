@@ -39,6 +39,8 @@ public class DanteTripAlertService extends Service {
     private String passenger = "Pasajero";
     private String origin = "Origen no especificado";
     private String destination = "Destino no especificado";
+    private String originDistance = "";
+    private String destinationDistance = "";
 
     @Override public void onCreate() {
         super.onCreate();
@@ -56,6 +58,8 @@ public class DanteTripAlertService extends Service {
         passenger = safe(intent.getStringExtra("passengerName"), 100);
         origin = cleanAddress(safe(intent.getStringExtra("origin"), 180));
         destination = cleanAddress(safe(intent.getStringExtra("destination"), 180));
+        originDistance = safe(intent.getStringExtra("originDistance"), 24);
+        destinationDistance = safe(intent.getStringExtra("destinationDistance"), 24);
         if (tripId.isEmpty()) {
             stopSelf();
             return START_NOT_STICKY;
@@ -76,7 +80,7 @@ public class DanteTripAlertService extends Service {
             startForeground(SERVICE_ID, foreground);
         }
 
-        showAlertNotification(this, tripId, carId, passenger, origin, destination);
+        showAlertNotification(this, tripId, carId, passenger, origin, destination, originDistance, destinationDistance);
         showOverlay();
         if (ringtone != null) {
             try { ringtone.stop(); } catch (Exception ignored) { }
@@ -105,8 +109,8 @@ public class DanteTripAlertService extends Service {
         title.setTextSize(13);
         card.addView(title);
         card.addView(makeText("Pasajero: " + passenger, true));
-        card.addView(makeText("Desde: " + origin, false));
-        card.addView(makeText("Hasta: " + destination, false));
+        card.addView(makeText("Desde: " + origin + distanceSuffix(originDistance), false));
+        card.addView(makeText("Hasta: " + destination + distanceSuffix(destinationDistance), false));
         card.addView(makeText("Coche " + carId, false));
 
         LinearLayout actions = new LinearLayout(this);
@@ -211,6 +215,11 @@ public class DanteTripAlertService extends Service {
         return clean.substring(0, Math.min(clean.length(), max));
     }
 
+    private static String distanceSuffix(String value) {
+        String distance = safe(value, 24);
+        return distance.isEmpty() ? "" : " · " + distance;
+    }
+
     private static String cleanAddress(String value) {
         String[] parts = safe(value, 180).split(",");
         StringBuilder result = new StringBuilder();
@@ -243,20 +252,22 @@ public class DanteTripAlertService extends Service {
     }
 
     public static void showAlertNotification(Context context, String tripId, String carId,
-            String passenger, String origin, String destination) {
+            String passenger, String origin, String destination, String originDistance, String destinationDistance) {
         createChannels(context);
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         String cleanOrigin = cleanAddress(origin);
         String cleanDestination = cleanAddress(destination);
+        String fromLine = "Desde: " + cleanOrigin + distanceSuffix(originDistance);
+        String toLine = "Hasta: " + cleanDestination + distanceSuffix(destinationDistance);
         Intent open = new Intent(context, MainActivity.class);
         PendingIntent content = PendingIntent.getActivity(context, tripId.hashCode(), open,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ALERT_CHANNEL)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Nueva solicitud de viaje")
-            .setContentText(passenger + " · Coche " + carId + " · " + cleanOrigin + " → " + cleanDestination)
+            .setContentText(passenger + " · Coche " + carId + " · " + cleanOrigin + distanceSuffix(originDistance) + " → " + cleanDestination + distanceSuffix(destinationDistance))
             .setStyle(new NotificationCompat.BigTextStyle().bigText(
-                "Pasajero: " + passenger + "\nDesde: " + cleanOrigin + "\nHasta: " + cleanDestination))
+                "Pasajero: " + passenger + "\n" + fromLine + "\n" + toLine))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setOngoing(true)
@@ -286,7 +297,9 @@ public class DanteTripAlertService extends Service {
         String passenger = safe(data.get("passengerName"), 100);
         String origin = safe(data.get("origin"), 180);
         String destination = safe(data.get("destination"), 180);
-        showAlertNotification(context, id, car, passenger, origin, destination);
+        String originDistance = safe(data.get("originDistance"), 24);
+        String destinationDistance = safe(data.get("destinationDistance"), 24);
+        showAlertNotification(context, id, car, passenger, origin, destination, originDistance, destinationDistance);
         try {
             Ringtone sound = RingtoneManager.getRingtone(context,
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
