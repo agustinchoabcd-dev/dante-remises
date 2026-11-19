@@ -2502,17 +2502,33 @@ bindRoleDom('logoutButton','click',async()=>{
    ],
    signOut:()=>signOut(auth),
    onSignedOut:()=>{
-    roleTransition.invalidate();
-    hideRoleViews(document);
-    roleTemplateLoader.unmount();
-    showAuthPage('passenger');
+    const setLoggedOutHeader=()=>{
+     byId('settingsGearButton').classList.add('hidden');
+     byId('staffEntryButton').classList.remove('hidden');
+     byId('staffAccess').classList.add('hidden');
+     byId('versionNote').classList.add('hidden');
+     byId('appFooter').classList.add('hidden');
+    };
+    // Actualizar primero los controles globales para que un fallo de desmontaje
+    // no deje visible Configuración en la pantalla de acceso.
+    setLoggedOutHeader();
+    try{
+     roleTransition.invalidate();
+    }finally{
+     try{hideRoleViews(document)}catch(error){console.error('No se pudieron ocultar las vistas del rol:',error)}
+     try{roleTemplateLoader.unmount()}catch(error){console.error('No se pudieron desmontar las plantillas del rol:',error)}
+     try{showAuthPage('passenger')}catch(error){console.error('No se pudo completar la navegación al acceso:',error)}
+     byId('acceso').classList.remove('hidden');
+     byId('staffAccess').classList.add('hidden');
+     document.querySelectorAll('.tabs').forEach(el=>el.classList.add('hidden'));
+     setLoggedOutHeader();
+    }
     byId('authStatus').textContent='Sesión cerrada.';
     byId('postLoginGreeting').classList.add('hidden');
-    byId('settingsGearButton').classList.add('hidden');
-    byId('staffEntryButton').classList.remove('hidden');
-    byId('staffAccess').classList.add('hidden');
-    byId('versionNote').classList.add('hidden');
-    byId('appFooter').classList.add('hidden');
+   },
+   onTransitionError:error=>{
+    console.error('La sesión se cerró, pero falló una actualización visual:',error);
+    notify('Sesión cerrada. Se recuperó la pantalla de acceso.');
    }
   });
  }catch(error){
