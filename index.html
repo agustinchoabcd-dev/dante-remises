@@ -1378,7 +1378,7 @@ function driverHomeNavigationFitPadding(){
  return {...values,bearing:heading!==null&&heading!==undefined&&Number.isFinite(Number(heading))?Number(heading):undefined};
 }
 async function ensureDriverHomePendingRoute(force=false){
- if(!driverHomeMap||activeTripId||!latestDriverLocation||!driverHomePendingTrips.length)return false;
+ if(!driverHomeMap||activeTripId||!latestDriverLocation||Date.now()-Number(latestDriverLocation.updatedAt||0)>=45000||!driverHomePendingTrips.length)return false;
  const trip=driverHomePendingTrips.find(item=>String(item.tripId)===String(driverHomeFocusTripId))||driverHomePendingTrips[0];
  const origin=trip?.origin||{},destination=trip?.destination||{};
  const points=[latestDriverLocation,{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}];
