@@ -84,6 +84,10 @@
       if (valid.length === 1) this.map.setView([Number(valid[0].lat), Number(valid[0].lon)], 16);
       else if (valid.length > 1) this.map.fitBounds(L.latLngBounds(valid.map(p => [Number(p.lat), Number(p.lon)])).pad(padding));
     }
+    followLocation(point) {
+      if (!validPoint(point)) return;
+      this.map.setView([Number(point.lat), Number(point.lon)], Math.max(this.map.getZoom(), 16), {animate:true, duration:0.45});
+    }
     fitGeometry(geometry, padding = .15) {
       const layer = L.geoJSON({type:'Feature', geometry, properties:{}});
       const bounds = layer.getBounds();
@@ -204,6 +208,12 @@
       valid.forEach(point => bounds.extend([Number(point.lon),Number(point.lat)]));
       this.map.fitBounds(bounds,{padding:Math.max(24,Math.round(48 + padding * 100)),maxZoom:16,animate:false,duration:0});
     }
+    followLocation(point, bearing) {
+      if (!validPoint(point) || !this.map) return;
+      const options = {center:[Number(point.lon), Number(point.lat)], zoom:Math.max(this.map.getZoom(), 16), pitch:48, duration:550, essential:true};
+      if (Number.isFinite(Number(bearing))) options.bearing = Number(bearing);
+      this.map.easeTo(options);
+    }
     fitGeometry(geometry, padding = .15) {
       const coordinates = geoCoordinates(geometry);
       if (!coordinates.length) return;
@@ -238,15 +248,16 @@
     return new LeafletAdapter(container, center, zoom, locationIqKey);
   }
 
-  async function getDrivingRoute(points) {
+  async function getDrivingRoute(points, options = {}) {
     if (!Array.isArray(points) || points.length < 2 || points.some(point => !validPoint(point))) {
       throw new Error('Se necesitan al menos dos puntos válidos para calcular la ruta.');
     }
     if (!MAPBOX_TOKEN) throw new Error('MAPBOX_TOKEN_NOT_CONFIGURED');
     const coordinates = points.map(point => Number(point.lon) + ',' + Number(point.lat)).join(';');
     const url = 'https://api.mapbox.com/directions/v5/mapbox/driving/' + coordinates +
-      '?alternatives=false&geometries=geojson&overview=full&steps=false&access_token=' +
-      encodeURIComponent(MAPBOX_TOKEN);
+      '?alternatives=false&geometries=geojson&overview=full&steps=' + (options.steps === true ? 'true' : 'false') +
+      '&language=es' + (options.steps === true ? '&banner_instructions=true&voice_instructions=true' : '') +
+      '&access_token=' + encodeURIComponent(MAPBOX_TOKEN);
     const response = await fetch(url);
     if (!response.ok) throw new Error('Mapbox Directions ' + response.status);
     const data = await response.json();
