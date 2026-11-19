@@ -464,7 +464,7 @@
         if (now - lastFrameAt >= 40) {
           lastFrameAt = now;
           const progress = Math.max(0,Math.min(1,(now-startedAt)/duration));
-          const colors = palette[currentLeg] || palette[0];
+          const colors = palette[currentLeg] || palette[1];
           handles[currentLeg]?.setGradient(buildMovingGradient(progress,colors.base,colors.highlight));
           const position = routePositionAt(validLegs[currentLeg].geometry,progress);
           if (position && arrowMarker) {
