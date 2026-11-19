@@ -52,13 +52,14 @@ test("driver activation shows the driver view and starts driver operations", asy
 test("operator activation does not load driver operations", async () => {
   const calls = [];
   const result = await activateRole("operator", {
+    loadRoleView: async role => calls.push("mount:" + role),
     showView: view => calls.push("view:" + view),
     startOperatorPresence: () => calls.push("operator-presence")
   });
 
   assert.equal(result.view, "central");
   await result.background;
-  assert.deepEqual(calls, ["view:central", "operator-presence"]);
+  assert.deepEqual(calls, ["mount:central", "view:central", "operator-presence"]);
 });
 
 test("admin activation keeps central tools and the car 144 driver runtime", async () => {
@@ -81,7 +82,7 @@ test("admin activation keeps central tools and the car 144 driver runtime", asyn
   assert.equal(result.view, "central");
   await result.background;
   assert.deepEqual(calls, [
-    "mount:driver", "view:central", "admin-alerts:true", "profiles", "cars",
+    "mount:central", "mount:driver", "view:central", "admin-alerts:true", "profiles", "cars",
     "push", "inbox", "restore", "gps", "pending"
   ]);
 });

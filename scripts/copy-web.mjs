@@ -11,6 +11,7 @@ const webAssets = [
   "role-dom-bindings.mjs",
   "views/passenger.html",
   "views/driver.html",
+  "views/central.html",
   "map-runtime-loader.mjs",
   "chat-runtime-loader.mjs",
   "roles/passenger.mjs",

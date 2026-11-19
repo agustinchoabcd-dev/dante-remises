@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, roleDomBindings, passengerModule, driverModule, adminModule] = await Promise.all([
+const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, centralTemplate, roleDomBindings, passengerModule, driverModule, operatorModule, adminModule] = await Promise.all([
   readFile(new URL("./index.html", import.meta.url), "utf8"),
   readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8"),
   readFile(new URL("./service-worker.js", import.meta.url), "utf8"),
@@ -10,12 +10,29 @@ const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, pass
   readFile(new URL("./role-template-loader.mjs", import.meta.url), "utf8"),
   readFile(new URL("./views/passenger.html", import.meta.url), "utf8"),
   readFile(new URL("./views/driver.html", import.meta.url), "utf8"),
+  readFile(new URL("./views/central.html", import.meta.url), "utf8"),
   readFile(new URL("./role-dom-bindings.mjs", import.meta.url), "utf8"),
   readFile(new URL("./roles/passenger.mjs", import.meta.url), "utf8"),
   readFile(new URL("./roles/driver.mjs", import.meta.url), "utf8"),
+  readFile(new URL("./roles/operator.mjs", import.meta.url), "utf8"),
   readFile(new URL("./roles/admin.mjs", import.meta.url), "utf8")
 ]);
 
+
+test("Central HTML is physically extracted and mounted for operators and administrators", () => {
+  assert.ok(html.includes('<section id="central" class="hidden"><div id="centralViewMount"></div></section>'));
+  assert.doesNotMatch(html, /<h2>Central de Dante Remises<\\/h2>/);
+  assert.ok(centralTemplate.includes('<h2>Central de Dante Remises</h2>'));
+  for (const id of ["centralDescription","centralAuthStatus","adminTripAlertPanel","adminDriverTripInbox","adminDriverActiveTrip","centralCars","passengerAdmin","passengerList"]) {
+    assert.ok(centralTemplate.includes('id="' + id + '"'), "Missing Central control: " + id);
+  }
+  assert.ok(roleTemplateLoader.includes('central: "./views/central.html"'));
+  assert.ok(operatorModule.includes('loadRoleView("central")'));
+  assert.ok(adminModule.indexOf('loadRoleView("central")') < adminModule.indexOf('loadRoleView("driver")'));
+  assert.ok(copyScript.includes('"views/central.html"'));
+  assert.ok(html.includes("if(role==='central')"));
+  assert.ok(html.includes("render('central-template-mounted')"));
+});
 
 test("driver HTML is physically extracted and mounted for driver and admin roles", () => {
   assert.doesNotMatch(html, /<section id="chofer"/);
@@ -55,6 +72,8 @@ test("role event bindings survive a view being absent and mounted later", () => 
     assert.equal(html.includes('byId("' + match[1] + '").addEventListener('), false, "Passenger listener must be deferred: " + match[1]);
   }
   assert.match(html, /bindRoleDom\('passengerCars'/);
+  assert.match(html, /bindRoleDom\('adminDriverTripInbox'/);
+  assert.equal(html.includes("byId('adminDriverTripInbox')?.addEventListener("), false);
   assert.match(roleDomBindings, /function flush\(\)/);
 });
 
@@ -118,6 +137,7 @@ test("service worker does not pre-download the map engine and caches app modules
   assert.match(serviceWorker, /url\.origin === self\.location\.origin/);
   assert.ok(serviceWorker.includes('/\\.(?:mjs|js|html)$/.test(url.pathname)'));
   assert.ok(roleTemplateLoader.includes('passenger: "./views/passenger.html"'));
+  assert.ok(roleTemplateLoader.includes('central: "./views/central.html"'));
   assert.ok(roleTemplateLoader.includes("requestGeneration !== generation"));
   assert.ok(passengerTemplate.includes('id="pasajero"'));
   assert.ok(passengerTemplate.includes('id="passengerOnboarding"'));

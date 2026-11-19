@@ -183,9 +183,11 @@ jobs:
           parser = IdCollector()
           passenger_template = Path("views/passenger.html").read_text(encoding="utf-8")
           driver_template = Path("views/driver.html").read_text(encoding="utf-8")
+          central_template = Path("views/central.html").read_text(encoding="utf-8")
           parser.feed(source)
           parser.feed(passenger_template)
           parser.feed(driver_template)
+          parser.feed(central_template)
           duplicates = sorted(key for key, count in Counter(parser.ids).items() if count > 1)
           if duplicates:
               raise SystemExit("Duplicate HTML IDs: " + ", ".join(duplicates))

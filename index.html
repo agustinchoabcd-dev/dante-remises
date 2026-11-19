@@ -454,13 +454,7 @@ body.dante-role-transition #imageLightbox{visibility:hidden!important;pointer-ev
 </section>
 <div id="roleViewMount"></div>
 
-<section id="central" class="hidden">
-<h2>Central de Dante Remises</h2><p class="muted" id="centralDescription">Panel de administración y operación.</p>
-<div class="card panel"><strong>Sesión</strong><div id="centralAuthStatus" class="hint">Sesión cerrada.</div></div>
-<div class="card panel hidden" id="adminTripAlertPanel" style="margin-top:12px"><h3>Solicitudes de viaje · coche 144</h3><div id="adminDriverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="adminDriverActiveTrip" class="request hidden"></div></div>
-<div class="grid" id="centralCars"></div>
-<div class="card panel hidden" id="passengerAdmin" style="margin-top:16px"><h3>Pasajeros registrados</h3><p class="muted">Información visible únicamente para Agustín, administrador total.</p><div id="passengerList" class="muted">Cargando registros…</div></div>
-</section>
+<section id="central" class="hidden"><div id="centralViewMount"></div></section>
 
 <section id="configuracion" class="hidden">
 <div class="card panel hidden" id="tripAlertPermissionsCard" style="margin-top:12px"><h3>🔔 Permisos de alertas de viaje</h3><p class="muted">Dante Remises necesita permiso para mostrar notificaciones y, si querés la tarjeta flotante, permiso para mostrarse sobre otras aplicaciones. Podés revisarlos o volver a activarlos desde acá.</p><div class="actions"><button class="secondary" id="settingsEnableTripNotifications" type="button">Permitir notificaciones</button><button class="secondary" id="settingsEnableTripOverlay" type="button">Permitir tarjeta flotante</button></div><p class="hint" id="tripAlertPermissionStatus" role="status" aria-live="polite">Los permisos se solicitan al entrar por primera vez a Personal.</p><p class="hint" id="tripAlertRegistrationStatus" role="status" aria-live="polite">El registro de este dispositivo se comprueba al iniciar sesión.</p></div>
@@ -1408,7 +1402,7 @@ async function handleDriverTripDecision(id,decision){
 }
 bindRoleDom('driverActiveTrip','click',async e=>{const accept=e.target.closest('[data-preview-accept]'),reject=e.target.closest('[data-preview-reject]');const id=accept?.dataset.previewAccept||reject?.dataset.previewReject;if(id)await handleDriverTripDecision(id,reject?'reject':'accept')});
 bindRoleDom('driverTripInbox','click',async e=>{const accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]');const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;if(!id)return;await handleDriverTripDecision(id,reject?'reject':'accept')});
-byId('adminDriverTripInbox')?.addEventListener('click',async e=>{const accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]'),chat=e.target.closest('[data-open-driver-trip-chat]');if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat)});
+bindRoleDom('adminDriverTripInbox','click',async e=>{const accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]'),chat=e.target.closest('[data-open-driver-trip-chat]');if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat)});
 bindRoleDom('driverActiveTrip','click',async e=>{if(e.target.id==='openTripChatButton'&&activeTripId){await openDriverTripChat(activeTripId)}if(e.target.id==='startTripButton'&&activeTripId){try{await update(ref(db,'trips/'+activeTripId),{status:'in_progress',startedAt:Date.now(),updatedAt:Date.now()});activeTripData={...activeTripData,status:'in_progress'};renderDriverActiveTrip(activeTripData,activeTripId);notify('Viaje iniciado.')}catch(err){console.error(err);notify('No se pudo iniciar el viaje.')}}if(e.target.id==='finishTripButton'&&activeTripId){const id=activeTripId,carId=currentRole?.carId||'144';try{await update(ref(db,'trips/'+id),{status:'completed',completedAt:Date.now(),updatedAt:Date.now()});const carTx=await runTransaction(ref(db,'cars/'+carId),current=>{if(!current||current.activeTripId!==id)return;current.status='libre';current.until=null;current.indefinite=false;current.activeTripId=null;current.updatedAt=Date.now();return current});if(!carTx.committed)throw new Error('El coche ya no tiene asociado este viaje.');await remove(ref(db,'trips/'+id+'/driverLocation'));activeTripId=null;activeTripData=null;stopDriverGps();byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');startDriverGps();notify('Viaje finalizado. El coche volvió a estar Libre.')}catch(err){console.error(err);notify('No se pudo finalizar el viaje.')}}});
 bindRoleDom('setBusy','click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 bindRoleDom('setOut','click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
@@ -2598,12 +2592,12 @@ onAuthStateChanged(auth,async user=>{
  const roleText=!user?'Sesión cerrada.':currentRole.role==='admin'?'Administrador total y chofer · '+currentRole.name:currentRole.role==='driver'?'Chofer · Coche '+currentRole.carId+' · '+currentRole.name:currentRole.role==='operator'?'Operador · '+currentRole.name:'Pasajero · '+currentRole.name;
  if(user){const pendingWelcome=sessionStorage.getItem('danteWelcomeName');if(pendingWelcome){sessionStorage.removeItem('danteWelcomeName')}}
  byId('staffAccess').classList.toggle('hidden',!!user);byId('staffEntryButton').classList.toggle('hidden',!!user);byId('settingsGearButton').classList.toggle('hidden',!user);
- byId('authStatus').textContent=roleText;byId('centralAuthStatus').textContent=roleText;byId('versionNote').classList.toggle('hidden',!user);byId('appFooter').classList.toggle('hidden',!user);if(user)await welcomeUser(user);else byId('postLoginGreeting').classList.add('hidden');if(authGeneration!==authStateGeneration)return;perf.mark('auth.welcome.done');
+ byId('authStatus').textContent=roleText;const centralAuthStatus=byId('centralAuthStatus');if(centralAuthStatus)centralAuthStatus.textContent=roleText;byId('versionNote').classList.toggle('hidden',!user);byId('appFooter').classList.toggle('hidden',!user);if(user)await welcomeUser(user);else byId('postLoginGreeting').classList.add('hidden');if(authGeneration!==authStateGeneration)return;perf.mark('auth.welcome.done');
  byId('driverControls')?.classList.toggle('hidden',!user||!['driver','admin'].includes(currentRole.role));
  if(byId('roleSummary'))byId('roleSummary').textContent=roleText;
  
  byId('logoSettingsCard').classList.toggle('hidden',!user||user.uid!==ADMIN_UID);
- byId('centralDescription').textContent=currentRole?.role==='operator'?'Panel de operador: consulta de disponibilidad. No podés modificar estados.': 'Panel de administración total.';
+ const centralDescription=byId('centralDescription');if(centralDescription)centralDescription.textContent=currentRole?.role==='operator'?'Panel de operador: consulta de disponibilidad. No podés modificar estados.':'Panel de administración total.';
  if(user&&currentRole.role==='driver')activeDriver=currentRole.carId;
  if(user&&currentRole.role==='admin')activeDriver='144';
  byId('acceso').classList.toggle('hidden',!!user);
@@ -2615,7 +2609,7 @@ onAuthStateChanged(auth,async user=>{
   if(user)configurePersonalization();
  perf.mark('auth.photo-stage.done');
  
- byId('passengerAdmin').classList.toggle('hidden',!user||currentRole.role!=='admin');
+ byId('passengerAdmin')?.classList.toggle('hidden',!user||currentRole.role!=='admin');
 
  let roleActivation=null;
  if(user){
@@ -2623,7 +2617,19 @@ onAuthStateChanged(auth,async user=>{
    roleActivation=await activateRole(currentRole.role,{
     user,
     role:currentRole,
-    loadRoleView:async role=>{const result=await roleTemplateLoader.load(role);if(authGeneration!==authStateGeneration)return {stale:true};if(role==='driver'){byId('driverControls')?.classList.toggle('hidden',!['driver','admin'].includes(currentRole?.role));if(byId('roleSummary'))byId('roleSummary').textContent=roleText}return result},
+    loadRoleView:async role=>{
+      const result=await roleTemplateLoader.load(role);
+      if(authGeneration!==authStateGeneration)return {stale:true};
+      if(role==='driver'){byId('driverControls')?.classList.toggle('hidden',!['driver','admin'].includes(currentRole?.role));if(byId('roleSummary'))byId('roleSummary').textContent=roleText}
+      if(role==='central'){
+       const centralAuthStatus=byId('centralAuthStatus');if(centralAuthStatus)centralAuthStatus.textContent=roleText;
+       const centralDescription=byId('centralDescription');if(centralDescription)centralDescription.textContent=currentRole?.role==='operator'?'Panel de operador: consulta de disponibilidad. No podés modificar estados.':'Panel de administración total.';
+       byId('passengerAdmin')?.classList.toggle('hidden',currentRole?.role!=='admin');
+       byId('adminTripAlertPanel')?.classList.toggle('hidden',currentRole?.role!=='admin');
+       render('central-template-mounted');
+      }
+      return result
+     },
     loadPassengerPhoto:async()=>{passengerPhotoReady=false;return await loadPassengerPhoto()},
     showView,
     showPassengerOnboarding,
