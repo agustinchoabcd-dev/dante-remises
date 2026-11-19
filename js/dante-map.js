@@ -424,7 +424,7 @@
     }
     addRoutePreview(id, legs, options = {}) {
       this.removeRoute(id);
-      const validLegs = (legs || []).filter(leg => leg?.geometry && geoCoordinates(leg.geometry).length > 1).slice(0, 2);
+      const validLegs = (legs || []).filter(leg => leg?.geometry && geoCoordinates(leg.geometry).length > 1);
       if (!validLegs.length) return null;
       const palette = [
         {base:'#facc15',highlight:'#ef4444'},
