@@ -52,7 +52,7 @@ test("driver HTML is physically extracted and mounted for driver and admin roles
 });
 
 test("driver view controls are registered through deferred role DOM bindings", () => {
-  for (const id of ["driverHomeStatus","driverHomeStatusText","driverHomeMap","driverHomeMapShell","driverHomeNavigation","driverHomeNavigationStage","driverHomeNavigationInstruction","driverHomeNavigationMeta","driverHomeActiveTrip","driverHomeRequests","driverHomeTripInbox","driverHomeConnectButton","driverHomeMapHomeButton","driverHomeCurtain","driverHomeCurtainGrip","driverHomeConnectedMessage","driverHomeDisconnectButton","driverStatus","driverTripInbox","driverActiveTrip","driverGpsStatus","busyDuration","setBusy","outDuration","setOut","setFree"]) {
+  for (const id of ["driverHomeStatus","driverHomeStatusText","driverHomeMap","driverHomeMapShell","driverHomeRecenterButton","driverHomeNavigation","driverHomeNavigationStage","driverHomeNavigationInstruction","driverHomeNavigationMeta","driverHomeActiveTrip","driverHomeRequests","driverHomeTripInbox","driverHomeConnectButton","driverHomeMapHomeButton","driverHomeCurtain","driverHomeCurtainGrip","driverHomeConnectedMessage","driverHomeDisconnectButton","driverStatus","driverTripInbox","driverActiveTrip","driverGpsStatus","busyDuration","setBusy","outDuration","setOut","setFree"]) {
     assert.ok(driverTemplate.includes('id="' + id + '"'), "Missing driver control: " + id);
   }
   assert.match(html, /bindRoleDom\('setBusy'/);
