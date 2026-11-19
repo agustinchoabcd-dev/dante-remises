@@ -177,10 +177,13 @@
       Object.assign(element.style,{width:'34px',height:'34px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
       const marker = new mapboxgl.Marker({element,anchor:'center',rotationAlignment:'viewport',pitchAlignment:'viewport'})
         .setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
+      let currentHeading=Number(heading)||0;
+      const updateRotation=()=>marker.setRotation(currentHeading-(this.map?.getBearing?.()||0));
+      this.map.on('rotate',updateRotation);
       const handle = {
         setLatLng: next => marker.setLngLat([Number(next.lon),Number(next.lat)]),
-        setHeading: value => marker.setRotation((Number(value)||0) - (this.map?.getBearing?.()||0)),
-        remove: () => { marker.remove(); this.markers.delete(id); }
+        setHeading: value => {currentHeading=Number(value)||0;updateRotation()},
+        remove: () => {this.map?.off('rotate',updateRotation);marker.remove();this.markers.delete(id)}
       };
       handle.setHeading(heading);
       this.markers.set(id,handle);
@@ -273,6 +276,9 @@
       const options = {center:[Number(point.lon), Number(point.lat)], zoom:Math.max(this.map.getZoom(), 16), pitch:48, duration:550, essential:true};
       if (bearing !== null && bearing !== undefined && Number.isFinite(Number(bearing))) options.bearing = Number(bearing);
       this.map.easeTo(options);
+    }
+    setBearing(bearing) {
+      if(this.map&&Number.isFinite(Number(bearing)))this.map.easeTo({bearing:Number(bearing),duration:260,essential:true});
     }
     fitGeometry(geometry, padding = .15) {
       const coordinates = geoCoordinates(geometry);
