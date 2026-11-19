@@ -1564,7 +1564,7 @@ async function startDriverGps(){
    byId('driverGpsStatus').textContent='Permiso de ubicación denegado. Habilitalo en Ajustes de Android y volvé a abrir la app.';
    return;
   }
-  driverWatchId=watchPosition(async pos=>{if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(gpsRole==='driver'&&!driverWantsOnline&&!activeTripId))return;const carId=currentRole?.carId||'144',c=cars[carId],now=Date.now();if(now-driverLocationWriteAt<4000)return;driverLocationWriteAt=now;const loc={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),updatedAt:now};updateDriverHomeLocation(loc);try{if(activeTripId&&activeTripData&&['accepted','in_progress'].includes(activeTripData.status)){const tripLocRef=ref(db,`trips/${activeTripId}/driverLocation`);await onDisconnect(tripLocRef).remove();await set(tripLocRef,loc)}else if(c?.status==='libre'){const publicLocRef=ref(db,`driverLocations/${carId}`);await onDisconnect(publicLocRef).remove();await set(publicLocRef,loc)}byId('driverGpsStatus').textContent='GPS activo · última actualización '+new Date(loc.updatedAt).toLocaleTimeString('es-AR')}catch(err){console.error(err);byId('driverGpsStatus').textContent='No se pudo compartir la ubicación. Revisá las reglas de Firebase.'}},err=>{driverWatchId=null;byId('driverGpsStatus').textContent=err.code===1?'Permiso de ubicación denegado. Habilitalo en Ajustes de Android.':'No se pudo obtener GPS. Comprobá que la ubicación del dispositivo esté activada.'},{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+  driverWatchId=watchPosition(async pos=>{if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(gpsRole==='driver'&&!driverWantsOnline&&!activeTripId))return;const carId=currentRole?.carId||'144',c=cars[carId],now=Date.now();if(now-driverLocationWriteAt<4000)return;driverLocationWriteAt=now;const loc={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),heading:Number.isFinite(pos.coords.heading)?pos.coords.heading:null,speed:Number.isFinite(pos.coords.speed)?pos.coords.speed:null,updatedAt:now};updateDriverHomeLocation(loc);void updateDriverHomeNavigationPosition(loc);try{}if(activeTripId&&activeTripData&&['accepted','in_progress'].includes(activeTripData.status)){const tripLocRef=ref(db,`trips/${activeTripId}/driverLocation`);await onDisconnect(tripLocRef).remove();await set(tripLocRef,loc)}else if(c?.status==='libre'){const publicLocRef=ref(db,`driverLocations/${carId}`);await onDisconnect(publicLocRef).remove();await set(publicLocRef,loc)}byId('driverGpsStatus').textContent='GPS activo · última actualización '+new Date(loc.updatedAt).toLocaleTimeString('es-AR')}catch(err){console.error(err);byId('driverGpsStatus').textContent='No se pudo compartir la ubicación. Revisá las reglas de Firebase.'}},err=>{driverWatchId=null;byId('driverGpsStatus').textContent=err.code===1?'Permiso de ubicación denegado. Habilitalo en Ajustes de Android.':'No se pudo obtener GPS. Comprobá que la ubicación del dispositivo esté activada.'},{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
  }catch(error){
   driverWatchId=null;
   byId('driverGpsStatus').textContent='No se pudo iniciar GPS. Comprobá los permisos y la ubicación del dispositivo.';
@@ -1625,12 +1625,13 @@ async function registerDriverPresence(user,role){
 const GEOAPIFY_ATTRIBUTION_HTML='<div class="hint">Direcciones: <a href="https://www.geoapify.com" target="_blank" rel="noopener">Geoapify</a> · Datos © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.</div>';
 function renderDriverActiveTrip(trip,id){
  activeTripId=id;activeTripData=trip;
+ renderDriverHomeActiveTrip(trip,id);
  const startButton=trip.status==='accepted'?'<button class="primary" id="startTripButton">Iniciar viaje</button>':'';
  const created=trip.createdAt?new Date(trip.createdAt).toLocaleString('es-AR'):'No informado';
  const html='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Solicitado: '+esc(created)+'</div><div class="hint">Origen (recogida): '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div><div id="driverTripMap" class="real-map" style="height:300px" aria-label="Mapa del viaje"></div><div id="driverTripMapStatus" class="hint">Cargando recorrido…</div>'+GEOAPIFY_ATTRIBUTION_HTML+'<div class="actions"><button class="secondary" id="openTripChatButton">Chat con pasajero</button>'+startButton+'<button class="secondary" id="finishTripButton">Finalizar viaje</button></div>';
  byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML=html;
  const adminBox=byId('adminDriverActiveTrip');
- if(adminBox){adminBox.classList.remove('hidden');adminBox.innerHTML='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Recogida: '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div>'+GEOAPIFY_ATTRIBUTION_HTML+'<div class="hint">Usá “Mi espacio de personal” para ver el mapa e iniciar o finalizar el viaje.</div>';}
+ if(adminBox){adminBox.classList.remove('hidden');adminBox.innerHTML='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Recogida: '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div>'+GEOAPIFY_ATTRIBUTION_HTML+'<div class="hint">Usá “Inicio” para seguir la navegación e iniciar o finalizar el viaje.</div>';}
  renderDriverTripMap(trip,id);
 }
 function renderDriverTripPreview(trip,id){
@@ -1695,25 +1696,28 @@ async function restoreDriverActiveTrip(){
 }
 function listenDriverInbox(){
  if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}
- const generation=authStateGeneration,uid=currentUser?.uid;
- const carId=currentRole?.carId||'144';
+ const generation=authStateGeneration,uid=currentUser?.uid,carId=currentDriverCarId();
  const targets=[byId('driverTripInbox')];
  if(currentRole?.role==='admin'&&byId('adminDriverTripInbox'))targets.push(byId('adminDriverTripInbox'));
  driverInboxUnsub=onValue(ref(db,'tripInbox/'+carId),async snap=>{
   if(generation!==authStateGeneration||currentUser?.uid!==uid)return;
+  const renderVersion=++driverInboxRenderVersion;
   const entries=Object.values(snap.val()||{}),pending=entries.filter(x=>x.status==='requested');
   targets.forEach(target=>target.innerHTML='');
-  if(!pending.length){targets.forEach(target=>target.textContent='No hay solicitudes pendientes.');return}
+  if(!pending.length){targets.forEach(target=>target.textContent='No hay solicitudes pendientes.');renderDriverHomeRequests([]);return}
+  const homeTrips=[];
   for(const item of pending){
    const tripSnap=await get(ref(db,'trips/'+item.tripId)),t=tripSnap.val();
-   if(generation!==authStateGeneration||currentUser?.uid!==uid)return;
+   if(generation!==authStateGeneration||currentUser?.uid!==uid||renderVersion!==driverInboxRenderVersion)return;
    if(!t||t.status!=='requested')continue;
+   const trip={...t,tripId:item.tripId};homeTrips.push(trip);
    const el=document.createElement('div');el.className='trip-request';
    const origin=t.origin?.label||'Origen sin nombre',dest=t.destination?.label||'Destino sin nombre';
-   el.innerHTML=`<strong>Solicitud de ${esc(t.passengerName||'Pasajero')}</strong><div class="hint">Desde: ${esc(origin)}</div><div class="hint">Hasta: ${esc(dest)}</div><div class="actions"><button class="secondary" data-open-driver-trip-chat="${esc(t.tripId)}">Chat con pasajero</button><button class="primary" data-accept-trip="${esc(t.tripId)}">Aceptar viaje</button><button class="danger" data-reject-trip="${esc(t.tripId)}">Rechazar</button></div>`;
+   el.innerHTML='<strong>Solicitud de '+esc(t.passengerName||'Pasajero')+'</strong><div class="hint">Desde: '+esc(origin)+'</div><div class="hint">Hasta: '+esc(dest)+'</div><div class="actions"><button class="secondary" data-open-driver-trip-chat="'+esc(item.tripId)+'">Chat con pasajero</button><button class="primary" data-accept-trip="'+esc(item.tripId)+'">Aceptar viaje</button><button class="danger" data-reject-trip="'+esc(item.tripId)+'">Rechazar</button></div>';
    targets.forEach((target,index)=>target.appendChild(index===0?el:el.cloneNode(true)));
   }
- },err=>{if(generation!==authStateGeneration||currentUser?.uid!==uid)return;console.error(err);targets.forEach(target=>target.textContent='No se pudieron cargar solicitudes. Revisá las reglas de Firebase.')});
+  if(renderVersion===driverInboxRenderVersion)renderDriverHomeRequests(homeTrips);
+ },err=>{if(generation!==authStateGeneration||currentUser?.uid!==uid)return;console.error(err);targets.forEach(target=>target.textContent='No se pudieron cargar solicitudes. Revisá las reglas de Firebase.');renderDriverHomeRequests([])});
 }
 async function dismissNativeTripAlert(){try{await stopTripAlert()}catch(error){console.warn('No se pudo detener la alerta nativa:',error?.name||'Error')}}
 async function processPendingTripAction(isCurrent){
@@ -1752,7 +1756,7 @@ async function handleDriverTripDecision(id,decision){
  const carRef=ref(db,'cars/'+carId);
  const carSnapshot=await get(carRef),car=carSnapshot.val()||{};
  if(trip.status==='accepted'&&car.activeTripId===id){
-  renderDriverActiveTrip(trip,id);showView('chofer');await dismissNativeTripAlert();return true;
+  renderDriverActiveTrip(trip,id);showView('inicio');const ready=await initDriverHomeMap();if(ready){setDriverHomeFullscreen(true);void ensureDriverHomeNavigationRoute()}await dismissNativeTripAlert();return true;
  }
  if(trip.status!=='requested'){await dismissNativeTripAlert();notify('La solicitud ya no está disponible.');return true}
  if(decision==='reject'){
@@ -1777,18 +1781,88 @@ async function handleDriverTripDecision(id,decision){
   await update(ref(db,'trips/'+id),{status:'accepted',acceptedAt,updatedAt:Date.now()});
   await update(ref(db,`tripInbox/${carId}/${id}`),{status:'accepted'});
   renderDriverActiveTrip({...trip,status:'accepted',acceptedAt},id);
-  showView('chofer');
+  showView('inicio');
   await remove(ref(db,'driverLocations/'+carId));
   startDriverGps();
+  const homeMapReady=await initDriverHomeMap();
+  if(homeMapReady){setDriverHomeFullscreen(true);void ensureDriverHomeNavigationRoute()}
   await dismissNativeTripAlert();
   notify('Viaje aceptado. Ya podés ver el punto de recogida y el recorrido en el mapa.');
   return true;
  }catch(err){console.error(err);notify('No se pudo aceptar el viaje. Revisá las reglas de Firebase.');return false}
 }
-bindRoleDom('driverActiveTrip','click',async e=>{const accept=e.target.closest('[data-preview-accept]'),reject=e.target.closest('[data-preview-reject]');const id=accept?.dataset.previewAccept||reject?.dataset.previewReject;if(id)await handleDriverTripDecision(id,reject?'reject':'accept')});
-bindRoleDom('driverTripInbox','click',async e=>{const accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]');const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;if(!id)return;await handleDriverTripDecision(id,reject?'reject':'accept')});
-bindRoleDom('adminDriverTripInbox','click',async e=>{const accept=e.target.closest('[data-accept-trip]'),reject=e.target.closest('[data-reject-trip]'),chat=e.target.closest('[data-open-driver-trip-chat]');if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat)});
-bindRoleDom('driverActiveTrip','click',async e=>{if(e.target.id==='openTripChatButton'&&activeTripId){await openDriverTripChat(activeTripId)}if(e.target.id==='startTripButton'&&activeTripId){try{await update(ref(db,'trips/'+activeTripId),{status:'in_progress',startedAt:Date.now(),updatedAt:Date.now()});activeTripData={...activeTripData,status:'in_progress'};renderDriverActiveTrip(activeTripData,activeTripId);notify('Viaje iniciado.')}catch(err){console.error(err);notify('No se pudo iniciar el viaje.')}}if(e.target.id==='finishTripButton'&&activeTripId){const id=activeTripId,carId=currentRole?.carId||'144';try{await update(ref(db,'trips/'+id),{status:'completed',completedAt:Date.now(),updatedAt:Date.now()});const carTx=await runTransaction(ref(db,'cars/'+carId),current=>{if(!current||current.activeTripId!==id)return;current.status='libre';current.until=null;current.indefinite=false;current.activeTripId=null;current.updatedAt=Date.now();return current});if(!carTx.committed)throw new Error('El coche ya no tiene asociado este viaje.');await remove(ref(db,'trips/'+id+'/driverLocation'));activeTripId=null;activeTripData=null;stopDriverGps();byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');startDriverGps();notify('Viaje finalizado. El coche volvió a estar Libre.')}catch(err){console.error(err);notify('No se pudo finalizar el viaje.')}}});
+async function startActiveDriverTrip(){
+ if(!activeTripId||!activeTripData||activeTripData.status!=='accepted')return;
+ const id=activeTripId;
+ try{
+  await update(ref(db,'trips/'+id),{status:'in_progress',startedAt:Date.now(),updatedAt:Date.now()});
+  activeTripData={...activeTripData,status:'in_progress'};
+  renderDriverActiveTrip(activeTripData,id);
+  showView('inicio');
+  const ready=await initDriverHomeMap();
+  if(ready){setDriverHomeFullscreen(true);void ensureDriverHomeNavigationRoute(true)}
+  notify('Viaje iniciado. La navegación ahora apunta al destino del pasajero.');
+ }catch(error){console.error(error);notify('No se pudo iniciar el viaje.')}
+}
+async function finishActiveDriverTrip(){
+ if(!activeTripId)return;
+ const id=activeTripId,carId=currentDriverCarId();
+ try{
+  await update(ref(db,'trips/'+id),{status:'completed',completedAt:Date.now(),updatedAt:Date.now()});
+  const carTx=await runTransaction(ref(db,'cars/'+carId),current=>{
+   if(!current||current.activeTripId!==id)return;
+   current.status='libre';current.until=null;current.indefinite=false;current.activeTripId=null;current.updatedAt=Date.now();return current;
+  });
+  if(!carTx.committed)throw new Error('El coche ya no tiene asociado este viaje.');
+  await remove(ref(db,'trips/'+id+'/driverLocation'));
+  activeTripId=null;activeTripData=null;
+  driverHomeNavigationRequestVersion++;
+  driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0};
+  driverHomeMap?.removeRoute('driver-home-navigation-route');
+  driverHomeMap?.removeMarker('driver-home-navigation-target');
+  byId('driverActiveTrip')?.classList.add('hidden');
+  byId('adminDriverActiveTrip')?.classList.add('hidden');
+  renderDriverHomeActiveTrip(null,null);
+  stopDriverGps();startDriverGps();
+  render('driver-trip-finished');
+  notify('Viaje finalizado. El coche volvió a estar Libre.');
+ }catch(error){console.error(error);notify('No se pudo finalizar el viaje.')}
+}
+bindRoleDom('driverHomeMapShell','click',event=>{
+ if(document.body.classList.contains('driver-home-map-active'))return;
+ if(event.target.closest('.mapboxgl-ctrl,.leaflet-control'))return;
+ const car=cars[currentDriverCarId()];
+ if(car?.online||activeTripId)setDriverHomeFullscreen(true);
+});
+bindRoleDom('driverHomeTripInbox','click',async event=>{
+ const accept=event.target.closest('[data-accept-trip]'),reject=event.target.closest('[data-reject-trip]'),chat=event.target.closest('[data-open-driver-trip-chat]');
+ if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}
+ if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat);
+});
+bindRoleDom('driverHomeActiveTrip','click',async event=>{
+ const action=event.target.closest('[data-home-trip-action]')?.dataset.homeTripAction;
+ if(action==='start')await startActiveDriverTrip();
+ else if(action==='finish')await finishActiveDriverTrip();
+ else if(action==='chat'&&activeTripId)await openDriverTripChat(activeTripId);
+});
+bindRoleDom('driverActiveTrip','click',async event=>{
+ const accept=event.target.closest('[data-preview-accept]'),reject=event.target.closest('[data-preview-reject]');
+ const previewId=accept?.dataset.previewAccept||reject?.dataset.previewReject;
+ if(previewId){await handleDriverTripDecision(previewId,reject?'reject':'accept');return}
+ if(event.target.id==='openTripChatButton'&&activeTripId)await openDriverTripChat(activeTripId);
+ if(event.target.id==='startTripButton')await startActiveDriverTrip();
+ if(event.target.id==='finishTripButton')await finishActiveDriverTrip();
+});
+bindRoleDom('driverTripInbox','click',async event=>{
+ const accept=event.target.closest('[data-accept-trip]'),reject=event.target.closest('[data-reject-trip]'),chat=event.target.closest('[data-open-driver-trip-chat]');
+ if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}
+ if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat);
+});
+bindRoleDom('adminDriverTripInbox','click',async event=>{
+ const accept=event.target.closest('[data-accept-trip]'),reject=event.target.closest('[data-reject-trip]'),chat=event.target.closest('[data-open-driver-trip-chat]');
+ if(accept||reject){const id=accept?.dataset.acceptTrip||reject?.dataset.rejectTrip;await handleDriverTripDecision(id,reject?'reject':'accept');return}
+ if(chat)await openDriverTripChat(chat.dataset.openDriverTripChat);
+});
 bindRoleDom('setBusy','click',()=>setStatus(activeDriver,'ocupado',Number(byId('busyDuration').value)));
 bindRoleDom('setOut','click',()=>{const v=byId('outDuration').value;setStatus(activeDriver,'fuera',v==='indefinite'?null:Number(v),v==='indefinite')});
 bindRoleDom('setFree','click',()=>setStatus(activeDriver,'libre'));
