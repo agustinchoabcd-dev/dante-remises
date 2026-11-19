@@ -580,7 +580,7 @@ import { createRoleTransitionController } from "./role-transition.mjs";
 import { completeLogout } from "./session-logout.mjs";
 import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
 import { createChatRuntimeLoader } from "./chat-runtime-loader.mjs";
-import { getDriverHomeStatus, shouldRegisterDriverPresence, shouldExpandDriverCurtain, nextDriverHomeMessage, formatDriverTripPlace, getDriverRequestRouteDistances } from "./driver-home-state.mjs";
+import { getDriverHomeStatus, shouldRegisterDriverPresence, shouldExpandDriverCurtain, nextDriverHomeMessage, formatDriverTripPlace, formatDriverCardDistance, getDriverRequestRouteDistances } from "./driver-home-state.mjs";
 import { getDriverNavigationTarget, getDriverNavigationProgress, shouldRerouteDriver } from "./driver-navigation-state.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getDatabase, ref, onValue as firebaseOnValue, get as firebaseGet, set as firebaseSet, update as firebaseUpdate, remove as firebaseRemove, push as firebasePush, runTransaction as firebaseRunTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js";
@@ -1421,7 +1421,7 @@ async function ensureDriverHomePendingRoute(force=false){
   const gpsStillFresh=latestDriverLocation&&Date.now()-Number(latestDriverLocation.updatedAt||0)<45000;
   if(!gpsStillFresh||driverHomeDistanceMeters(driverHomePendingRouteLastLocation,latestDriverLocation)>100){driverHomePendingRouteLoading=false;return false;}
   const routeDistances=getDriverRequestRouteDistances(route);
-  updateDriverHomeRequestDistanceLabels(trip.tripId,routeDistances.pickupMeters===null?'Distancia no disponible':formatDriverDistance(routeDistances.pickupMeters),routeDistances.destinationMeters===null?'Distancia no disponible':formatDriverDistance(routeDistances.destinationMeters));
+  updateDriverHomeRequestDistanceLabels(trip.tripId,routeDistances.pickupMeters===null?'Distancia no disponible':formatDriverCardDistance(routeDistances.pickupMeters),routeDistances.destinationMeters===null?'Distancia no disponible':formatDriverCardDistance(routeDistances.destinationMeters));
   driverHomePendingRoute=route;driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
   const previewLegs=(route.legs||[]).filter(leg=>leg?.geometry?.coordinates?.length>1);
   if(driverHomeMap.addRoutePreview&&previewLegs.length>=2)driverHomeMap.addRoutePreview('driver-home-pending-route',previewLegs,{durationMs:3400,pauseMs:240,weight:6,opacity:.94});
@@ -1606,7 +1606,7 @@ async function ensureDriverHomeRequestCardDistances(trip){
   if(Boolean(location)!==Boolean(currentLocation)||(location&&driverHomeDistanceMeters(location,currentLocation)>100))return false;
   const routeDistances=getDriverRequestRouteDistances(route);
   const distances=location?routeDistances:{pickupMeters:null,destinationMeters:routeDistances.totalRouteMeters};
-  updateDriverHomeRequestDistanceLabels(id,distances.pickupMeters===null?'Distancia no disponible':formatDriverDistance(distances.pickupMeters),Number.isFinite(distances.destinationMeters)&&distances.destinationMeters>=0?formatDriverDistance(distances.destinationMeters):'Distancia no disponible');
+  updateDriverHomeRequestDistanceLabels(id,distances.pickupMeters===null?'Distancia no disponible':formatDriverCardDistance(distances.pickupMeters),Number.isFinite(distances.destinationMeters)&&distances.destinationMeters>=0?formatDriverCardDistance(distances.destinationMeters):'Distancia no disponible');
   return true;
  }catch(error){
   if(generation===authStateGeneration)updateDriverHomeRequestDistanceLabels(id,location?'Distancia no disponible':'Esperando GPS','Distancia no disponible');

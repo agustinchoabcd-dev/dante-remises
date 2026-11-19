@@ -91,6 +91,7 @@ test("native floating trip alert strips postal and administrative address detail
   assert.match(service, /private static String cleanAddress\(String value\)/);
   assert.match(service, /Ubicación sin referencia/);
   assert.match(service, /result\.append\(", "\)\.append\(part\)/);
+  assert.match(service, /latitude\|longitude/);
 });
 
 
@@ -106,6 +107,15 @@ test("native trip alerts can display optional road distances supplied by FCM", a
   assert.match(service, /safe\(data\.get\("originDistance"\), 24\)/);
 });
 
+
+test("driver request cards show both road distances in kilometres", async () => {
+  const homeState = await readFile(new URL("./driver-home-state.mjs", import.meta.url), "utf8");
+  assert.match(homeState, /export function formatDriverCardDistance\(meters\)/);
+  assert.match(html, /formatDriverCardDistance\(routeDistances\.pickupMeters\)/);
+  assert.match(html, /formatDriverCardDistance\(routeDistances\.destinationMeters\)/);
+  assert.match(html, /formatDriverCardDistance\(distances\.pickupMeters\)/);
+  assert.match(html, /formatDriverCardDistance\(distances\.destinationMeters\)/);
+});
 
 test("driver request cards use structured places and separate road-leg distances", async () => {
   const [geocoding, homeState, html] = await Promise.all([

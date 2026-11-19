@@ -235,7 +235,10 @@ public class DanteTripAlertService extends Service {
             String part = raw.trim();
             if (part.isEmpty()) continue;
             if (part.matches("(?i)^\\d{4,5}\\b.*") ||
-                part.matches("(?i).*(argentina|c[oó]rdoba|santa rosa de calamuchita|calamuchita).*")) continue;
+                part.matches("(?i).*(argentina|c[oó]rdoba|santa rosa de calamuchita|calamuchita).*") ||
+                part.matches("(?i).*(latitude|longitude|\\blat\\b|\\blon\\b).*") ||
+                part.matches("[-+]?\\d{1,3}\\.\\d{3,}") ||
+                part.matches("[-+]?\\d{1,3}(?:\\.\\d+)?\\s*[,;]\\s*[-+]?\\d{1,3}(?:\\.\\d+)?")) continue;
             boolean road = part.matches("(?i).*\\b(calle|avenida|av\\.?|ruta|rp|rn|boulevard|bv\\.?|pasaje|camino|autopista)\\b.*") ||
                 part.matches(".*\\d+.*");
             if (result.length() == 0) result.append(part);
