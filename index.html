@@ -1581,7 +1581,7 @@ async function ensureDriverHomeRequestCardDistances(trip){
   const currentLocation=gpsStillFresh?{lat:Number(latestDriverLocation.lat),lon:Number(latestDriverLocation.lon)}:null;
   if(Boolean(location)!==Boolean(currentLocation)||(location&&driverHomeDistanceMeters(location,currentLocation)>100))return false;
   const routeDistances=getDriverRequestRouteDistances(route);
-  const distances=location?routeDistances:{pickupMeters:null,destinationMeters:routeDistances.pickupMeters};
+  const distances=location?routeDistances:{pickupMeters:null,destinationMeters:routeDistances.totalRouteMeters};
   updateDriverHomeRequestDistanceLabels(id,distances.pickupMeters===null?'Distancia no disponible':formatDriverDistance(distances.pickupMeters),Number.isFinite(distances.destinationMeters)&&distances.destinationMeters>=0?formatDriverDistance(distances.destinationMeters):'Distancia no disponible');
   return true;
  }catch(error){
