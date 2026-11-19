@@ -883,7 +883,7 @@ let driverWantsOnline=false,driverHomeMap=null,driverHomeMapMarker=null,driverHo
 let driverHomeCurtainExpanded=false,driverHomeMessage="Estás conectado",driverHomeMessageTimer=null,driverHomeDrag=null;
 let driverHomeConnectBusy=false,driverHomeDisconnectBusy=false;
 let driverHomePendingTrips=[],driverHomeRequestMarkers=new Map(),driverInboxRenderVersion=0;
-let driverHomeMapUserMoved=false,driverHomeMapUserMoveUnsub=null,driverHomeFocusTripId=null,driverHomePendingRoute=null,driverHomePendingRouteTripId=null,driverHomePendingRouteLastAttemptAt=0,driverHomePendingRouteLastLocation=null,driverHomePendingRouteVersion=0,driverHomePendingRouteLoading=false,driverHomeNavigationLoading=false,driverHomeMarkerMode='dot',driverHomeLastHeading=null;
+let driverHomeMapUserMoved=false,driverHomeMapUserMoveUnsub=null,driverHomeFocusTripId=null,driverHomePendingRoute=null,driverHomePendingRouteTripId=null,driverHomePendingRouteLastAttemptAt=0,driverHomePendingRouteLastLocation=null,driverHomePendingRouteVersion=0,driverHomePendingRouteLoading=false,driverHomePendingRouteFailedAttempts=0,driverHomeNavigationLoading=false,driverHomeMarkerMode='dot',driverHomeLastHeading=null;
 let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0,failedAttempts:0};
 let driverHomeNavigationRequestVersion=0,driverHomeMapTransitionHandler=null;
 function isDriverCapableRole(){return ['driver','admin'].includes(currentRole?.role)}
@@ -1384,7 +1384,9 @@ async function ensureDriverHomePendingRoute(force=false){
  const now=Date.now(),same=driverHomePendingRouteTripId===String(trip.tripId);
  const moved=same&&driverHomePendingRouteLastLocation&&driverHomeDistanceMeters(driverHomePendingRouteLastLocation,latestDriverLocation)>100;
  if(!force&&same&&driverHomePendingRouteLoading)return false;
+ if(!force&&same&&driverHomePendingRouteFailedAttempts>=3)return false;
  if(!force&&same&&driverHomePendingRoute&&!moved&&now-driverHomePendingRouteLastAttemptAt<90000)return true;
+ if(force)driverHomePendingRouteFailedAttempts=0;
  if(!force&&same&&now-driverHomePendingRouteLastAttemptAt<60000)return false;
  const version=++driverHomePendingRouteVersion;
  driverHomePendingRouteTripId=String(trip.tripId);
@@ -1395,14 +1397,15 @@ async function ensureDriverHomePendingRoute(force=false){
  try{
   const route=await window.DanteMap.getDrivingRoute(points);
   if(version!==driverHomePendingRouteVersion||activeTripId||!driverHomeMap||!driverHomePendingTrips.some(item=>String(item.tripId)===String(trip.tripId)))return false;
-  driverHomePendingRoute=route;driverHomePendingRouteLoading=false;
+  driverHomePendingRoute=route;driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
   driverHomeMap.addRoute('driver-home-pending-route',route.geometry,{color:'#168447',weight:6,opacity:.9});
   if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeFitPadding(),points);
   return true;
  }catch(error){
   if(version!==driverHomePendingRouteVersion)return false;
-  driverHomePendingRouteLoading=false;
+  driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts++;
   console.warn('No se pudo calcular el recorrido completo de la solicitud:',error);
+  if(driverHomePendingRouteFailedAttempts===3)notify('No se pudo trazar el recorrido completo. Podés volver a intentarlo desde el botón de recentrado del mapa.');
   if(!driverHomeMapUserMoved)driverHomeMap.fitPoints(points,driverHomeFitPadding());
   return false;
  }
@@ -1451,6 +1454,7 @@ function renderDriverHomeRequests(trips){
   driverHomeMapUserMoved=false;
   driverHomePendingRoute=null;
   driverHomePendingRouteTripId=null;
+  driverHomePendingRouteFailedAttempts=0;
   driverHomePendingRouteVersion++;
   driverHomeMap?.removeRoute('driver-home-pending-route');
   byId('driverHomeRecenterButton')?.classList.add('hidden');
@@ -1466,7 +1470,7 @@ function renderDriverHomeRequests(trips){
   driverHomePendingRouteVersion++;
   driverHomePendingRoute=null;
   driverHomePendingRouteTripId=null;
-  driverHomePendingRouteLoading=false;
+  driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
   driverHomeMap?.removeRoute('driver-home-pending-route');
   return;
  }
