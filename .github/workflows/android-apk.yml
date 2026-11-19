@@ -42,6 +42,7 @@ on:
       - role-modularization
       - fix/logout-to-auth-home
       - fix/logout-transition-feedback
+      - feat/driver-home-connected-map
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
@@ -148,6 +149,7 @@ jobs:
           node --check role-view-access.mjs
           node --check role-template-loader.mjs
           node --check role-dom-bindings.mjs
+          node --check driver-home-state.mjs
           node --check map-runtime-loader.mjs
           node --check chat-runtime-loader.mjs
           node --check roles/passenger.mjs
@@ -160,7 +162,7 @@ jobs:
           node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
           node --check scripts/patch-android-trip-alerts.mjs
-          node --test session-logout.test.mjs role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs role-view-access.test.mjs role-template-loader.test.mjs role-dom-bindings.test.mjs role-architecture.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
+          node --test driver-home-state.test.mjs session-logout.test.mjs role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs role-view-access.test.mjs role-template-loader.test.mjs role-dom-bindings.test.mjs role-architecture.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
@@ -283,7 +285,7 @@ jobs:
               if parser.ids.count(control_id) != 1:
                   raise SystemExit(f"Expected exactly one visual-effects control #{control_id}.")
 
-          for element_id in ("chatForm", "realMap", "centralCars", "driverControls", "setFree", "setBusy", "setOut"):
+          for element_id in ("chatForm", "realMap", "centralCars", "driverControls", "setFree", "setBusy", "setOut", "driverHomeMap", "driverHomeConnectButton", "driverHomeCurtain", "driverHomeDisconnectButton"):
               if parser.ids.count(element_id) != 1:
                   raise SystemExit(f"Expected exactly one functional anchor #{element_id}, found {parser.ids.count(element_id)}")
 
@@ -294,7 +296,7 @@ jobs:
         run: npm install --include=optional
 
       - name: Inject Mapbox and Geoapify public keys for the experimental migration build
-        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype' || github.ref_name == 'role-modularization' || github.head_ref == 'role-modularization'
+        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype' || github.ref_name == 'role-modularization' || github.head_ref == 'role-modularization' || github.ref_name == 'feat/driver-home-connected-map' || github.head_ref == 'feat/driver-home-connected-map'
         env:
           MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
           GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
