@@ -246,15 +246,17 @@ public class DanteTripAlertService extends Service {
             String passenger, String origin, String destination) {
         createChannels(context);
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        String cleanOrigin = cleanAddress(origin);
+        String cleanDestination = cleanAddress(destination);
         Intent open = new Intent(context, MainActivity.class);
         PendingIntent content = PendingIntent.getActivity(context, tripId.hashCode(), open,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ALERT_CHANNEL)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Nueva solicitud de viaje")
-            .setContentText(passenger + " · Coche " + carId + " · " + origin + " → " + destination)
+            .setContentText(passenger + " · Coche " + carId + " · " + cleanOrigin + " → " + cleanDestination)
             .setStyle(new NotificationCompat.BigTextStyle().bigText(
-                "Pasajero: " + passenger + "\nDesde: " + origin + "\nHasta: " + destination))
+                "Pasajero: " + passenger + "\nDesde: " + cleanOrigin + "\nHasta: " + cleanDestination))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setOngoing(true)
