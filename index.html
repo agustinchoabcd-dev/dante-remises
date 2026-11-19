@@ -1426,7 +1426,7 @@ function updateDriverHomeNavigationPosition(loc){
  const progress=getDriverNavigationProgress(driverHomeNavigation.route,point);
  if(!progress)return;
  const distance=progress.distanceToManeuver===null?'':' · Próxima maniobra a '+formatDriverDistance(progress.distanceToManeuver);
- const provider=driverHomeNavigation.route?.provider==='Geoapify'?'Geoapify · OpenStreetMap':'Mapbox';
+ const provider=driverHomeNavigation.route?.provider==='Geoapify'?'© Geoapify · © OpenStreetMap contributors':'© Mapbox';
  const meta=formatDriverDistance(progress.remainingDistanceMeters)+' restantes · '+Math.max(1,Math.ceil(progress.remainingDurationSeconds/60))+' min'+distance+' · Rutas: '+provider;
  ensureDriverHomeNavigationPanel(target.stage,progress.instruction,meta);
  if((driverHomeNavigation.rerouteCount||0)<5&&shouldRerouteDriver({offRouteMeters:progress.offRouteMeters,thresholdMeters:Math.max(65,(Number(loc.accuracy)||0)*1.5),lastRerouteAt:driverHomeNavigation.lastRerouteAt,now:Date.now()})){
