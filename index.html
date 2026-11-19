@@ -1380,8 +1380,7 @@ function driverHomeNavigationFitPadding(){
 async function ensureDriverHomePendingRoute(force=false){
  if(!driverHomeMap||activeTripId||!latestDriverLocation||Date.now()-Number(latestDriverLocation.updatedAt||0)>=45000||!driverHomePendingTrips.length)return false;
  const trip=driverHomePendingTrips.find(item=>String(item.tripId)===String(driverHomeFocusTripId))||driverHomePendingTrips[0];
- const origin=trip?.origin||{},destination=trip?.destination||{};
- const points=[latestDriverLocation,{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}];
+ const points=driverHomeRequestRoutePoints(trip,latestDriverLocation);
  if(points.some(point=>!Number.isFinite(Number(point.lat))||!Number.isFinite(Number(point.lon))))return false;
  const now=Date.now(),same=driverHomePendingRouteTripId===String(trip.tripId);
  const moved=same&&driverHomePendingRouteLastLocation&&driverHomeDistanceMeters(driverHomePendingRouteLastLocation,latestDriverLocation)>100;
@@ -1543,22 +1542,24 @@ function updateDriverHomeRequestDistanceLabels(id,pickupText,destinationText){
   node.textContent=node.dataset.driverDistanceKind==='pickup'?pickupText:destinationText;
  });
 }
+function driverHomeRequestRoutePoints(trip,location=latestDriverLocation){
+ const stops=Array.isArray(trip?.stops)?trip.stops:[];
+ return [...(location?[location]:[]),trip.origin,...stops,trip.destination].map(point=>({lat:Number(point?.lat),lon:Number(point?.lon)}));
+}
 function driverHomeRequestRouteCoordinates(trip){
- const origin=trip?.origin||{},destination=trip?.destination||{};
- const values=[origin.lat,origin.lon,destination.lat,destination.lon];
- return values.every(value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value)));
+ const stops=Array.isArray(trip?.stops)?trip.stops:[];
+ const points=[trip?.origin,...stops,trip?.destination];
+ return points.every(point=>point&&point.lat!==null&&point.lat!==undefined&&point.lon!==null&&point.lon!==undefined&&point.lat!==''&&point.lon!==''&&Number.isFinite(Number(point.lat))&&Number.isFinite(Number(point.lon)));
 }
 async function getDriverHomeRequestRoute(trip,location=latestDriverLocation){
  if(!window.DanteMap||!driverHomeRequestRouteCoordinates(trip))throw new Error('TRIP_ROUTE_COORDINATES_MISSING');
- const id=String(trip.tripId||''),origin=trip.origin,destination=trip.destination,now=Date.now();
- const key=[Number(origin.lat),Number(origin.lon),Number(destination.lat),Number(destination.lon),location?'gps':'no-gps'].join('|');
+ const id=String(trip.tripId||''),now=Date.now();
+ const key=[driverHomeRequestRoutePoints(trip,null).map(point=>point.lat+','+point.lon).join(';'),location?'gps':'no-gps'].join('|');
  const cached=driverHomeRequestDistanceCache.get(id);
  if(cached&&cached.key===key&&now-cached.updatedAt<90000&&(!location||driverHomeDistanceMeters(cached.location,location)<=100))return cached.route;
  const pending=driverHomeRequestDistancePending.get(id);
  if(pending?.key===key)return pending.promise;
- const points=location
-  ? [{lat:Number(location.lat),lon:Number(location.lon)},{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}]
-  : [{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}];
+ const points=driverHomeRequestRoutePoints(trip,location);
  const promise=window.DanteMap.getDrivingRoute(points,{steps:true}).then(route=>{
   if(driverHomeRequestDistancePending.get(id)?.promise===promise){
    driverHomeRequestDistanceCache.set(id,{key,route,location:location?{lat:Number(location.lat),lon:Number(location.lon)}:null,updatedAt:Date.now()});
