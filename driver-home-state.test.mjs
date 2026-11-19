@@ -36,8 +36,8 @@ test("driver trip addresses prefer place name and street details without adminis
 });
 
 test("driver request route distances use the two road legs and reject missing values",()=>{
- assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:850},{distance:1250}]}),{pickupMeters:850,destinationMeters:1250});
- assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:850}]}),{pickupMeters:850,destinationMeters:null});
- assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:-1},{distance:"bad"}]}),{pickupMeters:null,destinationMeters:null});
- assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:null},{distance:undefined}]}),{pickupMeters:null,destinationMeters:null});
+ assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:850},{distance:1250}]}),{pickupMeters:850,destinationMeters:1250,totalRouteMeters:2100,legDistances:[850,1250]});
+ assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:850}]}),{pickupMeters:850,destinationMeters:null,totalRouteMeters:850,legDistances:[850]});
+ assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:-1},{distance:"bad"}]}),{pickupMeters:null,destinationMeters:null,totalRouteMeters:null,legDistances:[null,null]});
+ assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:null},{distance:undefined}]}),{pickupMeters:null,destinationMeters:null,totalRouteMeters:null,legDistances:[null,null]});
 });
