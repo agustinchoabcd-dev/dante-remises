@@ -30,7 +30,8 @@
     constructor(container, center, zoom, locationIqKey) {
       if (!window.L) throw new Error('Leaflet no está disponible para el mapa alternativo.');
       this.backend = 'leaflet';
-      this.map = L.map(container).setView([Number(center[0]), Number(center[1])], zoom);
+      this.map = L.map(container,{zoomControl:false}).setView([Number(center[0]), Number(center[1])], zoom);
+      L.control.zoom({position:'topright'}).addTo(this.map);
       L.tileLayer('https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=' +
         encodeURIComponent(locationIqKey), {
           maxZoom: 20,
@@ -39,6 +40,28 @@
     }
     onClick(callback) {
       this.map.on('click', event => callback({lat: event.latlng.lat, lon: event.latlng.lng}));
+    }
+    onUserMove(callback) {
+      const events = ['dragstart','zoomstart'];
+      const handler = event => { if (event?.originalEvent) callback(event); };
+      events.forEach(name => this.map.on(name, handler));
+      return () => events.forEach(name => this.map?.off(name, handler));
+    }
+    addHeadingMarker(id, point, heading = 0) {
+      this.removeMarker(id);
+      const element = document.createElement('div');
+      element.className = 'dante-driver-heading';
+      element.innerHTML = '<svg viewBox="0 0 34 34" width="34" height="34" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+      Object.assign(element.style, {width:'34px',height:'34px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)',transform:'rotate('+(Number(heading)||0)+'deg)',transformOrigin:'center'});
+      const marker = L.marker([Number(point.lat),Number(point.lon)], {icon:L.divIcon({html:element,className:'dante-driver-heading-icon',iconSize:[34,34],iconAnchor:[17,17]}),interactive:false,keyboard:false}).addTo(this.map);
+      const handle = {
+        setLatLng: next => marker.setLatLng([Number(next.lat),Number(next.lon)]),
+        setHeading: value => { element.style.transform='rotate('+(Number(value)||0)+'deg)'; },
+        remove: () => { this.map.removeLayer(marker); this.markers?.delete(id); }
+      };
+      this.markers ||= new Map();
+      this.markers.set(id, handle);
+      return handle;
     }
     addMarker(id, point, popup) {
       this.removeMarker(id);
@@ -83,7 +106,13 @@
     fitPoints(points, padding = .15) {
       const valid = (points || []).filter(validPoint);
       if (valid.length === 1) this.map.setView([Number(valid[0].lat), Number(valid[0].lon)], 16);
-      else if (valid.length > 1) this.map.fitBounds(L.latLngBounds(valid.map(p => [Number(p.lat), Number(p.lon)])).pad(padding));
+      else if (valid.length > 1) {
+        const bounds = L.latLngBounds(valid.map(p => [Number(p.lat), Number(p.lon)]));
+        const options = padding && typeof padding === 'object'
+          ? {paddingTopLeft:[Number(padding.left)||0,Number(padding.top)||0],paddingBottomRight:[Number(padding.right)||0,Number(padding.bottom)||0]}
+          : {padding:Math.max(.05,Number(padding)||.15)};
+        this.map.fitBounds(bounds, options);
+      }
     }
     followLocation(point) {
       if (!validPoint(point)) return;
@@ -92,7 +121,11 @@
     fitGeometry(geometry, padding = .15) {
       const layer = L.geoJSON({type:'Feature', geometry, properties:{}});
       const bounds = layer.getBounds();
-      if (bounds.isValid()) this.map.fitBounds(bounds.pad(padding));
+      if (!bounds.isValid()) return;
+      const options = padding && typeof padding === 'object'
+        ? {paddingTopLeft:[Number(padding.left)||0,Number(padding.top)||0],paddingBottomRight:[Number(padding.right)||0,Number(padding.bottom)||0]}
+        : {padding:Math.max(.05,Number(padding)||.15)};
+      this.map.fitBounds(bounds, options);
     }
     removeLayer(handle) { if (handle?.remove) handle.remove(); }
     invalidateSize() { setTimeout(() => this.map.invalidateSize(), 120); }
@@ -129,6 +162,29 @@
     }
     onClick(callback) {
       this.map.on('click', event => callback({lat:event.lngLat.lat, lon:event.lngLat.lng}));
+    }
+    onUserMove(callback) {
+      const events = ['dragstart','zoomstart','rotatestart','pitchstart'];
+      const handler = event => { if (event?.originalEvent) callback(event); };
+      events.forEach(name => this.map.on(name, handler));
+      return () => events.forEach(name => this.map?.off(name, handler));
+    }
+    addHeadingMarker(id, point, heading = 0) {
+      this.removeMarker(id);
+      const element = document.createElement('div');
+      element.className = 'dante-driver-heading';
+      element.innerHTML = '<svg viewBox="0 0 34 34" width="34" height="34" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+      Object.assign(element.style,{width:'34px',height:'34px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
+      const marker = new mapboxgl.Marker({element,anchor:'center',rotationAlignment:'viewport',pitchAlignment:'viewport'})
+        .setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
+      const handle = {
+        setLatLng: next => marker.setLngLat([Number(next.lon),Number(next.lat)]),
+        setHeading: value => marker.setRotation((Number(value)||0) - (this.map?.getBearing?.()||0)),
+        remove: () => { marker.remove(); this.markers.delete(id); }
+      };
+      handle.setHeading(heading);
+      this.markers.set(id,handle);
+      return handle;
     }
     addMarker(id, point, popup) {
       this.removeMarker(id);
@@ -207,7 +263,10 @@
       }
       const bounds = new mapboxgl.LngLatBounds();
       valid.forEach(point => bounds.extend([Number(point.lon),Number(point.lat)]));
-      this.map.fitBounds(bounds,{padding:Math.max(24,Math.round(48 + padding * 100)),maxZoom:16,animate:false,duration:0});
+      const fitPadding = padding && typeof padding === 'object'
+        ? {top:Number(padding.top)||0,bottom:Number(padding.bottom)||0,left:Number(padding.left)||0,right:Number(padding.right)||0}
+        : Math.max(24,Math.round(48 + (Number(padding)||.15) * 100));
+      this.map.fitBounds(bounds,{padding:fitPadding,maxZoom:16,animate:false,duration:0});
     }
     followLocation(point, bearing) {
       if (!validPoint(point) || !this.map) return;
@@ -220,7 +279,10 @@
       if (!coordinates.length) return;
       const bounds = new mapboxgl.LngLatBounds();
       coordinates.forEach(point => bounds.extend(point));
-      this.map.fitBounds(bounds,{padding:Math.max(24,Math.round(48 + padding * 100)),maxZoom:17,animate:false,duration:0});
+      const fitPadding = padding && typeof padding === 'object'
+        ? {top:Number(padding.top)||0,bottom:Number(padding.bottom)||0,left:Number(padding.left)||0,right:Number(padding.right)||0}
+        : Math.max(24,Math.round(48 + (Number(padding)||.15) * 100));
+      this.map.fitBounds(bounds,{padding:fitPadding,maxZoom:17,animate:false,duration:0});
     }
     removeLayer(handle) { if (handle?.remove) handle.remove(); }
     invalidateSize() {
