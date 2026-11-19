@@ -1361,7 +1361,8 @@ function driverHomeFitPadding(){
 function driverHomeNavigationFitPadding(){
  const padding=driverHomeFitPadding();
  const values=typeof padding==='object'?padding:{top:Math.round(48+padding*100),bottom:Math.round(48+padding*100),left:Math.round(48+padding*100),right:Math.round(48+padding*100)};
- return {...values,bearing:latestDriverLocation?.heading};
+ const heading=latestDriverLocation?.heading;
+ return {...values,bearing:heading!==null&&heading!==undefined&&Number.isFinite(Number(heading))?Number(heading):undefined};
 }
 async function ensureDriverHomePendingRoute(force=false){
  if(!driverHomeMap||activeTripId||!latestDriverLocation||!driverHomePendingTrips.length)return false;
