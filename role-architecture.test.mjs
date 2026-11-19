@@ -70,6 +70,11 @@ test("passenger HTML is physically extracted and mounted only after role resolut
   assert.ok(passengerTemplate.includes('<section id="passengerOnboarding"'));
 });
 
+test("passenger profile completion clearly preserves the signed-in state", () => {
+  assert.match(passengerTemplate, /Tu sesión está iniciada/);
+  assert.match(passengerTemplate, /id="passengerOnboardingBack"[^>]*>Cerrar sesión/);
+});
+
 test("temporary passenger photo verification errors do not look like logout", () => {
   assert.match(html, /passengerPhotoCheckUnavailable=true/);
   assert.match(html, /!passengerPhotoReady&&!passengerPhotoCheckUnavailable/);
