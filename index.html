@@ -877,7 +877,7 @@ let driverWantsOnline=false,driverHomeMap=null,driverHomeMapMarker=null,driverHo
 let driverHomeCurtainExpanded=false,driverHomeMessage="Estás conectado",driverHomeMessageTimer=null,driverHomeDrag=null;
 let driverHomeConnectBusy=false,driverHomeDisconnectBusy=false;
 let driverHomePendingTrips=[],driverHomeRequestMarkers=new Map(),driverInboxRenderVersion=0;
-let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0};
+let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0,failedAttempts:0};
 let driverHomeNavigationRequestVersion=0;
 function isDriverCapableRole(){return ['driver','admin'].includes(currentRole?.role)}
 function currentDriverCarId(){return currentRole?.role==='admin'?'144':String(currentRole?.carId||'')}
@@ -1382,9 +1382,10 @@ async function ensureDriverHomeNavigationRoute(force=false){
  }
  const now=Date.now(),same=driverHomeNavigation.tripId===activeTripId&&driverHomeNavigation.stage===target.stage;
  if(!force&&same&&driverHomeNavigation.route)return true;
+ if(!force&&same&&(driverHomeNavigation.failedAttempts||0)>=3){showDriverHomeNavigationFailure(target.stage);return false}
  if(!force&&same&&now-driverHomeNavigation.lastAttemptAt<60000)return false;
  const version=++driverHomeNavigationRequestVersion;
- driverHomeNavigation={tripId:activeTripId,stage:target.stage,route:null,lastAttemptAt:now,lastRerouteAt:same?driverHomeNavigation.lastRerouteAt||0:0,rerouteCount:driverHomeNavigation.tripId===activeTripId?driverHomeNavigation.rerouteCount||0:0};
+ driverHomeNavigation={tripId:activeTripId,stage:target.stage,route:null,lastAttemptAt:now,lastRerouteAt:same?driverHomeNavigation.lastRerouteAt||0:0,rerouteCount:driverHomeNavigation.tripId===activeTripId?driverHomeNavigation.rerouteCount||0:0,failedAttempts:same?driverHomeNavigation.failedAttempts||0:0};
  driverHomeMap.removeRoute('driver-home-navigation-route');
  driverHomeMap.removeMarker('driver-home-navigation-target');
  ensureDriverHomeNavigationPanel(target.stage,'Calculando la mejor ruta…',target.label);
@@ -1392,6 +1393,7 @@ async function ensureDriverHomeNavigationRoute(force=false){
   const route=await window.DanteMap.getDrivingRoute([{lat:Number(latestDriverLocation.lat),lon:Number(latestDriverLocation.lon)},target.point],{steps:true});
   if(version!==driverHomeNavigationRequestVersion||activeTripId!==driverHomeNavigation.tripId||!driverHomeMap)return false;
   driverHomeNavigation.route=route;
+  driverHomeNavigation.failedAttempts=0;
   driverHomeMap.addRoute('driver-home-navigation-route',route.geometry,{color:'#168447',weight:7,opacity:.92});
   driverHomeMap.addMarker('driver-home-navigation-target',target.point,target.label);
   driverHomeMap.fitGeometry(route.geometry,.2);
@@ -1400,9 +1402,18 @@ async function ensureDriverHomeNavigationRoute(force=false){
  }catch(error){
   if(version!==driverHomeNavigationRequestVersion)return false;
   console.warn('No se pudo calcular la navegación del viaje:',error);
-  ensureDriverHomeNavigationPanel(target.stage,'No se pudo calcular la ruta.','Se volverá a intentar cuando haya señal GPS.');
+  driverHomeNavigation.failedAttempts=(driverHomeNavigation.failedAttempts||0)+1;
+  if(driverHomeNavigation.failedAttempts>=3)showDriverHomeNavigationFailure(target.stage);
+  else ensureDriverHomeNavigationPanel(target.stage,'No se pudo calcular la ruta.','Se reintentará automáticamente en un minuto.');
   return false;
  }
+}
+function showDriverHomeNavigationFailure(stage){
+ const panel=byId('driverHomeNavigation');
+ if(!panel)return;
+ ensureDriverHomeNavigationPanel(stage,'No se pudo calcular la ruta.','Se agotaron los reintentos automáticos.');
+ const meta=byId('driverHomeNavigationMeta');
+ if(meta)meta.innerHTML='<button type="button" class="secondary" data-driver-navigation-retry>Reintentar navegación</button>';
 }
 function updateDriverHomeNavigationPosition(loc){
  if(!activeTripId||!activeTripData||!['accepted','in_progress'].includes(activeTripData.status)||!driverHomeMap)return;
@@ -1823,7 +1834,7 @@ async function finishActiveDriverTrip(){
   await remove(ref(db,'trips/'+id+'/driverLocation'));
   activeTripId=null;activeTripData=null;
   driverHomeNavigationRequestVersion++;
-  driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0};
+  driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0,failedAttempts:0};
   driverHomeMap?.removeRoute('driver-home-navigation-route');
   driverHomeMap?.removeMarker('driver-home-navigation-target');
   byId('driverActiveTrip')?.classList.add('hidden');
@@ -1834,6 +1845,12 @@ async function finishActiveDriverTrip(){
   notify('Viaje finalizado. El coche volvió a estar Libre.');
  }catch(error){console.error(error);notify('No se pudo finalizar el viaje.')}
 }
+bindRoleDom('driverHomeNavigationMeta','click',event=>{
+ if(!event.target.closest('[data-driver-navigation-retry]'))return;
+ driverHomeNavigation.failedAttempts=0;
+ driverHomeNavigation.lastAttemptAt=0;
+ void ensureDriverHomeNavigationRoute(true);
+});
 bindRoleDom('driverHomeMapShell','click',event=>{
  if(document.body.classList.contains('driver-home-map-active'))return;
  if(event.target.closest('.mapboxgl-ctrl,.leaflet-control'))return;
