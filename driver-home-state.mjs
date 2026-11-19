@@ -52,8 +52,10 @@ export function formatDriverTripPlace(point = {}) {
 
 export function getDriverRequestRouteDistances(route) {
   const legs = Array.isArray(route?.legs) ? route.legs : [];
-  const pickupMeters = Number(legs[0]?.distance);
-  const destinationMeters = Number(legs[1]?.distance);
+  const pickupRaw = legs[0]?.distance;
+  const destinationRaw = legs[1]?.distance;
+  const pickupMeters = pickupRaw === null || pickupRaw === undefined || pickupRaw === "" ? NaN : Number(pickupRaw);
+  const destinationMeters = destinationRaw === null || destinationRaw === undefined || destinationRaw === "" ? NaN : Number(destinationRaw);
   return {
     pickupMeters: Number.isFinite(pickupMeters) && pickupMeters >= 0 ? pickupMeters : null,
     destinationMeters: Number.isFinite(destinationMeters) && destinationMeters >= 0 ? destinationMeters : null
