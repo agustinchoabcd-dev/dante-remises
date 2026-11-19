@@ -1324,6 +1324,15 @@ function driverHomeBearingBetween(a,b){
  const x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLon);
  return (toDeg(Math.atan2(y,x))+360)%360;
 }
+function driverHomeFirstRouteBearing(geometry){
+ const coordinates=geometry?.type==='MultiLineString'?geometry.coordinates?.find(line=>line?.length>1):geometry?.coordinates;
+ if(!Array.isArray(coordinates)||coordinates.length<2)return null;
+ const first=coordinates[0],second=coordinates[1];
+ if(!Array.isArray(first)||!Array.isArray(second))return null;
+ const a={lat:Number(first[1]),lon:Number(first[0])},b={lat:Number(second[1]),lon:Number(second[0])};
+ if(!Number.isFinite(a.lat)||!Number.isFinite(a.lon)||!Number.isFinite(b.lat)||!Number.isFinite(b.lon))return null;
+ return driverHomeBearingBetween(a,b);
+}
 function updateDriverHomeLocation(loc){
  if(!loc)return;
  const point={lat:Number(loc.lat),lon:Number(loc.lon)};
@@ -1547,6 +1556,10 @@ async function ensureDriverHomeNavigationRoute(force=false){
   if(version!==driverHomeNavigationRequestVersion||activeTripId!==driverHomeNavigation.tripId||!driverHomeMap)return false;
   driverHomeNavigation.route=route;
   driverHomeNavigation.failedAttempts=0;
+  if((latestDriverLocation?.heading===null||latestDriverLocation?.heading===undefined)&&driverHomeLastHeading===null){
+   const routeHeading=driverHomeFirstRouteBearing(route.geometry);
+   if(routeHeading!==null){driverHomeLastHeading=routeHeading;updateDriverHomeLocation(latestDriverLocation)}
+  }
   driverHomeMap.addRoute('driver-home-navigation-route',route.geometry,{color:'#168447',weight:7,opacity:.92});
   driverHomeMap.addMarker('driver-home-navigation-target',target.point,target.label);
   if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeNavigationFitPadding(),[latestDriverLocation,target.point]);
