@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, centralTemplate, roleDomBindings, passengerModule, driverModule, operatorModule, adminModule] = await Promise.all([
+const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, centralTemplate, roleDomBindings, passengerModule, driverModule, operatorModule, adminModule, mapAdapter] = await Promise.all([
   readFile(new URL("./index.html", import.meta.url), "utf8"),
   readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8"),
   readFile(new URL("./service-worker.js", import.meta.url), "utf8"),
@@ -15,7 +15,8 @@ const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, pass
   readFile(new URL("./roles/passenger.mjs", import.meta.url), "utf8"),
   readFile(new URL("./roles/driver.mjs", import.meta.url), "utf8"),
   readFile(new URL("./roles/operator.mjs", import.meta.url), "utf8"),
-  readFile(new URL("./roles/admin.mjs", import.meta.url), "utf8")
+  readFile(new URL("./roles/admin.mjs", import.meta.url), "utf8"),
+  readFile(new URL("./js/dante-map.js", import.meta.url), "utf8")
 ]);
 
 
@@ -208,4 +209,23 @@ test("role view controller is the only path that activates a workspace", () => {
       assert.equal(html.includes(marker), false, "Role view visibility must be controlled centrally: " + view);
     }
   }
+});
+
+test("driver map has separate trip refocus and current GPS centering controls", () => {
+  assert.ok(driverTemplate.includes('id="driverHomeRecenterButton"'));
+  assert.ok(driverTemplate.includes('id="driverHomeCenterLocationButton"'));
+  assert.match(driverTemplate, /Focalizar el recorrido completo/);
+  assert.match(driverTemplate, /Centrar en mi ubicación/);
+  assert.match(html, /bindRoleDom\('driverHomeCenterLocationButton'/);
+  assert.match(html, /driverHomeMap\.centerOn\?\.\(latestDriverLocation,16\)/);
+  assert.match(html, /String\(driverHomePendingRouteTripId\)===String\(driverHomeFocusTripId\)/);
+  assert.match(html, /driverHomeMap\.fitGeometry\(driverHomePendingRoute\.geometry,driverHomeFitPadding\(\),points\)/);
+});
+
+test("trip endpoints use passenger and red destination pins in both map engines", () => {
+  assert.equal((mapAdapter.match(/addTripEndpointMarker\(id, point, kind = 'pickup'/g)||[]).length, 2);
+  assert.match(mapAdapter, /pickup \? '#ed9418' : '#dc3545'/);
+  assert.match(mapAdapter, /<circle cx="20" cy="16" r="5" fill="#fff"\/>/);
+  assert.match(html, /addTripEndpointMarker\(markerId/);
+  assert.match(html, /'destination','Destino del viaje'/);
 });
