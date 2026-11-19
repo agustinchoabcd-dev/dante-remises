@@ -31,7 +31,7 @@ test("driver trip addresses prefer place name and street details without adminis
  assert.equal(formatDriverTripPlace({placeName:"YPF",street:"Ruta Provincial 5",label:"YPF, Ruta Provincial 5, Santa Rosa de Calamuchita, Córdoba, Argentina"}),"YPF · Ruta Provincial 5");
  assert.equal(formatDriverTripPlace({street:"Avenida Libertad",houseNumber:"123",label:"Avenida Libertad 123, 5196 Santa Rosa de Calamuchita, Córdoba, Argentina"}),"Avenida Libertad 123");
  assert.equal(formatDriverTripPlace({label:"Ruta 5, Santa Rosa de Calamuchita, Córdoba, Argentina"}),"Ruta 5");
- assert.equal(formatDriverTripPlace({label:"5196 Santa Rosa de Calamuchita, Córdoba, Argentina"}),"5196 Santa Rosa de Calamuchata");
+ assert.equal(formatDriverTripPlace({label:"5196 Santa Rosa de Calamuchita, Córdoba, Argentina"}),"Ubicación sin referencia");
 });
 
 test("driver request route distances use the two road legs and reject missing values",()=>{
