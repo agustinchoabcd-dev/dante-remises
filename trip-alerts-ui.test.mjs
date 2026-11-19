@@ -67,9 +67,18 @@ test("pending native actions are processed after the app becomes visible and are
   assert.match(html, /if\(sessionIsCurrent\(\)&&processed\)await clearPendingTripAction\(\)/);
 });
 
-test("viewing and accepting a driver trip show its pickup and destination map", () => {
-  assert.match(html, /function renderDriverTripPreview\(trip,id\)/);
-  assert.match(html, /function renderDriverTripMap\(trip,id\)/);
-  assert.match(html, /Punto de recogida del pasajero/);
-  assert.match(html, /data-preview-accept/);
+test("Personal keeps pending requests map-free and opens the complete trip in Inicio", () => {
+  const preview = html.match(/function renderDriverTripPreview\(trip,id\)\s*\{[\s\S]*?\n\}/)?.[0] || "";
+  const personalCard = html.match(/personalCard\.innerHTML=([\s\S]*?);\n\s*el\.innerHTML/)?.[1] || "";
+  const activeCard = html.match(/function renderDriverActiveTrip\(trip,id\)\s*\{[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(preview, /showDriverTripOnHome\(trip,id\)/);
+  assert.doesNotMatch(preview, /driverTripMap|data-preview-accept|data-preview-reject/);
+  assert.match(personalCard, /data-view-driver-trip/);
+  assert.match(personalCard, /data-open-driver-trip-chat/);
+  assert.match(personalCard, /data-reject-trip/);
+  assert.doesNotMatch(personalCard, /data-accept-trip|driverTripMap/);
+  assert.doesNotMatch(activeCard, /driverTripMap|renderDriverTripMap/);
+  assert.match(html, /async function ensureDriverHomePendingRoute/);
+  assert.match(html, /getDrivingRoute\(points\)/);
+  assert.match(html, /data-accept-trip/);
 });
