@@ -3,9 +3,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { ChatApiClient, ChatApiError, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";
 
-test("the application imports the message page merge helper used by chat detail", async () => {
+test("the application lazy-loads chat networking and local history through its runtime loader", async () => {
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
-  assert.ok(html.includes('import { ChatApiClient, createClientMessageId, mergeChatMessagePages } from "./chat-client.mjs";'));
+  const loader = await readFile(new URL("./chat-runtime-loader.mjs", import.meta.url), "utf8");
+  assert.ok(html.includes('const ensureChatRuntime = createChatRuntimeLoader();'));
+  assert.ok(html.includes('mergeChatMessagePages=modules.mergeChatMessagePages;'));
+  assert.ok(html.includes('chatHistoryCache=modules.chatHistoryCache;'));
+  assert.ok(loader.includes('import("./chat-client.mjs")'));
+  assert.ok(loader.includes('import("./chat-history-cache.mjs")'));
 });
 
 test("passenger chat exposes the connected-operator selector in the green chat header", async () => {
@@ -14,7 +19,7 @@ test("passenger chat exposes the connected-operator selector in the green chat h
   assert.ok(html.includes('id="chatPeerMenu"'));
   assert.ok(html.includes('class="chat-peer-caret" aria-hidden="true">▼</span>'));
   assert.ok(html.includes("api.listOperators()"));
-  assert.ok(html.includes("setInterval(sendOperatorPresence,10_000)"));
+  assert.ok(html.includes("setInterval(()=>void sendOperatorPresence(),10_000)"));
   assert.ok(html.includes("getProfilePhoto(otherUid)"));
 });
 
@@ -440,7 +445,7 @@ test("message rendering reuses existing DOM nodes instead of rebuilding the full
 
 test("chat stores complete histories per account and renders older pages from local cache", async () => {
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
-  assert.ok(html.includes('import { chatHistoryCache } from "./chat-history-cache.mjs"'));
+  assert.ok(html.includes('chatHistoryCache=modules.chatHistoryCache;'));
   assert.ok(html.includes("chatHistoryCache.putMessages(uid,conversationId,remoteMessages,{complete:true})"));
   assert.ok(html.includes("chatHistoryCache.getMessages(uid,conversationId)"));
   assert.ok(html.includes("async function prefetchChatConversationHistories()"));
