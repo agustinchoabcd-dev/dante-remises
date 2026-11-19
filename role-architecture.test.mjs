@@ -36,7 +36,9 @@ test("Central HTML is physically extracted and mounted for operators and adminis
 
 test("driver HTML is physically extracted and mounted for driver and admin roles", () => {
   assert.doesNotMatch(html, /<section id="chofer"/);
+  assert.ok(driverTemplate.includes('<section id="inicio"'));
   assert.ok(driverTemplate.includes('<section id="chofer"'));
+  assert.ok(driverModule.includes('context.showView("inicio")'));
   assert.match(roleTemplateLoader, /driver: "\.\/views\/driver\.html"/);
   assert.match(driverModule, /loadRoleView\("driver"\)/);
   assert.match(adminModule, /loadRoleView\("driver"\)/);
@@ -50,7 +52,7 @@ test("driver HTML is physically extracted and mounted for driver and admin roles
 });
 
 test("driver view controls are registered through deferred role DOM bindings", () => {
-  for (const id of ["driverStatus","driverTripInbox","driverActiveTrip","driverGpsStatus","busyDuration","setBusy","outDuration","setOut","setFree"]) {
+  for (const id of ["driverHomeStatus","driverHomeStatusText","driverHomeMap","driverHomeConnectButton","driverHomeMapHomeButton","driverHomeCurtain","driverHomeCurtainGrip","driverHomeConnectedMessage","driverHomeDisconnectButton","driverStatus","driverTripInbox","driverActiveTrip","driverGpsStatus","busyDuration","setBusy","outDuration","setOut","setFree"]) {
     assert.ok(driverTemplate.includes('id="' + id + '"'), "Missing driver control: " + id);
   }
   assert.match(html, /bindRoleDom\('setBusy'/);
@@ -123,6 +125,7 @@ test("all dynamically imported runtime modules are included in the Capacitor web
     "role-view-access.mjs",
     "role-template-loader.mjs",
     "role-dom-bindings.mjs",
+    "driver-home-state.mjs",
     "views/passenger.html",
     "views/driver.html",
     "map-runtime-loader.mjs",
