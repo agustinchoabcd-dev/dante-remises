@@ -128,6 +128,14 @@ test("role view controller is the only path that activates a workspace", () => {
   assert.doesNotMatch(callback, /byId\(['"](?:pasajero|chofer|central|chat|configuracion)['"]\)\.classList\.toggle\(['"]hidden['"]/);
   assert.doesNotMatch(callback, /byId\(['"]central['"]\)\.classList\.remove\(['"]hidden['"]/);
   for (const view of ["pasajero", "chofer", "central", "chat", "configuracion"]) {
-    assert.doesNotMatch(html, new RegExp("byId\\(['\\"]" + view + "['\\"]\\)\\.classList\\.(?:remove|toggle)\\(['\\"]hidden['\\"]"));
+    const directMutations = [
+      "byId('" + view + "').classList.remove('hidden')",
+      "byId('" + view + "').classList.toggle('hidden'",
+      'byId("' + view + '").classList.remove("hidden")',
+      'byId("' + view + '").classList.toggle("hidden"'
+    ];
+    for (const marker of directMutations) {
+      assert.equal(html.includes(marker), false, "Role view visibility must be controlled centrally: " + view);
+    }
   }
 });
