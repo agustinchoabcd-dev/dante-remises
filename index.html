@@ -2623,7 +2623,7 @@ onAuthStateChanged(auth,async user=>{
    roleActivation=await activateRole(currentRole.role,{
     user,
     role:currentRole,
-    loadRoleView:async role=>{const result=await roleTemplateLoader.load(role);if(authGeneration!==authStateGeneration)return {stale:true};return result},
+    loadRoleView:async role=>{const result=await roleTemplateLoader.load(role);if(authGeneration!==authStateGeneration)return {stale:true};if(role==='driver'){byId('driverControls')?.classList.toggle('hidden',!['driver','admin'].includes(currentRole?.role));if(byId('roleSummary'))byId('roleSummary').textContent=roleText}return result},
     loadPassengerPhoto:async()=>{passengerPhotoReady=false;return await loadPassengerPhoto()},
     showView,
     showPassengerOnboarding,
