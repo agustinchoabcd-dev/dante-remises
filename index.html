@@ -1333,7 +1333,7 @@ async function connectDriverHome(){
 }
 async function disconnectDriverHome(){
  if(driverHomeDisconnectBusy||currentRole?.role!=='driver')return;
- if(activeTripId&&['accepted','in_progress'].includes(activeTripData?.status)){
+ if(activeTripId){
   notify('No podés desconectarte mientras tenés un viaje activo.');
   return;
  }
