@@ -1,0 +1,29 @@
+<section id="pasajero" class="hidden">
+<div id="passengerDriverScreen">
+<h2>Elegí tu chofer</h2><p class="muted">Seleccioná un remisero disponible para continuar con tu solicitud.</p>
+<div class="actions" style="margin:0 0 14px"><button class="secondary" id="randomFreeDriver" type="button">🎲 Cualquier chofer libre</button></div>
+<div class="grid" id="passengerCars"></div>
+</div>
+<div id="passengerTripScreen" class="hidden">
+<button class="secondary" id="backToDrivers" type="button">← Volver a los choferes</button>
+<div class="card panel" style="margin-top:12px" id="selectedDriverCard"></div>
+<div class="card panel" style="margin-top:14px"><h3>Tu viaje</h3>
+<div class="field"><label for="origin">Lugar de partida</label><input id="origin" autocomplete="off" placeholder="Escribí una dirección o elegí en el mapa"><div id="originResults" class="map-search-results hidden"></div></div>
+<div class="actions map-tools"><button type="button" class="secondary" id="useMyLocation">📍 Usar mi ubicación actual</button><button type="button" class="secondary" id="pickOrigin">Marcar origen en el mapa</button></div>
+<div class="field"><label for="destination">Destino</label><input id="destination" autocomplete="off" placeholder="Escribí una dirección o lugar"><div id="destinationResults" class="map-search-results hidden"></div></div>
+<div class="actions map-tools"><button type="button" class="secondary" id="pickDestination">Marcar destino en el mapa</button></div>
+<h3>Mapa y recorrido</h3><div id="realMap" class="real-map" aria-label="Mapa interactivo de Dante Remises"></div>
+<div id="routeSummary" class="map-meta">Elegí el origen y el destino para calcular el recorrido.</div>
+<div id="driverLocationNote" class="driver-location-note">La ubicación del coche aparecerá cuando esté disponible.</div><div class="hint">Búsqueda de direcciones por <a href="https://www.geoapify.com" target="_blank" rel="noopener">Geoapify</a> · Datos cartográficos © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.</div>
+</div>
+<div class="actions"><button class="primary" id="requestSelectedDriver" type="button">Solicitar viaje</button></div><div id="requestResult" class="request hidden"></div>
+<p class="hint">El GPS funciona con permiso del dispositivo. Para compartir ubicación, el chofer debe mantener abierta la aplicación.</p>
+</div>
+</section>
+<section id="passengerOnboarding" class="hidden">
+ <div class="onboarding-shell">
+  <button class="secondary auth-back" id="passengerOnboardingBack" type="button">Cerrar sesión</button>
+  <div class="onboarding-heading"><span class="onboarding-step">PASO 2 DE 2</span><h2>Completá tu perfil</h2><p class="muted">Tu sesión está iniciada. Para solicitar viajes, necesitamos que agregues una foto de perfil.</p></div>
+  <div id="passengerPhotoCardHome"><div class="card panel hidden" id="passengerPhotoCard" style="margin-top:12px"><h3>Foto de perfil del pasajero</h3><p class="muted">Necesitás una foto para pedir viajes. Podés elegirla de tu galería o tomarla con la cámara. La app comprobará que la imagen contenga un rostro visible.</p><div class="photo-frame profile"><img id="passengerProfilePhotoPreview" class="profile-photo-preview" alt="Foto de perfil del pasajero"></div><div class="field"><label>¿Cómo querés agregar tu foto?</label><div class="actions onboarding-photo-actions"><button class="primary" id="takePassengerPhoto" type="button">📷 Tomar foto</button><button class="secondary" id="choosePassengerPhoto" type="button">🖼️ Elegir de galería</button></div><input id="passengerProfilePhotoCamera" type="file" accept="image/*" capture="user" style="display:none"><input id="passengerProfilePhotoGallery" type="file" accept="image/*" style="display:none"></div><div class="actions"><button class="primary" id="savePassengerProfilePhoto" type="button">Guardar foto de perfil</button><button class="secondary" id="refreshPassengerProfilePhoto" type="button">Volver a cargar</button></div><p class="hint" id="passengerProfilePhotoStatus" aria-live="polite">La foto es necesaria para solicitar viajes.</p></div></div>
+ </div>
+</section>

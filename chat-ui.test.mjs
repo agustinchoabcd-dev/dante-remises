@@ -19,7 +19,7 @@ test("chat image attachment invokes the native Android camera and gallery choose
   assert.ok(html.includes("try{selection=await chooseChatImage()}"));
   assert.ok(html.includes("using the system file picker as fallback"));
   assert.ok(html.includes("byId('chatImageInput').click();return"));
-  assert.ok(html.includes("byId('chatAttachButton').addEventListener('click',openChatImagePicker)"));
+  assert.ok(html.includes("bindRoleDom('chatAttachButton','click',openChatImagePicker)"));
   assert.ok(!html.includes('capture="environment"'));
   assert.ok(!html.includes("chatPhotoSourceMenu"));
   assert.ok(nativePatch.includes('Intent.createChooser(contentIntent, "Seleccionar fotografía")'));
@@ -118,7 +118,7 @@ test("chat composer switches between microphone and arrow send button based on t
   assert.match(form, /<button class="primary hidden" id="chatSendButton"/);
   assert.ok(form.includes('<path d="M4 3.5 21 12 4 20.5 7.5 12 4 3.5Z"'));
   assert.ok(html.includes("function updateChatComposerAction()"));
-  assert.ok(html.includes("byId('chatInput').addEventListener('input',updateChatComposerAction)"));
+  assert.ok(html.includes("bindRoleDom('chatInput','input',updateChatComposerAction)"));
   assert.ok(html.includes("byId('chatRecordButton').classList.toggle('hidden',hasText)"));
   assert.ok(html.includes("byId('chatSendButton').classList.toggle('hidden',!hasText)"));
   assert.ok(html.includes("input.value='';updateChatComposerAction()"));

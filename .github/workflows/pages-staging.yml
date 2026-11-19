@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - dante-test
+      - mapbox-migration-prototype
+      - role-modularization
+      - feat/driver-requests-navigation
   workflow_dispatch:
 
 permissions:
@@ -18,18 +21,39 @@ jobs:
     name: Publish isolated web staging
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout dante-test
+      - name: Checkout migration branch
         uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Prepare static site
+      - name: Install web build dependencies
+        run: npm install --include=optional
+
+      - name: Inject Mapbox and Geoapify public keys for the migration preview
+        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype' || github.ref_name == 'role-modularization' || github.head_ref == 'role-modularization' || github.ref_name == 'feat/driver-requests-navigation' || github.head_ref == 'feat/driver-requests-navigation'
+        env:
+          MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
+          GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
         run: |
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          const mapbox = process.env.MAPBOX_PUBLIC_TOKEN || '';
+          const geoapify = process.env.GEOAPIFY_API_KEY || '';
+          if (!mapbox.startsWith('pk.') || mapbox.length < 30) throw new Error('Missing or invalid MAPBOX_PUBLIC_TOKEN. Add the public pk.* token as a repository Actions secret.');
+          if (geoapify.length < 20) throw new Error('Missing or invalid GEOAPIFY_API_KEY. Add the Geoapify API key as a repository Actions secret.');
+          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(mapbox) + ';\n', {encoding:'utf8'});
+          writeFileSync('js/geocoding-config.js', 'window.DANTE_GEOAPIFY_KEY = ' + JSON.stringify(geoapify) + ';\n', {encoding:'utf8'});
+          console.log('Mapbox and Geoapify public keys injected into this build only.');
+          NODE
+
+      - name: Prepare static site with all web assets
+        run: |
+          npm run copy:web
           mkdir -p site
-          cp index.html site/index.html
+          cp -R www/. site/
 
       - name: Create Pages project if needed
         continue-on-error: true
@@ -44,4 +68,4 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          npx --yes wrangler@4 pages deploy site --project-name=dante-remises-staging --branch=dante-test --commit-dirty=true
+          npx --yes wrangler@4 pages deploy site --project-name=dante-remises-staging --branch="${GITHUB_REF_NAME}" --commit-dirty=true

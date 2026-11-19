@@ -4,6 +4,27 @@ const sourceDirectory = new URL("../", import.meta.url);
 const destinationDirectory = new URL("../www/", import.meta.url);
 const webAssets = [
   "index.html",
+  "role-transition.mjs",
+  "session-logout.mjs",
+  "role-runtime.mjs",
+  "role-view-access.mjs",
+  "role-template-loader.mjs",
+  "role-dom-bindings.mjs",
+  "driver-home-state.mjs",
+  "driver-navigation-state.mjs",
+  "views/passenger.html",
+  "views/driver.html",
+  "views/central.html",
+  "map-runtime-loader.mjs",
+  "chat-runtime-loader.mjs",
+  "roles/passenger.mjs",
+  "roles/driver.mjs",
+  "roles/operator.mjs",
+  "roles/admin.mjs",
+  "js/dante-map.js",
+  "js/mapbox-config.js",
+  "js/dante-geocoding.js",
+  "js/geocoding-config.js",
   "assets/chat-wallpaper.jpg",
   "service-worker.js",
   "media-cache.mjs",
@@ -19,6 +40,9 @@ const webAssets = [
 
 await mkdir(destinationDirectory, { recursive: true });
 await mkdir(new URL("assets/", destinationDirectory), { recursive: true });
+await mkdir(new URL("js/", destinationDirectory), { recursive: true });
+await mkdir(new URL("roles/", destinationDirectory), { recursive: true });
+await mkdir(new URL("views/", destinationDirectory), { recursive: true });
 
 for (const asset of webAssets) {
   await copyFile(

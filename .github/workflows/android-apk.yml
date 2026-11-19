@@ -6,11 +6,26 @@ on:
   pull_request:
     branches:
       - main
+      - feat/driver-home-connected-map
       - trip-request-alerts
       - trip-alerts-corrections
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
+      - 'role-template-loader.mjs'
+      - 'session-logout.mjs'
+      - 'session-logout.test.mjs'
+      - 'role-dom-bindings.mjs'
+      - 'driver-home-state.mjs'
+      - 'driver-home-state.test.mjs'
+      - 'driver-navigation-state.mjs'
+      - 'driver-navigation-state.test.mjs'
+      - 'role-dom-bindings.test.mjs'
+      - 'role-template-loader.test.mjs'
+      - 'role-architecture.test.mjs'
+      - 'views/**'
+      - 'scripts/copy-web.mjs'
+      - 'service-worker.js'
       - 'scripts/native-bridge.js'
       - 'scripts/build-native-bridge.mjs'
       - 'scripts/patch-android-audio.mjs'
@@ -28,9 +43,38 @@ on:
       - chat-media-integration
       - chat-ui-fixes-4b564f
       - trip-request-alerts
+      - mapbox-migration-prototype
+      - role-modularization
+      - fix/logout-to-auth-home
+      - fix/logout-transition-feedback
+      - feat/driver-home-connected-map
+      - feat/driver-requests-navigation
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
+      - 'role-transition.mjs'
+      - 'session-logout.mjs'
+      - 'session-logout.test.mjs'
+      - 'role-runtime.mjs'
+      - 'role-view-access.mjs'
+      - 'role-template-loader.mjs'
+      - 'role-dom-bindings.mjs'
+      - 'driver-home-state.mjs'
+      - 'driver-home-state.test.mjs'
+      - 'driver-navigation-state.mjs'
+      - 'driver-navigation-state.test.mjs'
+      - 'role-dom-bindings.test.mjs'
+      - 'role-template-loader.test.mjs'
+      - 'views/**'
+      - 'role-view-access.test.mjs'
+      - 'map-runtime-loader.mjs'
+      - 'chat-runtime-loader.mjs'
+      - 'roles/**'
+      - 'role-transition.test.mjs'
+      - 'role-runtime.test.mjs'
+      - 'role-architecture.test.mjs'
+      - 'map-runtime-loader.test.mjs'
+      - 'chat-runtime-loader.test.mjs'
       - 'chat-ui.test.mjs'
       - 'chat-client.mjs'
       - 'trip-alerts-client.mjs'
@@ -44,6 +88,11 @@ on:
       - 'media-cache.mjs'
       - 'service-worker.js'
       - 'scripts/copy-web.mjs'
+      - 'js/dante-map.js'
+      - 'js/mapbox-config.js'
+      - 'js/dante-geocoding.js'
+      - 'js/geocoding-config.js'
+      - 'prototypes/mapbox/**'
 
 permissions:
   contents: read
@@ -104,13 +153,28 @@ jobs:
           Path("/tmp/dante-audio-system.mjs").write_text(scripts[0], encoding="utf-8")
           PY
           node --check /tmp/dante-audio-system.mjs
+          node --check service-worker.js
+          node --check role-transition.mjs
+          node --check role-runtime.mjs
+          node --check role-view-access.mjs
+          node --check role-template-loader.mjs
+          node --check role-dom-bindings.mjs
+          node --check driver-home-state.mjs
+          node --check driver-navigation-state.mjs
+          node --check js/dante-map.js
+          node --check map-runtime-loader.mjs
+          node --check chat-runtime-loader.mjs
+          node --check roles/passenger.mjs
+          node --check roles/driver.mjs
+          node --check roles/operator.mjs
+          node --check roles/admin.mjs
           node --check chat-client.mjs
           node --check trip-alerts-client.mjs
           node --check media-cache.mjs
           node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
           node --check scripts/patch-android-trip-alerts.mjs
-          node --test chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
+          node --test driver-home-state.test.mjs driver-navigation-state.test.mjs session-logout.test.mjs role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs role-view-access.test.mjs role-template-loader.test.mjs role-dom-bindings.test.mjs role-architecture.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
@@ -137,7 +201,13 @@ jobs:
                   self.handle_starttag(tag, attrs)
 
           parser = IdCollector()
+          passenger_template = Path("views/passenger.html").read_text(encoding="utf-8")
+          driver_template = Path("views/driver.html").read_text(encoding="utf-8")
+          central_template = Path("views/central.html").read_text(encoding="utf-8")
           parser.feed(source)
+          parser.feed(passenger_template)
+          parser.feed(driver_template)
+          parser.feed(central_template)
           duplicates = sorted(key for key, count in Counter(parser.ids).items() if count > 1)
           if duplicates:
               raise SystemExit("Duplicate HTML IDs: " + ", ".join(duplicates))
@@ -227,7 +297,7 @@ jobs:
               if parser.ids.count(control_id) != 1:
                   raise SystemExit(f"Expected exactly one visual-effects control #{control_id}.")
 
-          for element_id in ("chatForm", "realMap", "centralCars", "driverControls", "setFree", "setBusy", "setOut"):
+          for element_id in ("chatForm", "realMap", "centralCars", "driverControls", "setFree", "setBusy", "setOut", "driverHomeMap", "driverHomeConnectButton", "driverHomeCurtain", "driverHomeDisconnectButton"):
               if parser.ids.count(element_id) != 1:
                   raise SystemExit(f"Expected exactly one functional anchor #{element_id}, found {parser.ids.count(element_id)}")
 
@@ -236,6 +306,23 @@ jobs:
 
       - name: Install JavaScript dependencies
         run: npm install --include=optional
+
+      - name: Inject Mapbox and Geoapify public keys for the experimental migration build
+        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype' || github.ref_name == 'role-modularization' || github.head_ref == 'role-modularization' || github.ref_name == 'feat/driver-home-connected-map' || github.head_ref == 'feat/driver-home-connected-map' || github.ref_name == 'feat/driver-requests-navigation' || github.head_ref == 'feat/driver-requests-navigation'
+        env:
+          MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
+          GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          const mapbox = process.env.MAPBOX_PUBLIC_TOKEN || '';
+          const geoapify = process.env.GEOAPIFY_API_KEY || '';
+          if (!mapbox.startsWith('pk.') || mapbox.length < 30) throw new Error('Missing or invalid MAPBOX_PUBLIC_TOKEN. Add the public pk.* token as a repository Actions secret.');
+          if (geoapify.length < 20) throw new Error('Missing or invalid GEOAPIFY_API_KEY. Add the Geoapify API key as a repository Actions secret.');
+          writeFileSync('js/mapbox-config.js', 'window.DANTE_MAPBOX_TOKEN = ' + JSON.stringify(mapbox) + ';\n', {encoding:'utf8'});
+          writeFileSync('js/geocoding-config.js', 'window.DANTE_GEOAPIFY_KEY = ' + JSON.stringify(geoapify) + ';\n', {encoding:'utf8'});
+          console.log('Mapbox and Geoapify public keys injected into this build only.');
+          NODE
 
       - name: Copy web application into Capacitor assets
         run: npm run copy:web

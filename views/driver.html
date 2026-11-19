@@ -1,0 +1,53 @@
+<section id="inicio" class="hidden driver-home">
+  <div class="driver-home-status" id="driverHomeStatus" data-tone="red" aria-live="polite">
+    <span class="driver-home-status-dot" id="driverHomeStatusDot" data-tone="red" aria-hidden="true"></span>
+    <strong id="driverHomeStatusText">Desconectado</strong>
+    <span class="driver-home-status-badge hidden" id="driverHomeStatusBadge"></span>
+  </div>
+  <div class="driver-home-navigation hidden" id="driverHomeNavigation" aria-live="polite">
+    <div class="driver-home-navigation-stage" id="driverHomeNavigationStage">Hacia el pasajero</div>
+    <strong id="driverHomeNavigationInstruction">Preparando navegación…</strong>
+    <div class="driver-home-navigation-meta" id="driverHomeNavigationMeta"></div>
+  </div>
+  <div class="driver-home-map-shell" id="driverHomeMapShell">
+    <div id="driverHomeMap" class="driver-home-map" role="application" aria-label="Mapa de ubicación del chofer"></div>
+    <button class="driver-home-recenter hidden" id="driverHomeRecenterButton" type="button" aria-label="Focalizar el recorrido completo" title="Focalizar el recorrido completo">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18.5 8.5 6l6 11 5.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4" cy="18.5" r="2" fill="currentColor"/><circle cx="20" cy="9" r="2" fill="currentColor"/></svg>
+    </button>
+    <button class="driver-home-center-location hidden" id="driverHomeCenterLocationButton" type="button" aria-label="Centrar en mi ubicación" title="Centrar en mi ubicación">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    </button>
+  </div>
+  <div class="driver-home-active-trip hidden" id="driverHomeActiveTrip"></div>
+  <section class="driver-home-requests hidden" id="driverHomeRequests">
+    <h3>Solicitudes de viaje</h3>
+    <div id="driverHomeTripInbox" class="driver-home-trip-inbox">No hay solicitudes pendientes.</div>
+  </section>
+  <button class="driver-connect-button" id="driverHomeConnectButton" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.1"/><path d="M5.5 5.5 9.8 9.8M18.5 5.5l-4.3 4.3M12 15.1v6.1"/></svg>
+    <span>Conectarse</span>
+  </button>
+  <button class="driver-home-map-home hidden" id="driverHomeMapHomeButton" type="button" aria-label="Volver a Inicio" title="Volver a Inicio">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
+  </button>
+  <div class="driver-home-curtain hidden" id="driverHomeCurtain">
+    <div class="driver-home-curtain-grip" id="driverHomeCurtainGrip" role="button" tabindex="0" aria-label="Deslizar para mostrar desconexión" aria-expanded="false">
+      <span class="driver-home-curtain-handle" aria-hidden="true"></span>
+      <strong id="driverHomeConnectedMessage">Estás conectado</strong>
+    </div>
+    <div class="driver-home-curtain-actions">
+      <button class="danger driver-home-disconnect hidden" id="driverHomeDisconnectButton" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.1"/><path d="M5.5 5.5 9.8 9.8M18.5 5.5l-4.3 4.3M12 15.1v6.1"/></svg><span>Desconectarse</span></button>
+    </div>
+  </div>
+</section>
+<section id="chofer" class="hidden">
+<h2>Mi espacio de personal</h2><p class="muted">Gestioná tu estado. Agustín también puede administrar los estados de todos los coches desde la Central.</p>
+<div class="card panel" id="driverControls" style="margin-top:12px">
+<div id="roleSummary" class="hint"></div><div id="driverStatus"></div><div class="divider"></div><h3>Solicitudes de viaje</h3><div id="driverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="driverActiveTrip" class="request hidden"></div><div class="driver-location-note" id="driverGpsStatus">La ubicación GPS todavía no está activa.</div>
+<div class="divider"></div>
+<div class="field"><label for="busyDuration">Duración de “Ocupado”</label><select id="busyDuration"><option value="5">5 minutos</option><option value="10">10 minutos</option><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="120">2 horas</option><option value="240">4 horas</option><option value="480">8 horas</option></select></div>
+<button class="primary" id="setBusy">Ocupado durante el plazo elegido</button>
+<div class="field"><label for="outDuration">Duración de “Fuera de servicio”</label><select id="outDuration"><option value="5">5 minutos</option><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="120">2 horas</option><option value="240">4 horas</option><option value="480">8 horas</option><option value="indefinite">Hasta que lo reactive manualmente</option></select></div>
+<button class="danger" id="setOut">Fuera de servicio</button><div class="actions"><button class="secondary" id="setFree">Marcar como libre</button></div>
+</div>
+</section>
