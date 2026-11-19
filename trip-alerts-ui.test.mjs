@@ -146,12 +146,12 @@ test("local GPS updates are not throttled by Firebase writes", () => {
   const callback=html.match(/driverWatchId=watchPosition\(async pos=>\{([\s\S]*?)\},err=>/)?.[1]||"";
   const mapUpdate=callback.indexOf("updateDriverHomeLocation(loc)");
   const navigationUpdate=callback.indexOf("updateDriverHomeNavigationPosition(loc)");
-  const writeThrottle=callback.indexOf("if(now-driverLocationWriteAt<4000)return");
+  const writeThrottle=callback.indexOf("const writeInterval=activeNavigation?2000:4000");
   assert.ok(mapUpdate>=0&&navigationUpdate>mapUpdate&&writeThrottle>navigationUpdate);
-});
+}); 
 
 test("active navigation requires fresh GPS and preserves progress across fixes", () => {
-  assert.match(html,/gpsAge>=45000/);
+  assert.match(html,/gpsAge>=15000/);
   assert.match(html,/previousProgress:driverHomeNavigation\.lastProgress/);
   assert.match(html,/driverHomeNavigation\.lastProgress=progress\.progress/);
   assert.match(html,/La ubicación cambió durante el cálculo/);
@@ -223,7 +223,11 @@ test("driver GPS uses a one-second high-accuracy watch and requires precise Andr
   assert.match(nativeBridge,/minimumUpdateInterval:\s*options\.minimumUpdateInterval\s*\?\?\s*750/);
   assert.match(nativeBridge,/maximumAge:\s*options\.maximumAge\s*\?\?\s*1000/);
   assert.match(nativeBridge,/current\.location === "granted"/);
-  assert.doesNotMatch(nativeBridge,/return requested\.location === "granted" \|\| requested\.coarseLocation/);
+  const precisePermission=nativeBridge.match(/export async function requestPreciseLocationPermission\(\)\s*\{[\s\S]*?\n\}/)?.[0]||"";
+  assert.match(precisePermission,/Geolocation\.checkPermissions\(\)/);
+  assert.match(precisePermission,/requestPermissions\(\{ permissions: \["location"\] \}\)/);
+  assert.match(precisePermission,/return requested\.location === "granted"/);
+  assert.doesNotMatch(precisePermission,/coarseLocation/);
   assert.match(html,/requestPreciseLocationPermission\(\)/);
   assert.match(html,/maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750/);
   assert.match(html,/activeNavigation\?2000:4000/);
