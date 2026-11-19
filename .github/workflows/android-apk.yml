@@ -41,6 +41,7 @@ on:
       - mapbox-migration-prototype
       - role-modularization
       - fix/logout-to-auth-home
+      - fix/logout-transition-feedback
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
