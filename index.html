@@ -1397,6 +1397,10 @@ async function focusDriverHomeMap(){
   if(latestDriverLocation)updateDriverHomeNavigationPosition(latestDriverLocation,true);
   return true;
  }
+ if(driverHomePendingRoute){
+  driverHomeMap.fitGeometry(driverHomePendingRoute.geometry,driverHomeFitPadding());
+  return true;
+ }
  return await ensureDriverHomePendingRoute(true);
 }
 async function showDriverTripOnHome(trip,id){
@@ -1575,7 +1579,7 @@ function destroyDriverHomeMap(){
  if(driverHomeMap){try{driverHomeMap.remove()}catch(error){console.warn('No se pudo desmontar el mapa de Inicio:',error)}}
  driverHomeMap=null;driverHomeMapMarker=null;driverHomeMapFirstFix=false;driverHomeMarkerMode='dot';driverHomeRequestMarkers.clear();driverHomeMapUserMoved=false;driverHomePendingRouteVersion++;driverHomePendingRoute=null;driverHomePendingRouteTripId=null;byId('driverHomeRecenterButton')?.classList.add('hidden');
 }
-function setDriverHomeFullscreen(expanded){
+function setDriverCurtainExpanded(expanded){
  const mapNode=byId('driverHomeMap');
  const wasExpanded=document.body.classList.contains('driver-home-map-active');
  if(expanded){
@@ -1599,6 +1603,7 @@ function setDriverHomeFullscreen(expanded){
      mapNode.style.transformOrigin='';
      mapNode.style.borderRadius='';
      driverHomeMap?.invalidateSize();
+     window.setTimeout(refitDriverHomeRoute,180);
     };
     driverHomeMapTransitionHandler=finish;
     mapNode.addEventListener('transitionend',finish);
@@ -1618,7 +1623,7 @@ function setDriverHomeFullscreen(expanded){
    mapNode.style.transformOrigin='';
    mapNode.style.borderRadius='';
   }
-  requestAnimationFrame(()=>driverHomeMap?.invalidateSize());
+  requestAnimationFrame(()=>{driverHomeMap?.invalidateSize();window.setTimeout(refitDriverHomeRoute,180)});
  }
  byId('driverHomeMapHomeButton')?.classList.toggle('hidden',!expanded);
 }
@@ -1887,7 +1892,7 @@ async function restoreDriverActiveTrip(){
    if(cleanup.committed){cars[carId].status='libre';cars[carId].until=null;cars[carId].indefinite=false;cars[carId].activeTripId=null}
    activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');render('trip-restore-missing');return;
   }
-  activeTripId=tripId;activeTripData=trip;byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML='<strong>Solicitud vinculada pendiente de recuperar.</strong><div class="hint">El registro todavía no está aceptado; no se habilitó finalizar viaje.</div>';if(byId('adminDriverActiveTrip')){byId('adminDriverActiveTrip').classList.remove('hidden');byId('adminDriverActiveTrip').textContent='Hay una solicitud vinculada pendiente de recuperar para el coche 144.'}
+  activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden');byId('adminDriverActiveTrip')?.classList.add('hidden');
  }catch(error){console.error('No se pudo recuperar el viaje activo:',error);if(version===activeTripRestoreVersion&&currentUser?.uid===uid){byId('driverActiveTrip').classList.remove('hidden');byId('driverActiveTrip').innerHTML='<strong>No se pudo consultar el viaje activo.</strong><div class="hint">Revisá la conexión. El estado del coche no se modificó.</div>'}}
 }
 function listenDriverInbox(){
