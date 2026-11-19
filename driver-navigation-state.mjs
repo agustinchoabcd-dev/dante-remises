@@ -98,6 +98,6 @@ export function getDriverNavigationProgress(route, location) {
     distanceToManeuver
   };
 }
-export function shouldRerouteDriver({ offRouteMeters, lastRerouteAt = 0, now = Date.now(), thresholdMeters = 65, cooldownMs = 20000 } = {}) {
+export function shouldRerouteDriver({ offRouteMeters, lastRerouteAt = 0, now = Date.now(), thresholdMeters = 65, cooldownMs = 90000 } = {}) {
   return Number(offRouteMeters) > thresholdMeters && Number(now) - Number(lastRerouteAt) >= cooldownMs;
 }
