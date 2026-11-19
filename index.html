@@ -1665,7 +1665,7 @@ async function ensureDriverHomeNavigationRoute(force=false){
   }
   driverHomeMap.addRoute('driver-home-navigation-route',route.geometry,{progress:0,completedColor:'#14532d',pendingStartColor:'#166534',pendingEndColor:'#4ade80',weight:7,opacity:.94});
   driverHomeMap.addMarker('driver-home-navigation-target',target.point,target.label);
-x=>x.replace("if(!driverHomeMapUserMoved)","if(!previousRoute&&!driverHomeMapUserMoved)")
+   if(!previousRoute&&!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeNavigationFitPadding(),[latestDriverLocation,target.point]);
   updateDriverHomeNavigationPosition(latestDriverLocation,true);
   return true;
  }catch(error){
