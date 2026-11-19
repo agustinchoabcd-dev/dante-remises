@@ -580,7 +580,7 @@ import { createRoleTransitionController } from "./role-transition.mjs";
 import { completeLogout } from "./session-logout.mjs";
 import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
 import { createChatRuntimeLoader } from "./chat-runtime-loader.mjs";
-import { getDriverHomeStatus, shouldRegisterDriverPresence, shouldExpandDriverCurtain, nextDriverHomeMessage } from "./driver-home-state.mjs";
+import { getDriverHomeStatus, shouldRegisterDriverPresence, shouldExpandDriverCurtain, nextDriverHomeMessage, formatDriverTripPlace, getDriverRequestRouteDistances } from "./driver-home-state.mjs";
 import { getDriverNavigationTarget, getDriverNavigationProgress, shouldRerouteDriver } from "./driver-navigation-state.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getDatabase, ref, onValue as firebaseOnValue, get as firebaseGet, set as firebaseSet, update as firebaseUpdate, remove as firebaseRemove, push as firebasePush, runTransaction as firebaseRunTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js";
@@ -884,7 +884,7 @@ let driverPresenceGeneration=0;
 let driverWantsOnline=false,driverHomeMap=null,driverHomeMapMarker=null,driverHomeMapFirstFix=false,latestDriverLocation=null;
 let driverHomeCurtainExpanded=false,driverHomeMessage="Estás conectado",driverHomeMessageTimer=null,driverHomeDrag=null;
 let driverHomeConnectBusy=false,driverHomeDisconnectBusy=false;
-let driverHomePendingTrips=[],driverHomeRequestMarkers=new Map(),driverInboxRenderVersion=0;
+let driverHomePendingTrips=[],driverHomeRequestMarkers=new Map(),driverInboxRenderVersion=0,driverHomeRequestDistanceCache=new Map(),driverHomeRequestDistancePending=new Map();
 let driverHomeMapUserMoved=false,driverHomeMapUserMoveUnsub=null,driverHomeFocusTripId=null,driverHomePendingRoute=null,driverHomePendingRouteTripId=null,driverHomePendingRouteLastAttemptAt=0,driverHomePendingRouteLastLocation=null,driverHomePendingRouteVersion=0,driverHomePendingRouteLoading=false,driverHomePendingRouteFailedAttempts=0,driverHomeNavigationLoading=false,driverHomeMarkerMode='dot',driverHomeLastHeading=null;
 let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0,failedAttempts:0};
 let driverHomeNavigationRequestVersion=0,driverHomeMapTransitionHandler=null;
@@ -919,7 +919,7 @@ async function initRealMap(){
   return false;
  }
 }
-async function resolvePointAddress(kind,point){let label=null;try{label=await window.DanteGeocoding.reverse(point)}catch(error){console.warn('No se pudo resolver la dirección del punto seleccionado:',error)}const current=kind==='origin'?originPoint:destinationPoint;if(!current||Number(current.lat)!==Number(point.lat)||Number(current.lon)!==Number(point.lon))return;const updated={...current,label:label||'Calle cercana no disponible'};if(kind==='origin'){originPoint=updated;byId('origin').value=updated.label}else{destinationPoint=updated;byId('destination').value=updated.label}}
+async function resolvePointAddress(kind,point){let details=null;try{details=await window.DanteGeocoding.reverseDetails(point)}catch(error){console.warn('No se pudo resolver la dirección del punto seleccionado:',error)}const current=kind==='origin'?originPoint:destinationPoint;if(!current||Number(current.lat)!==Number(point.lat)||Number(current.lon)!==Number(point.lon))return;const updated={...current,...(details||{}),label:details?.label||'Calle cercana no disponible'};if(kind==='origin'){originPoint=updated;byId('origin').value=updated.label}else{destinationPoint=updated;byId('destination').value=updated.label}}
 function setPoint(kind,point){if(kind==='origin'){originPoint=point;byId('origin').value=point.label;setMarker('origin',point)}else{destinationPoint=point;byId('destination').value=point.label;setMarker('destination',point)}updateRoute();}
 function setMarker(kind,p){if(!realMap)return;if(kind==='origin'){if(window.originMarker)realMap.removeLayer(window.originMarker);window.originMarker=realMap.addMarker('origin',p,'Origen')}else{if(window.destinationMarker)realMap.removeLayer(window.destinationMarker);window.destinationMarker=realMap.addMarker('destination',p,'Destino')}if(window.originMarker&&window.destinationMarker)realMap.fitPoints([originPoint,destinationPoint],.2);else realMap.fitPoints([p])}
 function waitForKeyboardViewportToSettle(){
@@ -953,10 +953,10 @@ bindRoleDom('useMyLocation','click',async()=>{
  getCurrentPosition(async pos=>{
   if(generation!==passengerViewGeneration||currentRole?.role!=='passenger'||currentUser?.uid!==uid)return;
   const lat=pos.coords.latitude,lon=pos.coords.longitude;
-  let label='Calle cercana no disponible';
-  try{label=await DanteGeocoding.reverse({lat,lon})||label}catch(error){console.warn('No se pudo resolver la dirección GPS:',error)}
+  let details=null;
+  try{details=await DanteGeocoding.reverseDetails({lat,lon})}catch(error){console.warn('No se pudo resolver la dirección GPS:',error)}
   if(generation!==passengerViewGeneration||currentRole?.role!=='passenger'||currentUser?.uid!==uid)return;
-  setPoint('origin',{lat,lon,label});
+  setPoint('origin',{lat,lon,...(details||{}),label:details?.label||'Calle cercana no disponible'});
  },error=>{
   if(generation===passengerViewGeneration)notify(error.code===1?'Tenés que permitir el acceso a la ubicación.':'No se pudo obtener tu ubicación. Comprobá que el GPS esté activado.')
  },{enableHighAccuracy:true,timeout:20000,maximumAge:10000});
@@ -1366,7 +1366,7 @@ function updateDriverHomeLocation(loc){
   if(!driverHomeMapFirstFix&&!driverHomePendingTrips.length)driverHomeMap.fitPoints([point]);
  }
  driverHomeMapFirstFix=true;
- if(!activeTripId&&driverHomePendingTrips.length)void ensureDriverHomePendingRoute();
+ if(!activeTripId&&driverHomePendingTrips.length){void ensureDriverHomePendingRoute();driverHomePendingTrips.forEach(trip=>void ensureDriverHomeRequestCardDistances(trip));}
 }
 function driverHomeFitPadding(){
  return document.body.classList.contains('driver-home-map-active')?{top:112,bottom:180,left:36,right:36}:.18;
@@ -1397,8 +1397,10 @@ async function ensureDriverHomePendingRoute(force=false){
  driverHomePendingRoute=null;driverHomePendingRouteLoading=true;
  driverHomeMap.removeRoute('driver-home-pending-route');
  try{
-  const route=await window.DanteMap.getDrivingRoute(points);
+  const route=await getDriverHomeRequestRoute(trip,latestDriverLocation);
   if(version!==driverHomePendingRouteVersion||activeTripId||!driverHomeMap||!driverHomePendingTrips.some(item=>String(item.tripId)===String(trip.tripId)))return false;
+  const routeDistances=getDriverRequestRouteDistances(route);
+  updateDriverHomeRequestDistanceLabels(trip.tripId,routeDistances.pickupMeters===null?'Distancia no disponible':formatDriverDistance(routeDistances.pickupMeters),routeDistances.destinationMeters===null?'Distancia no disponible':formatDriverDistance(routeDistances.destinationMeters));
   driverHomePendingRoute=route;driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
   driverHomeMap.addRoute('driver-home-pending-route',route.geometry,{color:'#168447',weight:6,opacity:.9});
   if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeFitPadding(),points);
@@ -1484,14 +1486,15 @@ function renderDriverHomeRequests(trips){
   const card=document.createElement('article');
   card.className='driver-home-request-card';
   card.innerHTML='<strong>Solicitud de '+esc(trip.passengerName||'Pasajero')+'</strong>'+
-   '<div class="hint">Recogida: '+esc(origin.label||'Ubicación sin nombre')+'</div>'+
-   '<div class="hint">Destino: '+esc(destination.label||'No informado')+'</div>'+
+   '<div class="hint">Desde: '+esc(formatDriverTripPlace(origin))+' · <span data-driver-distance-trip="'+esc(id)+'" data-driver-distance-kind="pickup">Calculando…</span></div>'+
+   '<div class="hint">Hasta: '+esc(formatDriverTripPlace(destination))+' · <span data-driver-distance-trip="'+esc(id)+'" data-driver-distance-kind="destination">Calculando…</span></div>'+
    '<div class="actions"><button class="secondary" data-open-driver-trip-chat="'+esc(id)+'">Chat</button>'+
    '<button class="primary" data-accept-trip="'+esc(id)+'">Aceptar</button>'+
    '<button class="danger" data-reject-trip="'+esc(id)+'">Rechazar</button></div>';
   list.appendChild(card);
  }
  if(driverHomeMap&&!activeTripId)void ensureDriverHomePendingRoute();
+ driverHomePendingTrips.forEach(trip=>void ensureDriverHomeRequestCardDistances(trip));
 }
 function driverHomeMapPendingMarkers(){
  if(!driverHomeMap)return;
@@ -1502,12 +1505,12 @@ function driverHomeMapPendingMarkers(){
   const id=String(trip.tripId||''),origin=trip.origin||{},lat=Number(origin.lat),lon=Number(origin.lon);
   if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
   const markerId='driver-request-pickup-'+id;
-  const marker=driverHomeMap.addTripEndpointMarker(markerId,{lat,lon},'pickup','Recogida · '+esc(trip.passengerName||'Pasajero'));
+  const marker=driverHomeMap.addTripEndpointMarker(markerId,{lat,lon},'pickup','Inicio');
   driverHomeRequestMarkers.set(markerId,marker);
  }
  const focused=driverHomePendingTrips.find(item=>String(item.tripId)===String(driverHomeFocusTripId));
  const destination=focused?.destination||{},lat=Number(destination.lat),lon=Number(destination.lon);
- if(Number.isFinite(lat)&&Number.isFinite(lon))driverHomeMap.addTripEndpointMarker('driver-home-pending-destination',{lat,lon},'destination','Destino del viaje');
+ if(Number.isFinite(lat)&&Number.isFinite(lon))driverHomeMap.addTripEndpointMarker('driver-home-pending-destination',{lat,lon},'destination','Final');
 }
 function renderDriverHomeActiveTrip(trip,id){
  const panel=byId('driverHomeActiveTrip');
@@ -1528,8 +1531,55 @@ function renderDriverHomeActiveTrip(trip,id){
   '<div class="actions"><button class="secondary" data-home-trip-action="chat">Chat con pasajero</button>'+action+'</div>';
 }
 function formatDriverDistance(meters){
- const value=Math.max(0,Number(meters)||0);
- return value<1000?Math.round(value)+' m':(value/1000).toFixed(1)+' km';
+ const value=Number(meters);
+ if(!Number.isFinite(value)||value<0)return 'Distancia no disponible';
+ return value<1000?Math.round(value)+' m':(value/1000).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+' km';
+}
+function updateDriverHomeRequestDistanceLabels(id,pickupText,destinationText){
+ document.querySelectorAll('[data-driver-distance-trip]').forEach(node=>{
+  if(String(node.dataset.driverDistanceTrip)!==String(id))return;
+  node.textContent=node.dataset.driverDistanceKind==='pickup'?pickupText:destinationText;
+ });
+}
+function driverHomeRequestRouteCoordinates(trip){
+ const origin=trip?.origin||{},destination=trip?.destination||{};
+ return [origin.lat,origin.lon,destination.lat,destination.lon].map(Number).every(Number.isFinite);
+}
+async function getDriverHomeRequestRoute(trip,location=latestDriverLocation){
+ if(!window.DanteMap||!driverHomeRequestRouteCoordinates(trip))throw new Error('TRIP_ROUTE_COORDINATES_MISSING');
+ const id=String(trip.tripId||''),now=Date.now();
+ const cached=driverHomeRequestDistanceCache.get(id);
+ if(cached&&now-cached.updatedAt<90000&&(!location||driverHomeDistanceMeters(cached.location,location)<=100))return cached.route;
+ const pending=driverHomeRequestDistancePending.get(id);
+ if(pending)return pending.promise;
+ const origin=trip.origin,destination=trip.destination;
+ const points=location
+  ? [{lat:Number(location.lat),lon:Number(location.lon)},{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}]
+  : [{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}];
+ const promise=window.DanteMap.getDrivingRoute(points).then(route=>{
+  driverHomeRequestDistanceCache.set(id,{route,location:location?{lat:Number(location.lat),lon:Number(location.lon)}:null,updatedAt:Date.now()});
+  return route;
+ }).finally(()=>{if(driverHomeRequestDistancePending.get(id)?.promise===promise)driverHomeRequestDistancePending.delete(id)});
+ driverHomeRequestDistancePending.set(id,{promise});
+ return promise;
+}
+async function ensureDriverHomeRequestCardDistances(trip){
+ if(!trip?.tripId||!driverHomeRequestRouteCoordinates(trip))return false;
+ const id=String(trip.tripId),generation=authStateGeneration,location=latestDriverLocation?{lat:Number(latestDriverLocation.lat),lon:Number(latestDriverLocation.lon)}:null;
+ if(!location)updateDriverHomeRequestDistanceLabels(id,'Esperando GPS','Calculando…');
+ try{
+  await ensureMapRuntime();
+  if(generation!==authStateGeneration||!currentUser||!window.DanteMap)return false;
+  const route=await getDriverHomeRequestRoute(trip,location);
+  if(generation!==authStateGeneration||!currentUser)return false;
+  const distances=location?getDriverRequestRouteDistances(route):{pickupMeters:null,destinationMeters:Number(route.legs?.[0]?.distance)};
+  updateDriverHomeRequestDistanceLabels(id,distances.pickupMeters===null?'Distancia no disponible':formatDriverDistance(distances.pickupMeters),Number.isFinite(distances.destinationMeters)&&distances.destinationMeters>=0?formatDriverDistance(distances.destinationMeters):'Distancia no disponible');
+  return true;
+ }catch(error){
+  if(generation===authStateGeneration)updateDriverHomeRequestDistanceLabels(id,location?'Distancia no disponible':'Esperando GPS','Distancia no disponible');
+  console.warn('No se pudieron calcular las distancias de la solicitud:',error?.message||error);
+  return false;
+ }
 }
 function ensureDriverHomeNavigationPanel(stage,instruction,meta){
  const panel=byId('driverHomeNavigation');
@@ -1606,8 +1656,7 @@ function updateDriverHomeNavigationPosition(loc,skipCamera=false){
  const progress=getDriverNavigationProgress(driverHomeNavigation.route,point);
  if(!progress)return;
  const distance=progress.distanceToManeuver===null?'':' · Próxima maniobra a '+formatDriverDistance(progress.distanceToManeuver);
- const provider=driverHomeNavigation.route?.provider==='Geoapify'?'© Geoapify · © OpenStreetMap contributors':'© Mapbox';
- const meta=formatDriverDistance(progress.remainingDistanceMeters)+' restantes · '+Math.max(1,Math.ceil(progress.remainingDurationSeconds/60))+' min'+distance+' · Rutas: '+provider;
+ const meta=formatDriverDistance(progress.remainingDistanceMeters)+' restantes · '+Math.max(1,Math.ceil(progress.remainingDurationSeconds/60))+' min'+distance;
  ensureDriverHomeNavigationPanel(target.stage,progress.instruction,meta);
  if((driverHomeNavigation.rerouteCount||0)<5&&shouldRerouteDriver({offRouteMeters:progress.offRouteMeters,thresholdMeters:Math.max(65,(Number(loc.accuracy)||0)*1.5),lastRerouteAt:driverHomeNavigation.lastRerouteAt,now:Date.now()})){
   driverHomeNavigation.lastRerouteAt=Date.now();
@@ -1963,14 +2012,14 @@ function listenDriverInbox(){
    if(!t||t.status!=='requested')continue;
    const trip={...t,tripId:item.tripId};homeTrips.push(trip);
    const el=document.createElement('div');el.className='trip-request';
-   const origin=t.origin?.label||'Origen sin nombre',dest=t.destination?.label||'Destino sin nombre';
+   const origin=formatDriverTripPlace(t.origin),dest=formatDriverTripPlace(t.destination);
    const personalCard=el.cloneNode(false);
    personalCard.className='trip-request driver-personal-request';
-   personalCard.innerHTML='<strong>Solicitud de '+esc(t.passengerName||'Pasajero')+'</strong><div class="hint">Recogida: '+esc(origin)+'</div><div class="hint">Destino: '+esc(dest)+'</div><div class="actions"><button class="secondary" data-view-driver-trip="'+esc(item.tripId)+'">Ver viaje</button><button class="secondary" data-open-driver-trip-chat="'+esc(item.tripId)+'">Chat con pasajero</button><button class="danger" data-reject-trip="'+esc(item.tripId)+'">Rechazar viaje</button></div>';
-   el.innerHTML='<strong>Solicitud de '+esc(t.passengerName||'Pasajero')+'</strong><div class="hint">Desde: '+esc(origin)+'</div><div class="hint">Hasta: '+esc(dest)+'</div><div class="actions"><button class="secondary" data-open-driver-trip-chat="'+esc(item.tripId)+'">Chat con pasajero</button><button class="primary" data-accept-trip="'+esc(item.tripId)+'">Aceptar viaje</button><button class="danger" data-reject-trip="'+esc(item.tripId)+'">Rechazar</button></div>';
+   personalCard.innerHTML='<strong>Solicitud de '+esc(t.passengerName||'Pasajero')+'</strong><div class="hint">Desde: '+esc(origin)+' · <span data-driver-distance-trip="'+esc(item.tripId)+'" data-driver-distance-kind="pickup">Calculando…</span></div><div class="hint">Hasta: '+esc(dest)+' · <span data-driver-distance-trip="'+esc(item.tripId)+'" data-driver-distance-kind="destination">Calculando…</span></div><div class="actions"><button class="secondary" data-view-driver-trip="'+esc(item.tripId)+'">Ver viaje</button><button class="secondary" data-open-driver-trip-chat="'+esc(item.tripId)+'">Chat con pasajero</button><button class="danger" data-reject-trip="'+esc(item.tripId)+'">Rechazar viaje</button></div>';
+   el.innerHTML='<strong>Solicitud de '+esc(t.passengerName||'Pasajero')+'</strong><div class="hint">Desde: '+esc(origin)+' · <span data-driver-distance-trip="'+esc(item.tripId)+'" data-driver-distance-kind="pickup">Calculando…</span></div><div class="hint">Hasta: '+esc(dest)+' · <span data-driver-distance-trip="'+esc(item.tripId)+'" data-driver-distance-kind="destination">Calculando…</span></div><div class="actions"><button class="secondary" data-open-driver-trip-chat="'+esc(item.tripId)+'">Chat con pasajero</button><button class="primary" data-accept-trip="'+esc(item.tripId)+'">Aceptar viaje</button><button class="danger" data-reject-trip="'+esc(item.tripId)+'">Rechazar</button></div>';
    targets.forEach((target,index)=>target.appendChild(index===0?personalCard:el.cloneNode(true)));
   }
-  if(renderVersion===driverInboxRenderVersion)renderDriverHomeRequests(homeTrips);
+  if(renderVersion===driverInboxRenderVersion){renderDriverHomeRequests(homeTrips);homeTrips.forEach(trip=>void ensureDriverHomeRequestCardDistances(trip));}
  },err=>{if(generation!==authStateGeneration||currentUser?.uid!==uid)return;console.error(err);targets.forEach(target=>target.textContent='No se pudieron cargar solicitudes. Revisá las reglas de Firebase.');renderDriverHomeRequests([])});
 }
 async function dismissNativeTripAlert(){try{await stopTripAlert()}catch(error){console.warn('No se pudo detener la alerta nativa:',error?.name||'Error')}}
