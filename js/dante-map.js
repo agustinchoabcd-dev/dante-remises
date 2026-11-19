@@ -597,11 +597,12 @@
     }
     const legs = (properties.legs || []).map((leg, legIndex) => {
       const line = routeLegLines[legIndex] || [];
+      const stepLine = legLines[legIndex] || line;
       const steps = options.steps === true ? (leg.steps || []).map(step => {
         const from = Math.max(0, Number(step.from_index) || 0);
         const to = Math.max(from, Number(step.to_index) || from);
-        const stepCoordinates = line.slice(from, to + 1);
-        const location = line[from] || line[to] || null;
+        const stepCoordinates = stepLine.slice(from, to + 1);
+        const location = stepLine[from] || stepLine[to] || null;
         const instruction = step.instruction?.text ||
           step.instruction?.transition_instruction ||
           step.instruction?.pre_transition_instruction ||
