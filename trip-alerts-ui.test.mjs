@@ -82,3 +82,12 @@ test("Personal keeps pending requests map-free and opens the complete trip in In
   assert.match(html, /getDrivingRoute\(points\)/);
   assert.match(html, /data-accept-trip/);
 });
+
+
+test("native floating trip alert strips postal and administrative address details", async () => {
+  const service = await readFile(new URL("./android-native/src/main/java/DanteTripAlertService.java", import.meta.url), "utf8");
+  assert.match(service, /origin = cleanAddress\(safe\(intent\.getStringExtra\("origin"\), 180\)\)/);
+  assert.match(service, /destination = cleanAddress\(safe\(intent\.getStringExtra\("destination"\), 180\)\)/);
+  assert.match(service, /private static String cleanAddress\(String value\)/);
+  assert.match(service, /Ubicación sin referencia/);
+});
