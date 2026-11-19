@@ -1409,6 +1409,63 @@ async function showDriverTripOnHome(trip,id){
  await focusDriverHomeMap();
  return true;
 }
+function renderDriverHomeRequests(trips){
+ const previousFocus=driverHomeFocusTripId;
+ driverHomePendingTrips=Array.isArray(trips)?trips:[];
+ if(!driverHomePendingTrips.some(item=>String(item.tripId)===String(driverHomeFocusTripId)))driverHomeFocusTripId=String(driverHomePendingTrips[0]?.tripId||'');
+ if(previousFocus!==driverHomeFocusTripId){
+  driverHomeMapUserMoved=false;
+  driverHomePendingRoute=null;
+  driverHomePendingRouteTripId=null;
+  driverHomePendingRouteVersion++;
+  driverHomeMap?.removeRoute('driver-home-pending-route');
+  byId('driverHomeRecenterButton')?.classList.add('hidden');
+ }
+ const panel=byId('driverHomeRequests'),list=byId('driverHomeTripInbox');
+ if(!panel||!list)return;
+ list.innerHTML='';
+ if(driverHomeMap)driverHomeMapPendingMarkers();
+ else driverHomeRequestMarkers.clear();
+ if(!driverHomePendingTrips.length){
+  panel.classList.add('hidden');
+  list.textContent='No hay solicitudes pendientes.';
+  driverHomePendingRouteVersion++;
+  driverHomePendingRoute=null;
+  driverHomePendingRouteTripId=null;
+  driverHomeMap?.removeRoute('driver-home-pending-route');
+  return;
+ }
+ panel.classList.remove('hidden');
+ for(const trip of driverHomePendingTrips){
+  const id=String(trip.tripId||''),origin=trip.origin||{},destination=trip.destination||{};
+  const card=document.createElement('article');
+  card.className='driver-home-request-card';
+  card.innerHTML='<strong>Solicitud de '+esc(trip.passengerName||'Pasajero')+'</strong>'+
+   '<div class="hint">Recogida: '+esc(origin.label||'Ubicación sin nombre')+'</div>'+
+   '<div class="hint">Destino: '+esc(destination.label||'No informado')+'</div>'+
+   '<div class="actions"><button class="secondary" data-open-driver-trip-chat="'+esc(id)+'">Chat</button>'+
+   '<button class="primary" data-accept-trip="'+esc(id)+'">Aceptar</button>'+
+   '<button class="danger" data-reject-trip="'+esc(id)+'">Rechazar</button></div>';
+  list.appendChild(card);
+ }
+ if(driverHomeMap&&!activeTripId)void ensureDriverHomePendingRoute();
+}
+function driverHomeMapPendingMarkers(){
+ if(!driverHomeMap)return;
+ for(const markerId of driverHomeRequestMarkers.keys())driverHomeMap.removeMarker(markerId);
+ driverHomeRequestMarkers.clear();
+ driverHomeMap.removeMarker('driver-home-pending-destination');
+ for(const trip of driverHomePendingTrips){
+  const id=String(trip.tripId||''),origin=trip.origin||{},lat=Number(origin.lat),lon=Number(origin.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+  const markerId='driver-request-pickup-'+id;
+  const marker=driverHomeMap.addCircleMarker(markerId,{lat,lon},{radius:10,color:'#fff',weight:3,fillColor:'#e58a16',fillOpacity:1,popup:'Recogida · '+String(trip.passengerName||'Pasajero')});
+  driverHomeRequestMarkers.set(markerId,marker);
+ }
+ const focused=driverHomePendingTrips.find(item=>String(item.tripId)===String(driverHomeFocusTripId));
+ const destination=focused?.destination||{},lat=Number(destination.lat),lon=Number(destination.lon);
+ if(Number.isFinite(lat)&&Number.isFinite(lon))driverHomeMap.addMarker('driver-home-pending-destination',{lat,lon},'Destino del viaje');
+}
 function renderDriverHomeActiveTrip(trip,id){
  const panel=byId('driverHomeActiveTrip');
  if(!panel)return;
