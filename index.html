@@ -2003,6 +2003,7 @@ async function handleDriverTripDecision(id,decision){
   const acceptedAt=trip.acceptedAt||Date.now();
   await update(ref(db,'trips/'+id),{status:'accepted',acceptedAt,updatedAt:Date.now()});
   await update(ref(db,`tripInbox/${carId}/${id}`),{status:'accepted'});
+  driverHomeMapUserMoved=false;byId('driverHomeRecenterButton')?.classList.add('hidden');driverHomePendingRouteVersion++;driverHomePendingRoute=null;driverHomePendingRouteTripId=null;driverHomeMap?.removeRoute('driver-home-pending-route');
   renderDriverActiveTrip({...trip,status:'accepted',acceptedAt},id);
   showView('inicio');
   await remove(ref(db,'driverLocations/'+carId));
@@ -2020,6 +2021,7 @@ async function startActiveDriverTrip(){
  try{
   await update(ref(db,'trips/'+id),{status:'in_progress',startedAt:Date.now(),updatedAt:Date.now()});
   activeTripData={...activeTripData,status:'in_progress'};
+  driverHomeMapUserMoved=false;byId('driverHomeRecenterButton')?.classList.add('hidden');
   renderDriverActiveTrip(activeTripData,id);
   showView('inicio');
   const ready=await initDriverHomeMap();
