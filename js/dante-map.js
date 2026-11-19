@@ -116,6 +116,25 @@
       return handle;
     }
     removeRoute(id) { const route = this.routes?.get(id); if (route) { route.remove(); this.routes.delete(id); } }
+    centerOn(point, zoom = 16) {
+      if(!validPoint(point))return false;
+      this.map.stop();
+      this.map.setView([Number(point.lat),Number(point.lon)],Math.max(3,Math.min(20,Number(zoom)||16)),{animate:false});
+      return true;
+    }
+    addTripEndpointMarker(id, point, kind = 'pickup', popup = '') {
+      this.removeMarker(id);
+      const pickup = kind === 'pickup';
+      const color = pickup ? '#ed9418' : '#dc3545';
+      const svg = pickup
+        ? '<svg viewBox="0 0 40 48" width="34" height="42" aria-hidden="true"><path d="M20 2C9.5 2 2 9.6 2 19.2 2 31 20 46 20 46s18-15 18-26.8C38 9.6 30.5 2 20 2Z" fill="'+color+'" stroke="#fff" stroke-width="2.4"/><circle cx="20" cy="16" r="5" fill="#fff"/><path d="M10.5 30c.8-6 4.2-9 9.5-9s8.7 3 9.5 9" fill="#fff"/></svg>'
+        : '<svg viewBox="0 0 40 48" width="34" height="42" aria-hidden="true"><path d="M20 2C9.5 2 2 9.6 2 19.2 2 31 20 46 20 46s18-15 18-26.8C38 9.6 30.5 2 20 2Z" fill="'+color+'" stroke="#fff" stroke-width="2.4"/><circle cx="20" cy="19" r="6" fill="#fff"/></svg>';
+      const marker = L.marker([Number(point.lat),Number(point.lon)],{icon:L.divIcon({html:svg,className:'dante-trip-endpoint-icon',iconSize:[34,42],iconAnchor:[17,40]}),keyboard:false});
+      if(popup)marker.bindPopup(popup);
+      marker.addTo(this.map);
+      const handle={setLatLng:next=>marker.setLatLng([Number(next.lat),Number(next.lon)]),remove:()=>{this.map.removeLayer(marker);this.markers?.delete(id)}};
+      this.markers ||= new Map();this.markers.set(id,handle);return handle;
+    }
     fitPoints(points, padding = .15) {
       const valid = (points || []).filter(validPoint);
       if (valid.length === 1) this.map.setView([Number(valid[0].lat), Number(valid[0].lon)], 16);
@@ -139,6 +158,7 @@
       const options = padding && typeof padding === 'object'
         ? {paddingTopLeft:[Number(padding.left)||0,Number(padding.top)||0],paddingBottomRight:[Number(padding.right)||0,Number(padding.bottom)||0]}
         : {padding:Math.max(.05,Number(padding)||.15)};
+      this.map.stop();
       this.map.fitBounds(bounds, options);
     }
     removeLayer(handle) { if (handle?.remove) handle.remove(); }
@@ -315,8 +335,8 @@
       const fitPadding = padding && typeof padding === 'object'
         ? {top:Number(padding.top)||0,bottom:Number(padding.bottom)||0,left:Number(padding.left)||0,right:Number(padding.right)||0}
         : Math.max(24,Math.round(48 + (Number(padding)||.15) * 100));
-      const fitOptions={padding:fitPadding,maxZoom:17,animate:false,duration:0};
-      if(padding&&typeof padding==='object'&&padding.bearing!==null&&padding.bearing!==undefined&&Number.isFinite(Number(padding.bearing)))fitOptions.bearing=Number(padding.bearing);
+      const fitOptions={padding:fitPadding,maxZoom:16,animate:false,duration:0,bearing:0,pitch:0};
+      this.map.stop();
       this.map.fitBounds(bounds,fitOptions);
     }
     removeLayer(handle) { if (handle?.remove) handle.remove(); }
