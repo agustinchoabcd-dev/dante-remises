@@ -226,10 +226,10 @@ public class DanteTripAlertService extends Service {
         for (String raw : parts) {
             String part = raw.trim();
             if (part.isEmpty()) continue;
-            if (part.matches("(?i)^\\\\d{4,5}\\\\b.*") ||
+            if (part.matches("(?i)^\\d{4,5}\\b.*") ||
                 part.matches("(?i).*(argentina|c[oó]rdoba|santa rosa de calamuchita|calamuchita).*")) continue;
-            boolean road = part.matches("(?i).*\\\\b(calle|avenida|av\\\\.?|ruta|rp|rn|boulevard|bv\\\\.?|pasaje|camino|autopista)\\\\b.*") ||
-                part.matches(".*\\\\d+.*");
+            boolean road = part.matches("(?i).*\\b(calle|avenida|av\\.?|ruta|rp|rn|boulevard|bv\\.?|pasaje|camino|autopista)\\b.*") ||
+                part.matches(".*\\d+.*");
             if (result.length() == 0) result.append(part);
             else if (road) { result.append(" · ").append(part); break; }
         }
