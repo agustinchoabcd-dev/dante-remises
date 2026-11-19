@@ -218,6 +218,28 @@ test("preview splits a complete route into ordered legs and replaces provider le
   assert.deepEqual(Array.from(normalized.legs[1].geometry.coordinates.at(-1)),[0.02,0.01]);
 });
 
+test("driver GPS uses a one-second high-accuracy watch on Android with fresh fixes", () => {
+  assert.match(nativeBridge,/interval:\s*options\.interval\s*\?\?\s*1000/);
+  assert.match(nativeBridge,/minimumUpdateInterval:\s*options\.minimumUpdateInterval\s*\?\?\s*750/);
+  assert.match(nativeBridge,/maximumAge:\s*options\.maximumAge\s*\?\?\s*1000/);
+  assert.match(html,/maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750/);
+  assert.match(html,/activeNavigation\?2000:4000/);
+});
+
+test("stage-one preview refreshes with smaller GPS movement and keeps its micropause", () => {
+  assert.match(html,/driverHomeDistanceMeters\(driverHomePendingRouteLastLocation,latestDriverLocation\)>25/);
+  assert.match(html,/now-driverHomePendingRouteLastAttemptAt<10000/);
+  assert.match(html,/durationMs:2600,pauseMs:240/);
+});
+
+test("active navigation refreshes on meaningful route age/distance or off-route deviation", () => {
+  assert.match(html,/cooldownMs:15000/);
+  assert.match(html,/thresholdMeters:Math\.max\(35,accuracyMeters\*1\.5\)/);
+  assert.match(html,/distanceFromRouteStart>=220&&routeAgeMs>=60000/);
+  assert.match(html,/rerouteCount\|\|0\)<20/);
+  assert.match(html,/const previousRoute=same\?driverHomeNavigation\.route:null/);
+});
+
 test("preview arrow and moving gradient use equal speed across legs of different lengths", async () => {
   const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
   const sandbox = { window: {}, console, URLSearchParams, fetch };

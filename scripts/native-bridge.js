@@ -38,7 +38,10 @@ export function watchPosition(success, error, options = {}) {
     enableHighAccuracy: options.enableHighAccuracy ?? true,
     timeout: options.timeout ?? 20000,
     maximumAge: options.maximumAge ?? 5000,
-    interval: 3000
+    timeout: options.timeout ?? 15000,
+    maximumAge: options.maximumAge ?? 1000,
+    interval: options.interval ?? 1000,
+    minimumUpdateInterval: options.minimumUpdateInterval ?? 750
   }, (position, err) => {
     if (entry.cancelled) return;
     if (err) error?.({ code: 2, message: err.message || "No se pudo obtener GPS." });
