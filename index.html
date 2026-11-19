@@ -1577,6 +1577,9 @@ async function ensureDriverHomeRequestCardDistances(trip){
   if(generation!==authStateGeneration||!currentUser||!window.DanteMap)return false;
   const route=await getDriverHomeRequestRoute(trip,location);
   if(generation!==authStateGeneration||!currentUser)return false;
+  const gpsStillFresh=latestDriverLocation&&Date.now()-Number(latestDriverLocation.updatedAt||0)<45000;
+  const currentLocation=gpsStillFresh?{lat:Number(latestDriverLocation.lat),lon:Number(latestDriverLocation.lon)}:null;
+  if(Boolean(location)!==Boolean(currentLocation)||(location&&driverHomeDistanceMeters(location,currentLocation)>100))return false;
   const routeDistances=getDriverRequestRouteDistances(route);
   const distances=location?routeDistances:{pickupMeters:null,destinationMeters:routeDistances.pickupMeters};
   updateDriverHomeRequestDistanceLabels(id,distances.pickupMeters===null?'Distancia no disponible':formatDriverDistance(distances.pickupMeters),Number.isFinite(distances.destinationMeters)&&distances.destinationMeters>=0?formatDriverDistance(distances.destinationMeters):'Distancia no disponible');
