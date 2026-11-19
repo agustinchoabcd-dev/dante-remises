@@ -166,8 +166,8 @@ test("Mapbox preview animates all route legs and active navigation follows GPS p
   assert.match(map, /const validLegs = \(legs \|\| \[\]\)\.filter\(leg => leg\?\.geometry && geoCoordinates\(leg\.geometry\)\.length > 1\)/);
   assert.match(map, /palette\[currentLeg\] \|\| palette\[1\]/);
   assert.match(map, /const colors = palette\[index\] \|\| palette\[1\]/);
-  assert.match(map, /function movingGradientColorAt/);
-  assert.match(map, /arrowPath\?\.setAttribute\('fill',movingGradientColorAt/);
+  assert.match(map, /buildMovingGradient\(progress,colors\.base,colors\.highlight\)/);
+  assert.doesNotMatch(map, /arrowPath\?\.setAttribute\('fill'/);
   assert.match(map, /width="42" height="42"/);
   assert.match(map, /lineMetrics:true/);
   assert.match(map, /points\.length > 2 && legLines\.length === 1/);
@@ -207,10 +207,10 @@ test("preview gradient highlight is centered on arrow progress and arrow remains
   const sandbox = { window: {}, console, URLSearchParams, fetch };
   runInNewContext(source, sandbox);
   const gradient = Array.from(sandbox.window.DanteMap.buildMovingGradient(0.5,"#14532d","#4ade80"));
-  assert.equal(gradient[5],0.41);
-  assert.equal(gradient[7],0.5);
+  assert.ok(Math.abs(gradient[5]-0.41)<1e-9);
+  assert.ok(Math.abs(gradient[7]-0.5)<1e-9);
   assert.equal(gradient[8],"#4ade80");
-  assert.equal(gradient[9],0.59);
+  assert.ok(Math.abs(gradient[9]-0.59)<1e-9);
   assert.match(source,/fill="#198754" fill-rule="evenodd"/);
   assert.ok(source.includes('stroke="#fff" stroke-width="2.4"'));
   assert.equal(source.includes("arrowPath?.setAttribute('fill'"),false);

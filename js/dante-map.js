@@ -133,13 +133,13 @@
     const halfWidth = 0.09;
     const start = Math.max(0,value-halfWidth);
     const end = Math.min(1,value+halfWidth);
-    if (value <= halfWidth) {
-      return ['interpolate',['linear'],['line-progress'],0,highlightColor,end,baseColor,1,baseColor];
-    }
-    if (value >= 1-halfWidth) {
-      return ['interpolate',['linear'],['line-progress'],0,baseColor,start,baseColor,1,highlightColor];
-    }
-    return ['interpolate',['linear'],['line-progress'],0,baseColor,start,baseColor,value,highlightColor,end,baseColor,1,baseColor];
+    if (value <= 0) return ['interpolate',['linear'],['line-progress'],0,highlightColor,end,baseColor,1,baseColor];
+    if (value >= 1) return ['interpolate',['linear'],['line-progress'],0,baseColor,start,baseColor,1,highlightColor];
+    const expression = ['interpolate',['linear'],['line-progress'],0,baseColor];
+    if (start > 0) expression.push(start,baseColor);
+    expression.push(value,highlightColor,end,baseColor);
+    if (end < 1) expression.push(1,baseColor);
+    return expression;
   }
 
   function interpolateHexColor(fromColor,toColor,amount) {
