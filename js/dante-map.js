@@ -143,7 +143,7 @@
     const blend = interpolateHexColor(completed,pendingStart,.5);
     const expression = ['interpolate',['linear'],['line-progress'],0,completed,before,completed,boundary,blend,after,pendingStart];
     if(after<1)expression.push(1,pendingEnd);
-    return expression;return expression;
+    return expression;
   }
 
   function buildMovingGradient(progress, baseColor, highlightColor) {
@@ -216,33 +216,18 @@
     }
     addHeadingMarker(id, point, heading = 0) {
       this.removeMarker(id);
-      const element=document.createElement('div');
-      element.className='dante-driver-heading';
-      element.innerHTML='<svg viewBox="0 0 34 34" width="42" height="42" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
-      Object.assign(element.style,{width:'42px',height:'42px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
-      const marker=new mapboxgl.Marker({element,anchor:'center',rotationAlignment:'viewport',pitchAlignment:'viewport'}).setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
-      let currentHeading=Number(heading)||0,markerFrame=0,currentLngLat=[Number(point.lon),Number(point.lat)];
-      const updateRotation=()=>marker.setRotation(currentHeading-(this.map?.getBearing?.()||0));
-      const setLatLng=next=>{
-        if(markerFrame)cancelAnimationFrame(markerFrame);
-        const from=currentLngLat.slice(),to=[Number(next.lon),Number(next.lat)];let startedAt=0;
-        const step=now=>{
-          if(!startedAt)startedAt=now;
-          const t=Math.max(0,Math.min(1,(now-startedAt)/850)),eased=1-Math.pow(1-t,3);
-          currentLngLat=[from[0]+(to[0]-from[0])*eased,from[1]+(to[1]-from[1])*eased];
-          marker.setLngLat(currentLngLat);
-          if(t<1)markerFrame=requestAnimationFrame(step);else markerFrame=0;
-        };
-        markerFrame=requestAnimationFrame(step);
+      const element = document.createElement('div');
+      element.className = 'dante-driver-heading';
+      element.innerHTML = '<svg viewBox="0 0 34 34" width="42" height="42" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+      Object.assign(element.style, {width:'42px',height:'42px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)',transform:'rotate('+(Number(heading)||0)+'deg)',transformOrigin:'center'});
+      const marker = L.marker([Number(point.lat),Number(point.lon)], {icon:L.divIcon({html:element,className:'dante-driver-heading-icon',iconSize:[42,42],iconAnchor:[21,21]}),interactive:false,keyboard:false}).addTo(this.map);
+      const handle = {
+        setLatLng: next => marker.setLatLng([Number(next.lat),Number(next.lon)]),
+        setHeading: value => { element.style.transform='rotate('+(Number(value)||0)+'deg)'; },
+        remove: () => { this.map.removeLayer(marker); this.markers?.delete(id); }
       };
-      this.map.on('rotate',updateRotation);
-      const handle={
-        setLatLng,
-        setHeading:value=>{currentHeading=Number(value)||0;updateRotation()},
-        remove:()=>{if(markerFrame)cancelAnimationFrame(markerFrame);this.map?.off('rotate',updateRotation);marker.remove();this.markers.delete(id)}
-      };
-      handle.setHeading(heading);
-      this.markers.set(id,handle);
+      this.markers ||= new Map();
+      this.markers.set(id, handle);
       return handle;
     }
     addMarker(id, point, popup) {
@@ -259,28 +244,18 @@
     }
     addCircleMarker(id, point, options = {}) {
       this.removeMarker(id);
-      const element=document.createElement('div');
-      const diameter=Math.max(12,(options.radius||9)*2);
-      Object.assign(element.style,{width:diameter+'px',height:diameter+'px',borderRadius:'50%',border:(options.weight||3)+'px solid '+(options.color||'#fff'),background:options.fillColor||'#176b3a',opacity:String(options.fillOpacity??1),boxShadow:'0 1px 5px #0008'});
-      const marker=new mapboxgl.Marker({element,anchor:'center'}).setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
-      if(options.popup)marker.setPopup(new mapboxgl.Popup({offset:14}).setText(options.popup));
-      let markerFrame=0,currentLngLat=[Number(point.lon),Number(point.lat)];
-      const handle={
-        setLatLng:next=>{
-          if(markerFrame)cancelAnimationFrame(markerFrame);
-          const from=currentLngLat.slice(),to=[Number(next.lon),Number(next.lat)];let startedAt=0;
-          const step=now=>{
-            if(!startedAt)startedAt=now;
-            const t=Math.max(0,Math.min(1,(now-startedAt)/850)),eased=1-Math.pow(1-t,3);
-            currentLngLat=[from[0]+(to[0]-from[0])*eased,from[1]+(to[1]-from[1])*eased];
-            marker.setLngLat(currentLngLat);
-            if(t<1)markerFrame=requestAnimationFrame(step);else markerFrame=0;
-          };
-          markerFrame=requestAnimationFrame(step);
-        },
-        remove:()=>{if(markerFrame)cancelAnimationFrame(markerFrame);marker.remove();this.markers.delete(id)}
+      const marker = L.circleMarker([Number(point.lat), Number(point.lon)], {
+        radius: options.radius || 9, color: options.color || '#fff',
+        weight: options.weight || 3, fillColor: options.fillColor || '#176b3a',
+        fillOpacity: options.fillOpacity ?? 1
+      }).addTo(this.map);
+      if (options.popup) marker.bindPopup(options.popup);
+      const handle = {
+        setLatLng: next => marker.setLatLng([Number(next.lat), Number(next.lon)]),
+        remove: () => { this.map.removeLayer(marker); this.markers?.delete(id); }
       };
-      this.markers.set(id,handle);
+      this.markers ||= new Map();
+      this.markers.set(id, handle);
       return handle;
     }
     removeMarker(id) { const marker = this.markers?.get(id); if (marker) marker.remove(); }
@@ -411,20 +386,27 @@
     }
     addHeadingMarker(id, point, heading = 0) {
       this.removeMarker(id);
-      const element = document.createElement('div');
-      element.className = 'dante-driver-heading';
-      element.innerHTML = '<svg viewBox="0 0 34 34" width="42" height="42" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+      const element=document.createElement('div');
+      element.className='dante-driver-heading';
+      element.innerHTML='<svg viewBox="0 0 34 34" width="42" height="42" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
       Object.assign(element.style,{width:'42px',height:'42px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
-      const marker = new mapboxgl.Marker({element,anchor:'center',rotationAlignment:'viewport',pitchAlignment:'viewport'})
-        .setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
-      let currentHeading=Number(heading)||0;
+      const marker=new mapboxgl.Marker({element,anchor:'center',rotationAlignment:'viewport',pitchAlignment:'viewport'}).setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
+      let currentHeading=Number(heading)||0,markerFrame=0,currentLngLat=[Number(point.lon),Number(point.lat)];
       const updateRotation=()=>marker.setRotation(currentHeading-(this.map?.getBearing?.()||0));
-      this.map.on('rotate',updateRotation);
-      const handle = {
-        setLatLng: next => marker.setLngLat([Number(next.lon),Number(next.lat)]),
-        setHeading: value => {currentHeading=Number(value)||0;updateRotation()},
-        remove: () => {this.map?.off('rotate',updateRotation);marker.remove();this.markers.delete(id)}
+      const setLatLng=next=>{
+        if(markerFrame)cancelAnimationFrame(markerFrame);
+        const from=currentLngLat.slice(),to=[Number(next.lon),Number(next.lat)];let startedAt=0;
+        const step=now=>{
+          if(!startedAt)startedAt=now;
+          const t=Math.max(0,Math.min(1,(now-startedAt)/850)),eased=1-Math.pow(1-t,3);
+          currentLngLat=[from[0]+(to[0]-from[0])*eased,from[1]+(to[1]-from[1])*eased];
+          marker.setLngLat(currentLngLat);
+          if(t<1)markerFrame=requestAnimationFrame(step);else markerFrame=0;
+        };
+        markerFrame=requestAnimationFrame(step);
       };
+      this.map.on('rotate',updateRotation);
+      const handle={setLatLng,setHeading:value=>{currentHeading=Number(value)||0;updateRotation()},remove:()=>{if(markerFrame)cancelAnimationFrame(markerFrame);this.map?.off('rotate',updateRotation);marker.remove();this.markers.delete(id)}};
       handle.setHeading(heading);
       this.markers.set(id,handle);
       return handle;
@@ -444,23 +426,28 @@
     }
     addCircleMarker(id, point, options = {}) {
       this.removeMarker(id);
-      const element = document.createElement('div');
-      const diameter = Math.max(12, (options.radius || 9) * 2);
-      Object.assign(element.style, {
-        width: diameter + 'px', height: diameter + 'px', borderRadius: '50%',
-        border: (options.weight || 3) + 'px solid ' + (options.color || '#fff'),
-        background: options.fillColor || '#176b3a',
-        opacity: String(options.fillOpacity ?? 1),
-        boxShadow: '0 1px 5px #0008'
-      });
-      const marker = new mapboxgl.Marker({element, anchor:'center'})
-        .setLngLat([Number(point.lon), Number(point.lat)]).addTo(this.map);
-      if (options.popup) marker.setPopup(new mapboxgl.Popup({offset:14}).setText(options.popup));
-      const handle = {
-        setLatLng: next => marker.setLngLat([Number(next.lon), Number(next.lat)]),
-        remove: () => { marker.remove(); this.markers.delete(id); }
+      const element=document.createElement('div');
+      const diameter=Math.max(12,(options.radius||9)*2);
+      Object.assign(element.style,{width:diameter+'px',height:diameter+'px',borderRadius:'50%',border:(options.weight||3)+'px solid '+(options.color||'#fff'),background:options.fillColor||'#176b3a',opacity:String(options.fillOpacity??1),boxShadow:'0 1px 5px #0008'});
+      const marker=new mapboxgl.Marker({element,anchor:'center'}).setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
+      if(options.popup)marker.setPopup(new mapboxgl.Popup({offset:14}).setText(options.popup));
+      let markerFrame=0,currentLngLat=[Number(point.lon),Number(point.lat)];
+      const handle={
+        setLatLng:next=>{
+          if(markerFrame)cancelAnimationFrame(markerFrame);
+          const from=currentLngLat.slice(),to=[Number(next.lon),Number(next.lat)];let startedAt=0;
+          const step=now=>{
+            if(!startedAt)startedAt=now;
+            const t=Math.max(0,Math.min(1,(now-startedAt)/850)),eased=1-Math.pow(1-t,3);
+            currentLngLat=[from[0]+(to[0]-from[0])*eased,from[1]+(to[1]-from[1])*eased];
+            marker.setLngLat(currentLngLat);
+            if(t<1)markerFrame=requestAnimationFrame(step);else markerFrame=0;
+          };
+          markerFrame=requestAnimationFrame(step);
+        },
+        remove:()=>{if(markerFrame)cancelAnimationFrame(markerFrame);marker.remove();this.markers.delete(id)}
       };
-      this.markers.set(id, handle);
+      this.markers.set(id,handle);
       return handle;
     }
     removeMarker(id) { const marker = this.markers.get(id); if (marker) marker.remove(); }
@@ -493,8 +480,6 @@
       const layerId = sourceId + '-line';
       const glowLayerId = layerId + '-glow';
       let cancelled = false,glowLayerAdded=false,progressFrame=0,progressValue=Math.max(0,Math.min(1,Number(style.progress)||0)),lastProgressPaintAt=0;
-      let currentGradient = style.gradient || (style.progress !== undefined ? buildProgressGradient(style.progress, style) : null);
-      let cancelled = false;
       let currentGradient = style.gradient || (style.progress !== undefined ? buildProgressGradient(style.progress, style) : null);
       const add = () => {
         if (cancelled || !this.map || !this.map.isStyleLoaded()) return;
@@ -564,9 +549,6 @@
         const gradientLayerId = sourceId + '-gradient';
         let currentGradient = buildMovingGradient(0,colors.base,colors.highlight);
         let gradientLayerAdded = false,glowLayerAdded=false;
-        const gradientLayerId = sourceId + '-gradient';
-        let currentGradient = buildMovingGradient(0,colors.base,colors.highlight);
-        let gradientLayerAdded = false;
         return {
           sourceId,baseLayerId,gradientLayerId,colors,leg,
           add:() => {
@@ -593,7 +575,7 @@
                 paint:{'line-gradient':currentGradient,'line-width':options.weight||6,'line-opacity':options.opacity??.98}
               });
               gradientLayerAdded=true;
-            } catch (error) {            } catch (error) {
+            } catch (error) {
               console.warn('Mapbox no pudo crear la capa de gradiente; se conserva la trazada base:',error);
             }
           },
