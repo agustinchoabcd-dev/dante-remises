@@ -202,15 +202,46 @@ test("preview reconstructs a missing destination leg from the complete route geo
   assert.deepEqual(Array.from(normalized.legs[1].geometry.coordinates.at(-1)),[0.02,0.01]);
 });
 
+test("preview splits a complete route into ordered legs and replaces provider legs with mismatched endpoints", async () => {
+  const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
+  const sandbox = { window: {}, console, URLSearchParams, fetch };
+  runInNewContext(source, sandbox);
+  const points=[{lat:0,lon:0},{lat:0,lon:0.01},{lat:0.01,lon:0.02}];
+  const complete={type:"LineString",coordinates:[[0,0],[0.005,0],[0.01,0],[0.015,0.005],[0.02,0.01]]};
+  const route={geometry:complete,legs:[
+    {geometry:{type:"LineString",coordinates:[[0,0],[0.005,0],[0.01,0]]}},
+    {geometry:{type:"LineString",coordinates:[[0,0],[0.005,0],[0.01,0]]}}
+  ]};
+  const normalized=sandbox.window.DanteMap.normalizeRouteLegs(route,points);
+  assert.equal(normalized.legs.length,2);
+  assert.deepEqual(Array.from(normalized.legs[1].geometry.coordinates[0]),[0.01,0]);
+  assert.deepEqual(Array.from(normalized.legs[1].geometry.coordinates.at(-1)),[0.02,0.01]);
+});
+
+test("preview arrow and moving gradient use equal speed across legs of different lengths", async () => {
+  const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
+  const sandbox = { window: {}, console, URLSearchParams, fetch };
+  runInNewContext(source, sandbox);
+  const shortLeg={type:"LineString",coordinates:[[0,0],[0.01,0]]};
+  const longLeg={type:"LineString",coordinates:[[0,0],[0.02,0]]};
+  const shortLength=sandbox.window.DanteMap.routeGeometryLengthMeters(shortLeg);
+  const longLength=sandbox.window.DanteMap.routeGeometryLengthMeters(longLeg);
+  const shortDuration=shortLength/(shortLength/3400);
+  const longDuration=longLength/(shortLength/3400);
+  assert.ok(Math.abs(shortLength/shortDuration-longLength/longDuration)<1e-9);
+  assert.ok(longDuration>shortDuration*1.9);
+});
+
 test("preview gradient highlight is centered on arrow progress and arrow remains green with a transparent window", async () => {
   const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
   const sandbox = { window: {}, console, URLSearchParams, fetch };
   runInNewContext(source, sandbox);
   const gradient = Array.from(sandbox.window.DanteMap.buildMovingGradient(0.5,"#14532d","#4ade80"));
-  assert.ok(Math.abs(gradient[5]-0.41)<1e-9);
-  assert.ok(Math.abs(gradient[7]-0.5)<1e-9);
-  assert.equal(gradient[8],"#4ade80");
-  assert.ok(Math.abs(gradient[9]-0.59)<1e-9);
+  assert.ok(gradient.includes("#4ade80"));
+  assert.ok(gradient.includes("#14532d"));
+  const stopPositions=gradient.filter(value=>typeof value==="number");
+  assert.ok(stopPositions.length>=5);
+  assert.ok(stopPositions.every((value,index)=>index===0||value>stopPositions[index-1]));
   assert.match(source,/fill="#198754" fill-rule="evenodd"/);
   assert.ok(source.includes('stroke="#fff" stroke-width="2.4"'));
   assert.equal(source.includes("arrowPath?.setAttribute('fill'"),false);

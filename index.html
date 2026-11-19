@@ -1403,29 +1403,31 @@ async function ensureDriverHomePendingRoute(force=false){
  const points=driverHomeRequestRoutePoints(trip,latestDriverLocation);
  if(!driverHomeRequestRouteCoordinates(trip)||points.some(point=>!Number.isFinite(Number(point.lat))||!Number.isFinite(Number(point.lon))))return false;
  const now=Date.now(),same=driverHomePendingRouteTripId===String(trip.tripId);
- const moved=same&&driverHomePendingRouteLastLocation&&driverHomeDistanceMeters(driverHomePendingRouteLastLocation,latestDriverLocation)>100;
+ const moved=same&&driverHomePendingRouteLastLocation&&driverHomeDistanceMeters(driverHomePendingRouteLastLocation,latestDriverLocation)>50;
  if(!force&&same&&driverHomePendingRouteLoading)return false;
  if(!force&&same&&driverHomePendingRouteFailedAttempts>=3)return false;
- if(!force&&same&&driverHomePendingRoute&&!moved&&now-driverHomePendingRouteLastAttemptAt<90000)return true;
+ if(!force&&same&&driverHomePendingRoute&&!moved&&now-driverHomePendingRouteLastAttemptAt<30000)return true;
  if(force)driverHomePendingRouteFailedAttempts=0;
- if(!force&&same&&now-driverHomePendingRouteLastAttemptAt<60000)return false;
+ if(!force&&same&&now-driverHomePendingRouteLastAttemptAt<25000)return false;
  const version=++driverHomePendingRouteVersion;
  driverHomePendingRouteTripId=String(trip.tripId);
  driverHomePendingRouteLastAttemptAt=now;
  driverHomePendingRouteLastLocation={lat:latestDriverLocation.lat,lon:latestDriverLocation.lon};
- driverHomePendingRoute=null;driverHomePendingRouteLoading=true;
- driverHomeMap.removeRoute('driver-home-pending-route');
+ // Keep the last valid preview visible while the next GPS-based route is calculated.
+ driverHomePendingRouteLoading=true;
  try{
   const route=await getDriverHomeRequestRoute(trip,latestDriverLocation);
   if(version!==driverHomePendingRouteVersion||activeTripId||!driverHomeMap||!driverHomePendingTrips.some(item=>String(item.tripId)===String(trip.tripId)))return false;
   const gpsStillFresh=latestDriverLocation&&Date.now()-Number(latestDriverLocation.updatedAt||0)<45000;
-  if(!gpsStillFresh||driverHomeDistanceMeters(driverHomePendingRouteLastLocation,latestDriverLocation)>100){driverHomePendingRouteLoading=false;return false;}
-  const routeDistances=getDriverRequestRouteDistances(route);
-  updateDriverHomeRequestDistanceLabels(trip.tripId,routeDistances.pickupMeters===null?'Distancia no disponible':formatDriverCardDistance(routeDistances.pickupMeters),routeDistances.destinationMeters===null?'Distancia no disponible':formatDriverCardDistance(routeDistances.destinationMeters));
-  driverHomePendingRoute=route;driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
+  if(!gpsStillFresh||driverHomeDistanceMeters(driverHomePendingRouteLastLocation,latestDriverLocation)>50){driverHomePendingRouteLoading=false;return false;}
   const previewLegs=route.legs||[];
   if(previewLegs.length!==points.length-1||previewLegs.some(leg=>!leg?.geometry?.coordinates||leg.geometry.coordinates.length<2))throw new Error('La ruta previa no contiene todos los tramos; se evita mostrar un recorrido parcial o una animación incompleta.');
-  if(typeof driverHomeMap.addRoutePreview==='function')driverHomeMap.addRoutePreview('driver-home-pending-route',previewLegs,{durationMs:3400,pauseMs:240,weight:6,opacity:.94});
+  if(typeof driverHomeMap.addRoutePreview!=='function')throw new Error('El mapa activo no admite la animación de vista previa.');
+  const routeDistances=getDriverRequestRouteDistances(route);
+  updateDriverHomeRequestDistanceLabels(trip.tripId,routeDistances.pickupMeters===null?'Distancia no disponible':formatDriverCardDistance(routeDistances.pickupMeters),routeDistances.destinationMeters===null?'Distancia no disponible':formatDriverCardDistance(routeDistances.destinationMeters));
+  // Commit the new route only after every leg has passed validation.
+  driverHomeMap.addRoutePreview('driver-home-pending-route',previewLegs,{durationMs:3400,pauseMs:240,weight:6,opacity:.94});
+  driverHomePendingRoute=route;driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
   else throw new Error('El mapa activo no admite la animación de vista previa.');
   if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeFitPadding(),points);
   return true;
@@ -1580,9 +1582,9 @@ async function getDriverHomeRequestRoute(trip,location=latestDriverLocation){
  const locationKey=location?'gps:'+Math.round(Number(location.lat)*1000)+':'+Math.round(Number(location.lon)*1000):'no-gps';
  const key=[driverHomeRequestRoutePoints(trip,null).map(point=>point.lat+','+point.lon).join(';'),locationKey].join('|');
  const cached=driverHomeRequestDistanceCache.get(id);
- if(cached&&cached.key===key&&now-cached.updatedAt<90000&&(!location||driverHomeDistanceMeters(cached.location,location)<=100))return cached.route;
+ if(cached&&cached.key===key&&now-cached.updatedAt<30000&&(!location||driverHomeDistanceMeters(cached.location,location)<=50))return cached.route;
  const pending=driverHomeRequestDistancePending.get(id);
- if(pending?.key===key&&(!location||driverHomeDistanceMeters(pending.location,location)<=100))return pending.promise;
+ if(pending?.key===key&&(!location||driverHomeDistanceMeters(pending.location,location)<=50))return pending.promise;
  const points=driverHomeRequestRoutePoints(trip,location);
  const promise=window.DanteMap.getDrivingRoute(points,{steps:true}).then(route=>{
   if(driverHomeRequestDistancePending.get(id)?.promise===promise){

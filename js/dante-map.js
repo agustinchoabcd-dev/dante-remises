@@ -72,8 +72,14 @@
     const source = Array.isArray(route?.legs) ? route.legs : [];
     const legs = Array.from({length:expected},(_,index) => {
       const leg = source[index] || {};
-      const hasGeometry = geoCoordinates(leg.geometry).length > 1;
-      return {...leg,geometry:hasGeometry?leg.geometry:(fallback[index] || null)};
+      const coordinates = geoCoordinates(leg.geometry);
+      const start = waypoints[index], end = waypoints[index + 1];
+      const endpointsMatch = coordinates.length > 1 && start && end &&
+        coordinateDistanceMeters(coordinates[0],[Number(start.lon),Number(start.lat)]) <= 300 &&
+        coordinateDistanceMeters(coordinates[coordinates.length - 1],[Number(end.lon),Number(end.lat)]) <= 300;
+      // Provider legs are not trusted merely because they contain coordinates:
+      // a malformed/duplicated first leg must not suppress reconstruction of B→C.
+      return {...leg,geometry:endpointsMatch?leg.geometry:(fallback[index] || null)};
     });
     return {...route,legs};
   }
@@ -114,6 +120,15 @@
     return null;
   }
 
+  function routeGeometryLengthMeters(geometry) {
+    const coordinates = geoCoordinates(geometry);
+    let total = 0;
+    for (let index=1; index<coordinates.length; index++) {
+      total += coordinateDistanceMeters(coordinates[index-1],coordinates[index]);
+    }
+    return total;
+  }
+
   function buildProgressGradient(progress, style = {}) {
     const value = Math.max(0, Math.min(1, Number(progress) || 0));
     const completed = style.completedColor || '#14532d';
@@ -130,14 +145,18 @@
 
   function buildMovingGradient(progress, baseColor, highlightColor) {
     const value = Math.max(0,Math.min(1,Number(progress)||0));
-    const halfWidth = 0.09;
-    const start = Math.max(0,value-halfWidth);
-    const end = Math.min(1,value+halfWidth);
-    if (value <= 0) return ['interpolate',['linear'],['line-progress'],0,highlightColor,end,baseColor,1,baseColor];
-    if (value >= 1) return ['interpolate',['linear'],['line-progress'],0,baseColor,start,baseColor,1,highlightColor];
-    const expression = ['interpolate',['linear'],['line-progress'],0,baseColor];
+    const outerWidth = 0.19, innerWidth = 0.075;
+    const start = Math.max(0,value-outerWidth);
+    const innerStart = Math.max(0,value-innerWidth);
+    const innerEnd = Math.min(1,value+innerWidth);
+    const end = Math.min(1,value+outerWidth);
+    const blend = interpolateHexColor(baseColor,highlightColor,.62);
+    const expression = ['interpolate',['linear'],['line-progress'],0,value<=innerWidth?highlightColor:baseColor];
     if (start > 0) expression.push(start,baseColor);
-    expression.push(value,highlightColor,end,baseColor);
+    if (innerStart > start) expression.push(innerStart,blend);
+    if (value > innerStart) expression.push(value,highlightColor);
+    if (innerEnd > value) expression.push(innerEnd,blend);
+    if (end > innerEnd) expression.push(end,baseColor);
     if (end < 1) expression.push(1,baseColor);
     return expression;
   }
@@ -518,7 +537,10 @@
           this.map.on('rotate',updateRotation);
         }
       }
-      const duration = Math.max(1400,Number(options.durationMs)||3400);
+      const referenceDuration = Math.max(1400,Number(options.durationMs)||3400);
+      const referenceLength = Math.max(1,routeGeometryLengthMeters(validLegs[0].geometry));
+      const metersPerMs = referenceLength / referenceDuration;
+      const legDurations = validLegs.map(leg => Math.max(1,routeGeometryLengthMeters(leg.geometry)) / metersPerMs);
       const pause = Math.max(100,Number(options.pauseMs)||240);
       const animate = now => {
         if (cancelled || !this.map) return;
@@ -529,6 +551,7 @@
         } else if (!startedAt) startedAt = now;
         if (now - lastFrameAt >= 40) {
           lastFrameAt = now;
+          const duration = legDurations[currentLeg] || referenceDuration;
           const progress = Math.max(0,Math.min(1,(now-startedAt)/duration));
           const colors = palette[currentLeg] || palette[1];
           handles[currentLeg]?.setGradient(buildMovingGradient(progress,colors.base,colors.highlight));
@@ -757,6 +780,7 @@
     getDrivingRoute,
     normalizeRouteLegs,
     buildMovingGradient,
+    routeGeometryLengthMeters,
     get backendPreference() { return MAPBOX_TOKEN && window.mapboxgl && mapboxgl.supported() ? 'mapbox' : 'leaflet'; },
     get tokenConfigured() { return !!MAPBOX_TOKEN; },
     get routingProvider() { return GEOAPIFY_KEY ? 'geoapify' : (MAPBOX_TOKEN ? 'mapbox' : 'none'); }
