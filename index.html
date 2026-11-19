@@ -1560,7 +1560,9 @@ async function getDriverHomeRequestRoute(trip,location=latestDriverLocation){
   ? [{lat:Number(location.lat),lon:Number(location.lon)},{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}]
   : [{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}];
  const promise=window.DanteMap.getDrivingRoute(points,{steps:true}).then(route=>{
-  driverHomeRequestDistanceCache.set(id,{key,route,location:location?{lat:Number(location.lat),lon:Number(location.lon)}:null,updatedAt:Date.now()});
+  if(driverHomeRequestDistancePending.get(id)?.promise===promise){
+   driverHomeRequestDistanceCache.set(id,{key,route,location:location?{lat:Number(location.lat),lon:Number(location.lon)}:null,updatedAt:Date.now()});
+  }
   return route;
  }).finally(()=>{if(driverHomeRequestDistancePending.get(id)?.promise===promise)driverHomeRequestDistancePending.delete(id)});
  driverHomeRequestDistancePending.set(id,{key,promise});
