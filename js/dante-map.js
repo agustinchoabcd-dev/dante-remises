@@ -31,7 +31,8 @@
     const radians = value => value * Math.PI / 180;
     const lat1 = radians(Number(a[1])), lat2 = radians(Number(b[1]));
     const dLat = lat2 - lat1, dLon = radians(Number(b[0]) - Number(a[0]));
-    const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    const raw = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    const h = Math.max(0,Math.min(1,raw));
     return 6371008.8 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
   }
 
