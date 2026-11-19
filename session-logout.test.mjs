@@ -36,6 +36,31 @@ test("logout does not show the logged-out home if Firebase sign-out fails", asyn
   assert.equal(returnedHome, false);
 });
 
+test("a visual transition error is not reported as an authentication failure", async () => {
+  const reports = [];
+  let signedOut = false;
+  const result = await completeLogout({
+    signOut: async () => { signedOut = true; },
+    onSignedOut: () => { throw new Error("DOM transition failed"); },
+    onTransitionError: error => reports.push(error.message)
+  });
+  assert.equal(signedOut, true);
+  assert.deepEqual(result, { signedOut: true, transitionCompleted: false });
+  assert.deepEqual(reports, ["DOM transition failed"]);
+});
+
+test("a broken error reporter cannot reverse a successful sign-out", async () => {
+  let signedOut = false;
+  const result = await completeLogout({
+    signOut: async () => { signedOut = true; },
+    onSignedOut: () => { throw new Error("visual failure"); },
+    onTransitionError: () => { throw new Error("reporter failure"); }
+  });
+  assert.equal(signedOut, true);
+  assert.equal(result.signedOut, true);
+  assert.equal(result.transitionCompleted, false);
+});
+
 test("logout requires a signOut function", async () => {
   await assert.rejects(completeLogout(), /requires a signOut function/);
 });
