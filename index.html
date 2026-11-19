@@ -442,7 +442,7 @@ body.driver-home-map-active{overflow:hidden!important}
 body.driver-home-map-active>header,body.driver-home-map-active>main>nav.tabs,body.driver-home-map-active>main>#postLoginGreeting,body.driver-home-map-active #appFooter{display:none!important}
 body.driver-home-map-active #inicio.driver-home{position:fixed;inset:0;z-index:1200;width:100vw;height:100vh;height:100dvh;max-width:none;min-height:0;margin:0;padding:0;background:#08130d;overflow:hidden}
 body.driver-home-map-active #driverHomeMap{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-height:none;min-height:0;border:0;border-radius:0;box-shadow:none}
-body.driver-home-map-active #driverHomeMap{animation:driverMapExpand .32s cubic-bezier(.2,.8,.2,1) both;transform-origin:center center}
+
 body.driver-home-map-active .driver-home-navigation{position:fixed;top:max(12px,env(safe-area-inset-top));left:72px;right:12px;max-width:none;margin:0;z-index:1290;padding:11px 14px}
 body.driver-home-map-active .driver-home-active-trip,body.driver-home-map-active .driver-home-requests{position:fixed;left:12px;right:12px;bottom:102px;max-width:none;max-height:28vh;max-height:28dvh;margin:0;overflow:auto;z-index:1290;box-shadow:0 8px 28px #0004}
 body.driver-home-map-active .driver-home-requests h3{display:none}
@@ -451,7 +451,7 @@ body.driver-home-map-active .driver-home-map-home{display:grid!important}
 body.driver-home-map-active .driver-home-curtain{z-index:1300}
 body.driver-home-map-active #driverHomeMap .mapboxgl-ctrl-bottom-right,body.driver-home-map-active #driverHomeMap .mapboxgl-ctrl-bottom-left{bottom:96px}
 body.driver-home-map-active #driverHomeMap .leaflet-bottom{bottom:96px}
-@keyframes driverMapExpand{from{opacity:.82;transform:scale(.975);border-radius:22px}to{opacity:1;transform:scale(1);border-radius:0}}
+
 @media(prefers-reduced-motion:reduce){.driver-home-map-shell{transition:none!important;animation:none!important}}
 @media(max-width:600px){#inicio.driver-home{padding-bottom:100px}.driver-home-status{margin:4px auto 10px;font-size:14px}.driver-home-map-shell{border-radius:15px}.driver-home-map{height:clamp(300px,54vh,560px);border-radius:15px}.driver-connect-button{left:12px;right:12px;min-height:60px}}
 @media(prefers-reduced-motion:reduce){.driver-home-curtain{transition:none}}
@@ -1440,9 +1440,47 @@ function destroyDriverHomeMap(){
  driverHomeMap=null;driverHomeMapMarker=null;driverHomeMapFirstFix=false;driverHomeRequestMarkers.clear();
 }
 function setDriverHomeFullscreen(expanded){
- document.body.classList.toggle('driver-home-map-active',!!expanded);
+ const mapNode=byId('driverHomeMap');
+ const wasExpanded=document.body.classList.contains('driver-home-map-active');
+ if(expanded){
+  if(!wasExpanded){
+   const rect=mapNode?.getBoundingClientRect();
+   document.body.classList.add('driver-home-map-active');
+   const reduceMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches===true;
+   if(mapNode&&rect?.width&&rect?.height&&window.innerWidth&&window.innerHeight&&!reduceMotion){
+    mapNode.style.transition='none';
+    mapNode.style.transformOrigin='top left';
+    mapNode.style.transform='translate('+rect.left+'px,'+rect.top+'px) scale('+(rect.width/window.innerWidth)+','+(rect.height/window.innerHeight)+')';
+    mapNode.style.borderRadius='16px';
+    mapNode.getBoundingClientRect();
+    const finish=event=>{
+     if(event.propertyName!=='transform')return;
+     mapNode.removeEventListener('transitionend',finish);
+     mapNode.style.transition='';
+     mapNode.style.transform='';
+     mapNode.style.transformOrigin='';
+     mapNode.style.borderRadius='';
+     driverHomeMap?.invalidateSize();
+    };
+    mapNode.addEventListener('transitionend',finish);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+     mapNode.style.transition='transform .32s cubic-bezier(.2,.8,.2,1),border-radius .32s ease';
+     mapNode.style.transform='translate(0px,0px) scale(1,1)';
+     mapNode.style.borderRadius='0';
+    }));
+   }else requestAnimationFrame(()=>driverHomeMap?.invalidateSize());
+  }
+ }else{
+  document.body.classList.remove('driver-home-map-active');
+  if(mapNode){
+   mapNode.style.transition='';
+   mapNode.style.transform='';
+   mapNode.style.transformOrigin='';
+   mapNode.style.borderRadius='';
+  }
+  requestAnimationFrame(()=>driverHomeMap?.invalidateSize());
+ }
  byId('driverHomeMapHomeButton')?.classList.toggle('hidden',!expanded);
- requestAnimationFrame(()=>driverHomeMap?.invalidateSize());
 }
 function setDriverCurtainExpanded(expanded){
  driverHomeCurtainExpanded=!!expanded;
