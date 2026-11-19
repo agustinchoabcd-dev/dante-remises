@@ -161,6 +161,7 @@ jobs:
           node --check role-dom-bindings.mjs
           node --check driver-home-state.mjs
           node --check driver-navigation-state.mjs
+          node --check js/dante-map.js
           node --check map-runtime-loader.mjs
           node --check chat-runtime-loader.mjs
           node --check roles/passenger.mjs
