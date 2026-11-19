@@ -2,6 +2,7 @@
   'use strict';
 
   const MAPBOX_TOKEN = window.DANTE_MAPBOX_TOKEN || '';
+  const GEOAPIFY_KEY = window.DANTE_GEOAPIFY_KEY || '';
   const DEFAULT_STYLE = 'mapbox://styles/mapbox/streets-v12';
 
   function validPoint(point) {
@@ -248,11 +249,64 @@
     return new LeafletAdapter(container, center, zoom, locationIqKey);
   }
 
-  async function getDrivingRoute(points, options = {}) {
-    if (!Array.isArray(points) || points.length < 2 || points.some(point => !validPoint(point))) {
-      throw new Error('Se necesitan al menos dos puntos válidos para calcular la ruta.');
+  async function getGeoapifyDrivingRoute(points, options = {}) {
+    const waypoints = points.map(point => Number(point.lat) + ',' + Number(point.lon)).join('|');
+    const params = new URLSearchParams({
+      waypoints,
+      mode: 'drive',
+      format: 'geojson',
+      units: 'metric',
+      lang: 'es',
+      apiKey: GEOAPIFY_KEY
+    });
+    if (options.steps === true) params.set('details', 'instruction_details');
+    const response = await fetch('https://api.geoapify.com/v1/routing?' + params.toString());
+    if (!response.ok) throw new Error('Geoapify Routing ' + response.status);
+    const data = await response.json();
+    const feature = data.features?.[0];
+    const properties = feature?.properties;
+    const rawCoordinates = feature?.geometry?.coordinates;
+    if (!feature || !properties || !Array.isArray(rawCoordinates)) {
+      throw new Error(data.message || 'Geoapify no devolvió una ruta válida.');
     }
-    if (!MAPBOX_TOKEN) throw new Error('MAPBOX_TOKEN_NOT_CONFIGURED');
+    const legLines = feature.geometry.type === 'MultiLineString' ? rawCoordinates : [rawCoordinates];
+    const coordinates = [];
+    legLines.forEach(line => {
+      if (!Array.isArray(line)) return;
+      coordinates.push(...(coordinates.length ? line.slice(1) : line));
+    });
+    const legs = (properties.legs || []).map((leg, legIndex) => {
+      const line = legLines[legIndex] || [];
+      const steps = options.steps === true ? (leg.steps || []).map(step => {
+        const from = Math.max(0, Number(step.from_index) || 0);
+        const to = Math.max(from, Number(step.to_index) || from);
+        const stepCoordinates = line.slice(from, to + 1);
+        const location = line[from] || line[to] || null;
+        const instruction = step.instruction?.text ||
+          step.instruction?.transition_instruction ||
+          step.instruction?.pre_transition_instruction ||
+          step.name || 'Continuá por la ruta';
+        return {
+          geometry: {type:'LineString', coordinates:stepCoordinates},
+          maneuver: {instruction, location},
+          name: step.name || instruction,
+          distance: step.distance,
+          duration: step.time
+        };
+      }) : [];
+      return {distance:leg.distance, duration:leg.time, steps};
+    });
+    if (coordinates.length < 2) throw new Error('Geoapify devolvió una geometría de ruta incompleta.');
+    return {
+      geometry: {type:'LineString', coordinates},
+      distance: properties.distance,
+      duration: properties.time,
+      legs,
+      provider: 'Geoapify'
+    };
+  }
+
+  async function getMapboxDrivingRoute(points, options = {}) {
     const coordinates = points.map(point => Number(point.lon) + ',' + Number(point.lat)).join(';');
     const url = 'https://api.mapbox.com/directions/v5/mapbox/driving/' + coordinates +
       '?alternatives=false&geometries=geojson&overview=full&steps=' + (options.steps === true ? 'true' : 'false') +
@@ -267,10 +321,35 @@
     return {...data.routes[0], provider:'Mapbox'};
   }
 
+  async function getDrivingRoute(points, options = {}) {
+    if (!Array.isArray(points) || points.length < 2 || points.some(point => !validPoint(point))) {
+      throw new Error('Se necesitan al menos dos puntos válidos para calcular la ruta.');
+    }
+    let geoapifyError = null;
+    if (GEOAPIFY_KEY) {
+      try {
+        return await getGeoapifyDrivingRoute(points, options);
+      } catch (error) {
+        geoapifyError = error;
+        console.warn('Geoapify Routing no respondió; se intentará el proveedor alternativo.', error);
+      }
+    }
+    if (MAPBOX_TOKEN) {
+      try {
+        return await getMapboxDrivingRoute(points, options);
+      } catch (error) {
+        if (geoapifyError) throw new Error('Geoapify: ' + geoapifyError.message + ' · Mapbox: ' + error.message);
+        throw error;
+      }
+    }
+    throw geoapifyError || new Error('ROUTING_PROVIDER_NOT_CONFIGURED');
+  }
+
   window.DanteMap = Object.freeze({
     create,
     getDrivingRoute,
     get backendPreference() { return MAPBOX_TOKEN && window.mapboxgl && mapboxgl.supported() ? 'mapbox' : 'leaflet'; },
-    get tokenConfigured() { return !!MAPBOX_TOKEN; }
+    get tokenConfigured() { return !!MAPBOX_TOKEN; },
+    get routingProvider() { return GEOAPIFY_KEY ? 'geoapify' : (MAPBOX_TOKEN ? 'mapbox' : 'none'); }
   });
 })();
