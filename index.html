@@ -418,12 +418,18 @@ body.dante-role-transition #imageLightbox{visibility:hidden!important;pointer-ev
 .driver-home-active-trip .actions{margin-top:10px}
 .driver-home-requests h3{margin:0 0 9px;font-size:15px}
 .driver-home-trip-inbox{display:grid;gap:9px}
-.driver-home-request-card{padding:12px;border:1px solid #e1e9e3;border-radius:13px;background:#f8fbf9}
+.driver-home-request-card{padding:12px;border:1px solid var(--line);border-radius:13px;background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.driver-home-request-card .hint{color:var(--muted)}
+.driver-personal-request{background:var(--card);color:var(--ink);border-color:var(--line)}
+.driver-personal-request .hint{color:var(--muted)}
 .driver-home-request-card strong{display:block}
 .driver-home-request-card .hint{margin-top:3px}
 .driver-home-request-card .actions{margin-top:10px}
 .driver-home-map-shell{cursor:zoom-in;transition:border-radius .28s ease,transform .28s ease}
 .driver-home-map-shell:active{transform:scale(.995)}
+.driver-home-recenter{position:absolute;top:82px;right:12px;z-index:1280;width:42px;height:42px;display:grid;place-items:center;padding:0;border:1px solid rgba(22,132,71,.45);border-radius:13px;background:var(--card);color:var(--ink);box-shadow:0 3px 12px rgba(0,0,0,.28);backdrop-filter:blur(12px)}
+.driver-home-recenter svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+body.driver-home-map-active .driver-home-recenter{position:fixed;top:max(82px,calc(env(safe-area-inset-top) + 74px));right:max(12px,env(safe-area-inset-right));z-index:1320}
 .driver-connect-button{position:fixed;left:16px;right:16px;bottom:max(14px,env(safe-area-inset-bottom));z-index:1150;display:flex;align-items:center;justify-content:center;gap:12px;min-height:64px;border:1px solid rgba(0,255,130,.45);border-radius:18px;background:linear-gradient(130deg,#087b52,#18a875);color:#fff;font-size:16px;font-weight:850;box-shadow:0 12px 32px rgba(0,0,0,.3),0 0 24px rgba(0,180,90,.18)}
 .driver-connect-button svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .driver-connect-button:disabled{opacity:.6}
