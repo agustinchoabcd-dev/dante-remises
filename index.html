@@ -1979,6 +1979,7 @@ async function handleDriverTripDecision(id,decision){
  const carRef=ref(db,'cars/'+carId);
  const carSnapshot=await get(carRef),car=carSnapshot.val()||{};
  if(trip.status==='accepted'&&car.activeTripId===id){
+  driverHomeMapUserMoved=false;byId('driverHomeRecenterButton')?.classList.add('hidden');
   renderDriverActiveTrip(trip,id);showView('inicio');const ready=await initDriverHomeMap();if(ready){setDriverHomeFullscreen(true);void ensureDriverHomeNavigationRoute()}await dismissNativeTripAlert();return true;
  }
  if(trip.status!=='requested'){await dismissNativeTripAlert();notify('La solicitud ya no está disponible.');return true}
@@ -2040,7 +2041,8 @@ async function finishActiveDriverTrip(){
   });
   if(!carTx.committed)throw new Error('El coche ya no tiene asociado este viaje.');
   await remove(ref(db,'trips/'+id+'/driverLocation'));
-  activeTripId=null;activeTripData=null;
+  activeTripId=null;activeTripData=null;driverHomeMapUserMoved=false;byId('driverHomeRecenterButton')?.classList.add('hidden');
+  driverHomePendingRouteVersion++;driverHomePendingRoute=null;driverHomePendingRouteTripId=null;driverHomeMap?.removeRoute('driver-home-pending-route');
   driverHomeNavigationRequestVersion++;
   driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0,failedAttempts:0};
   driverHomeMap?.removeRoute('driver-home-navigation-route');
