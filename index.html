@@ -1294,7 +1294,7 @@ async function initDriverHomeMap(){
   renderDriverHomeRequests(driverHomePendingTrips);
   if(driverHomeNavigation.route){
    driverHomeMap.addRoute('driver-home-navigation-route',driverHomeNavigation.route.geometry,{color:'#168447',weight:7,opacity:.92});
-   if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(driverHomeNavigation.route.geometry,driverHomeNavigationFitPadding());
+   if(!driverHomeMapUserMoved){const target=getDriverNavigationTarget(activeTripData);driverHomeMap.fitGeometry(driverHomeNavigation.route.geometry,driverHomeNavigationFitPadding(),[latestDriverLocation,target?.point].filter(Boolean));}
   }
   if(activeTripData){
    renderDriverHomeActiveTrip(activeTripData,activeTripId);
@@ -1385,7 +1385,7 @@ async function ensureDriverHomePendingRoute(force=false){
   if(version!==driverHomePendingRouteVersion||activeTripId||!driverHomeMap||!driverHomePendingTrips.some(item=>String(item.tripId)===String(trip.tripId)))return false;
   driverHomePendingRoute=route;
   driverHomeMap.addRoute('driver-home-pending-route',route.geometry,{color:'#168447',weight:6,opacity:.9});
-  if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeFitPadding());
+  if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeFitPadding(),points);
   return true;
  }catch(error){
   if(version!==driverHomePendingRouteVersion)return false;
@@ -1399,13 +1399,16 @@ async function focusDriverHomeMap(){
  driverHomeMapUserMoved=false;
  byId('driverHomeRecenterButton')?.classList.add('hidden');
  if(activeTripId&&driverHomeNavigation.route){
-  driverHomeMap.fitGeometry(driverHomeNavigation.route.geometry,driverHomeNavigationFitPadding());
+  const target=getDriverNavigationTarget(activeTripData);
+  driverHomeMap.fitGeometry(driverHomeNavigation.route.geometry,driverHomeNavigationFitPadding(),[latestDriverLocation,target?.point].filter(Boolean));
   if(latestDriverLocation)updateDriverHomeNavigationPosition(latestDriverLocation,true);
   return true;
  }
  if(activeTripId&&activeTripData)return await ensureDriverHomeNavigationRoute(true);
  if(driverHomePendingRoute){
-  driverHomeMap.fitGeometry(driverHomePendingRoute.geometry,driverHomeFitPadding());
+  const trip=driverHomePendingTrips.find(item=>String(item.tripId)===String(driverHomePendingRouteTripId))||driverHomePendingTrips[0];
+  const points=[latestDriverLocation,trip?.origin,trip?.destination].filter(Boolean);
+  driverHomeMap.fitGeometry(driverHomePendingRoute.geometry,driverHomeFitPadding(),points);
   return true;
  }
  return await ensureDriverHomePendingRoute(true);
@@ -1540,7 +1543,7 @@ async function ensureDriverHomeNavigationRoute(force=false){
   driverHomeNavigation.failedAttempts=0;
   driverHomeMap.addRoute('driver-home-navigation-route',route.geometry,{color:'#168447',weight:7,opacity:.92});
   driverHomeMap.addMarker('driver-home-navigation-target',target.point,target.label);
-  if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeNavigationFitPadding());
+  if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeNavigationFitPadding(),[latestDriverLocation,target.point]);
   updateDriverHomeNavigationPosition(latestDriverLocation,true);
   return true;
  }catch(error){
@@ -1589,7 +1592,10 @@ function destroyDriverHomeMap(){
 function refitDriverHomeRoute(){
  if(!driverHomeMap||driverHomeMapUserMoved)return;
  const navigation=!!activeTripId,geometry=navigation?driverHomeNavigation.route?.geometry:driverHomePendingRoute?.geometry;
- if(geometry)driverHomeMap.fitGeometry(geometry,navigation?driverHomeNavigationFitPadding():driverHomeFitPadding());
+ if(geometry){
+  if(navigation){const target=getDriverNavigationTarget(activeTripData);driverHomeMap.fitGeometry(geometry,driverHomeNavigationFitPadding(),[latestDriverLocation,target?.point].filter(Boolean))}
+  else{const trip=driverHomePendingTrips.find(item=>String(item.tripId)===String(driverHomePendingRouteTripId))||driverHomePendingTrips[0];driverHomeMap.fitGeometry(geometry,driverHomeFitPadding(),[latestDriverLocation,trip?.origin,trip?.destination].filter(Boolean))}
+ }
 }
 function setDriverHomeFullscreen(expanded){
  const mapNode=byId('driverHomeMap');
