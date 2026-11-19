@@ -1545,7 +1545,8 @@ function updateDriverHomeRequestDistanceLabels(id,pickupText,destinationText){
 }
 function driverHomeRequestRouteCoordinates(trip){
  const origin=trip?.origin||{},destination=trip?.destination||{};
- return [origin.lat,origin.lon,destination.lat,destination.lon].map(Number).every(Number.isFinite);
+ const values=[origin.lat,origin.lon,destination.lat,destination.lon];
+ return values.every(value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value)));
 }
 async function getDriverHomeRequestRoute(trip,location=latestDriverLocation){
  if(!window.DanteMap||!driverHomeRequestRouteCoordinates(trip))throw new Error('TRIP_ROUTE_COORDINATES_MISSING');
@@ -1567,7 +1568,7 @@ async function getDriverHomeRequestRoute(trip,location=latestDriverLocation){
 }
 async function ensureDriverHomeRequestCardDistances(trip){
  if(!trip?.tripId||!driverHomeRequestRouteCoordinates(trip))return false;
- const id=String(trip.tripId),generation=authStateGeneration,location=latestDriverLocation?{lat:Number(latestDriverLocation.lat),lon:Number(latestDriverLocation.lon)}:null;
+ const id=String(trip.tripId),generation=authStateGeneration,gpsFresh=latestDriverLocation&&Date.now()-Number(latestDriverLocation.updatedAt||0)<45000,location=gpsFresh?{lat:Number(latestDriverLocation.lat),lon:Number(latestDriverLocation.lon)}:null;
  if(!location)updateDriverHomeRequestDistanceLabels(id,'Esperando GPS','Calculando…');
  try{
   await ensureMapRuntime();
