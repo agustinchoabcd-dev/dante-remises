@@ -131,10 +131,11 @@
       if (!validPoint(point)) return;
       this.map.setView([Number(point.lat), Number(point.lon)], Math.max(this.map.getZoom(), 16), {animate:true, duration:0.45});
     }
-    fitGeometry(geometry, padding = .15) {
+    fitGeometry(geometry, padding = .15, includePoints = []) {
       const layer = L.geoJSON({type:'Feature', geometry, properties:{}});
       const bounds = layer.getBounds();
       if (!bounds.isValid()) return;
+      (includePoints||[]).filter(validPoint).forEach(point=>bounds.extend([Number(point.lat),Number(point.lon)]));
       const options = padding && typeof padding === 'object'
         ? {paddingTopLeft:[Number(padding.left)||0,Number(padding.top)||0],paddingBottomRight:[Number(padding.right)||0,Number(padding.bottom)||0]}
         : {padding:Math.max(.05,Number(padding)||.15)};
@@ -294,11 +295,12 @@
     setBearing(bearing) {
       if(this.map&&Number.isFinite(Number(bearing)))this.map.easeTo({bearing:Number(bearing),duration:260,essential:true});
     }
-    fitGeometry(geometry, padding = .15) {
+    fitGeometry(geometry, padding = .15, includePoints = []) {
       const coordinates = geoCoordinates(geometry);
       if (!coordinates.length) return;
       const bounds = new mapboxgl.LngLatBounds();
       coordinates.forEach(point => bounds.extend(point));
+      (includePoints||[]).filter(validPoint).forEach(point=>bounds.extend([Number(point.lon),Number(point.lat)]));
       const fitPadding = padding && typeof padding === 'object'
         ? {top:Number(padding.top)||0,bottom:Number(padding.bottom)||0,left:Number(padding.left)||0,right:Number(padding.right)||0}
         : Math.max(24,Math.round(48 + (Number(padding)||.15) * 100));
