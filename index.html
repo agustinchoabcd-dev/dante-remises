@@ -573,6 +573,7 @@ import { completeLogout } from "./session-logout.mjs";
 import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
 import { createChatRuntimeLoader } from "./chat-runtime-loader.mjs";
 import { getDriverHomeStatus, shouldRegisterDriverPresence, shouldExpandDriverCurtain, nextDriverHomeMessage } from "./driver-home-state.mjs";
+import { getDriverNavigationTarget, getDriverNavigationProgress, shouldRerouteDriver } from "./driver-navigation-state.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getDatabase, ref, onValue as firebaseOnValue, get as firebaseGet, set as firebaseSet, update as firebaseUpdate, remove as firebaseRemove, push as firebasePush, runTransaction as firebaseRunTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
@@ -875,6 +876,11 @@ let driverPresenceGeneration=0;
 let driverWantsOnline=false,driverHomeMap=null,driverHomeMapMarker=null,driverHomeMapFirstFix=false,latestDriverLocation=null;
 let driverHomeCurtainExpanded=false,driverHomeMessage="Estás conectado",driverHomeMessageTimer=null,driverHomeDrag=null;
 let driverHomeConnectBusy=false,driverHomeDisconnectBusy=false;
+let driverHomePendingTrips=[],driverHomeRequestMarkers=new Map(),driverInboxRenderVersion=0;
+let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0};
+let driverHomeNavigationRequestVersion=0;
+function isDriverCapableRole(){return ['driver','admin'].includes(currentRole?.role)}
+function currentDriverCarId(){return currentRole?.role==='admin'?'144':String(currentRole?.carId||'')}
 const carMarkers={};
 async function choosePassengerDriver(id){if(currentRole?.role!=='passenger'||!byId('passengerDriverScreen'))return;const c=cars[id];if(!c||!c.online||c.status!=='libre'){notify('Ese chofer ya no está disponible.');render('invalid-driver-selection');return}selectedPassengerDriver=id;byId('passengerDriverScreen').classList.add('hidden');byId('passengerTripScreen').classList.remove('hidden');byId('selectedDriverCard').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${esc(c.driver)}</div><div class="model">Coche ${c.id} · ${esc(c.model)}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;byId('requestResult').classList.add('hidden');byId('requestResult').textContent='';originPoint=null;destinationPoint=null;byId('origin').value='';byId('destination').value='';if(realMap){if(routeLayer){realMap.removeLayer(routeLayer);routeLayer=null}if(window.originMarker){realMap.removeLayer(window.originMarker);window.originMarker=null}if(window.destinationMarker){realMap.removeLayer(window.destinationMarker);window.destinationMarker=null}}['origin','destination','useMyLocation','pickOrigin','pickDestination'].forEach(controlId=>byId(controlId).disabled=true);byId('routeSummary').textContent='Cargando mapa…';const selectionGeneration=passengerViewGeneration;const mapReady=await initRealMap();if(selectionGeneration!==passengerViewGeneration||currentRole?.role!=='passenger'||!byId('realMap'))return;if(mapReady){['origin','destination','useMyLocation','pickOrigin','pickDestination'].forEach(controlId=>byId(controlId).disabled=false);byId('routeSummary').textContent='Elegí el origen y el destino para calcular el recorrido.';watchSelectedDriver(id)}else{byId('routeSummary').textContent='No se pudo cargar el mapa. Volvé a la lista de choferes e intentá nuevamente.'}}
 bindRoleDom('passengerCars','click',e=>{if(e.target.closest('.avatar'))return;const btn=e.target.closest('[data-driver-id]');if(btn&&!btn.disabled)choosePassengerDriver(btn.dataset.driverId)});
@@ -1214,7 +1220,7 @@ function showView(v){
  if(v!=='chat')closeChatScreen();
  if(v==='pasajero'&&currentRole?.role==='passenger'&&!passengerPhotoReady){showPassengerOnboarding();return}
  if(!canAccessRoleView(currentRole?.role,v)){notify('No tenés permiso para acceder a esta pantalla.');return}
- if(v!=='inicio'&&currentRole?.role==='driver'){
+ if(v!=='inicio'&&isDriverCapableRole()){
   if(document.body.classList.contains('driver-home-map-active'))setDriverHomeFullscreen(false);
   if(driverHomeMap)destroyDriverHomeMap();
  }
@@ -1234,23 +1240,26 @@ function showView(v){
  const greetingView=currentRole?.role==='passenger'?v==='pasajero':currentRole?.role==='driver'?v==='chofer':currentRole?.role==='operator'?v==='central':currentRole?.role==='admin'?(v==='central'||v==='chofer'):false;
  byId('postLoginGreeting').classList.toggle('hidden',!greetingView);
  if(v==='chat')void loadChatView().catch(error=>{console.error('No se pudo cargar el chat:',error);setChatStatus('No se pudo cargar el módulo de chat. Revisá tu conexión e intentá nuevamente.')});else stopChatPolling();
- if(v==='inicio'&&currentRole?.role==='driver')void initDriverHomeMap();
+ if(v==='inicio'&&isDriverCapableRole())void initDriverHomeMap().then(ready=>{
+  if(ready&&activeTripId&&activeTripData){renderDriverHomeActiveTrip(activeTripData,activeTripId);void ensureDriverHomeNavigationRoute()}
+ });
  if(v==='chofer')void ensureDriverTripAlertPermissions();
  if(v==='configuracion'&&['driver','admin'].includes(currentRole?.role))void refreshTripAlertPermissionStatus();
 }
 
 function renderDriverHomeStatus(){
  const root=byId('driverHomeStatus');
- if(!root||currentRole?.role!=='driver')return;
- const car=cars[currentRole.carId];
+ if(!root||!isDriverCapableRole())return;
+ const car=cars[currentDriverCarId()];
  const state=getDriverHomeStatus({online:!!car?.online,status:car?.status||'desconectado'});
  root.dataset.tone=state.tone;
  const label=byId('driverHomeStatusText'),dot=byId('driverHomeStatusDot'),badge=byId('driverHomeStatusBadge');
  if(label)label.textContent=state.label;
  if(dot)dot.dataset.tone=state.tone;
  if(badge){badge.textContent=state.badge;badge.classList.toggle('hidden',!state.badge)}
- byId('driverHomeConnectButton')?.classList.toggle('hidden',!!car?.online);
+ byId('driverHomeConnectButton')?.classList.toggle('hidden',!!car?.online||currentRole?.role==='admin');
  byId('driverHomeCurtain')?.classList.toggle('hidden',!car?.online);
+ byId('driverHomeDisconnectButton')?.classList.toggle('hidden',!driverHomeCurtainExpanded||currentRole?.role==='admin');
  if(car?.online)startDriverHomeMessageCycle();
  else{
   stopDriverHomeMessageCycle();
@@ -1260,13 +1269,17 @@ function renderDriverHomeStatus(){
 }
 async function initDriverHomeMap(){
  const node=byId('driverHomeMap');
- if(!node||currentRole?.role!=='driver')return false;
+ if(!node||!isDriverCapableRole())return false;
  try{
   await ensureMapRuntime();
-  if(currentRole?.role!=='driver'||!node.isConnected||byId('inicio')?.classList.contains('hidden'))return false;
+  if(!isDriverCapableRole()||!node.isConnected||byId('inicio')?.classList.contains('hidden'))return false;
   if(!driverHomeMap){driverHomeMap=window.DanteMap.create(node,HOME_CENTER,13,LOCATIONIQ_KEY);driverHomeMapFirstFix=false}
   driverHomeMap.invalidateSize();
   if(latestDriverLocation)updateDriverHomeLocation(latestDriverLocation);
+  renderDriverHomeRequests(driverHomePendingTrips);
+  if(driverHomeNavigation.route)driverHomeMap.addRoute('driver-home-navigation-route',driverHomeNavigation.route.geometry,{color:'#168447',weight:7,opacity:.92});
+  if(activeTripData)renderDriverHomeActiveTrip(activeTripData,activeTripId);
+  if(activeTripId&&latestDriverLocation)void ensureDriverHomeNavigationRoute();
   return true;
  }catch(error){
   console.error('No se pudo inicializar el mapa de Inicio del chofer:',error);
@@ -1285,9 +1298,128 @@ function updateDriverHomeLocation(loc){
   if(!driverHomeMapFirstFix){driverHomeMap.fitPoints([point]);driverHomeMapFirstFix=true}
  }
 }
+function renderDriverHomeRequests(trips){
+ driverHomePendingTrips=Array.isArray(trips)?trips:[];
+ const panel=byId('driverHomeRequests'),list=byId('driverHomeTripInbox');
+ if(!panel||!list)return;
+ list.innerHTML='';
+ if(driverHomeMap)driverHomeMapPendingMarkers();
+ else driverHomeRequestMarkers.clear();
+ if(!driverHomePendingTrips.length){
+  panel.classList.add('hidden');
+  list.textContent='No hay solicitudes pendientes.';
+  return;
+ }
+ panel.classList.remove('hidden');
+ for(const trip of driverHomePendingTrips){
+  const id=String(trip.tripId||''),origin=trip.origin||{},destination=trip.destination||{};
+  const card=document.createElement('article');
+  card.className='driver-home-request-card';
+  card.innerHTML='<strong>Solicitud de '+esc(trip.passengerName||'Pasajero')+'</strong>'+
+   '<div class="hint">Recogida: '+esc(origin.label||'Ubicación sin nombre')+'</div>'+
+   '<div class="hint">Destino: '+esc(destination.label||'No informado')+'</div>'+
+   '<div class="actions"><button class="secondary" data-open-driver-trip-chat="'+esc(id)+'">Chat</button>'+
+   '<button class="primary" data-accept-trip="'+esc(id)+'">Aceptar</button>'+
+   '<button class="danger" data-reject-trip="'+esc(id)+'">Rechazar</button></div>';
+  list.appendChild(card);
+ }
+}
+function driverHomeMapPendingMarkers(){
+ if(!driverHomeMap)return;
+ driverHomeRequestMarkers.clear();
+ for(const trip of driverHomePendingTrips){
+  const origin=trip.origin||{},lat=Number(origin.lat),lon=Number(origin.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+  const marker=driverHomeMap.addCircleMarker('driver-request-'+String(trip.tripId),{lat,lon},{radius:10,color:'#fff',weight:3,fillColor:'#e58a16',fillOpacity:1,popup:'Solicitud de '+String(trip.passengerName||'Pasajero')});
+  driverHomeRequestMarkers.set(String(trip.tripId),marker);
+ }
+}
+function renderDriverHomeActiveTrip(trip,id){
+ const panel=byId('driverHomeActiveTrip');
+ if(!panel)return;
+ if(!trip||!id||!['accepted','in_progress'].includes(trip.status)){
+  panel.classList.add('hidden');
+  byId('driverHomeNavigation')?.classList.add('hidden');
+  return;
+ }
+ panel.classList.remove('hidden');
+ const stage=trip.status==='accepted'?'Viaje aceptado · rumbo al pasajero':'Viaje en curso · rumbo al destino';
+ const action=trip.status==='accepted'
+  ?'<button class="primary" data-home-trip-action="start">Iniciar viaje</button>'
+  :'<button class="danger" data-home-trip-action="finish">Finalizar viaje</button>';
+ panel.innerHTML='<strong>'+esc(stage)+' · '+esc(trip.passengerName||'Pasajero')+'</strong>'+
+  '<div class="hint">Recogida: '+esc(trip.origin?.label||'No informado')+'</div>'+
+  '<div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div>'+
+  '<div class="actions"><button class="secondary" data-home-trip-action="chat">Chat con pasajero</button>'+action+'</div>';
+}
+function formatDriverDistance(meters){
+ const value=Math.max(0,Number(meters)||0);
+ return value<1000?Math.round(value)+' m':(value/1000).toFixed(1)+' km';
+}
+function ensureDriverHomeNavigationPanel(stage,instruction,meta){
+ const panel=byId('driverHomeNavigation');
+ if(!panel)return;
+ panel.classList.remove('hidden');
+ byId('driverHomeNavigationStage').textContent=stage==='pickup'?'Hacia el pasajero':'Hacia el destino';
+ byId('driverHomeNavigationInstruction').textContent=instruction||'Preparando navegación…';
+ byId('driverHomeNavigationMeta').textContent=meta||'';
+}
+async function ensureDriverHomeNavigationRoute(force=false){
+ if(!isDriverCapableRole()||!activeTripId||!activeTripData||!driverHomeMap)return false;
+ const target=getDriverNavigationTarget(activeTripData);
+ if(!target){
+  ensureDriverHomeNavigationPanel(activeTripData.status==='accepted'?'pickup':'destination','Faltan las coordenadas del destino para navegar.','Revisá la dirección del viaje.');
+  return false;
+ }
+ if(!latestDriverLocation){
+  ensureDriverHomeNavigationPanel(target.stage,'Esperando señal GPS para calcular la ruta…','Activá la ubicación precisa del dispositivo.');
+  return false;
+ }
+ const now=Date.now(),same=driverHomeNavigation.tripId===activeTripId&&driverHomeNavigation.stage===target.stage;
+ if(!force&&same&&driverHomeNavigation.route)return true;
+ if(!force&&same&&now-driverHomeNavigation.lastAttemptAt<25000)return false;
+ const version=++driverHomeNavigationRequestVersion;
+ driverHomeNavigation={tripId:activeTripId,stage:target.stage,route:null,lastAttemptAt:now,lastRerouteAt:driverHomeNavigation.lastRerouteAt||0};
+ driverHomeMap.removeRoute('driver-home-navigation-route');
+ driverHomeMap.removeMarker('driver-home-navigation-target');
+ ensureDriverHomeNavigationPanel(target.stage,'Calculando la mejor ruta…',target.label);
+ try{
+  const route=await window.DanteMap.getDrivingRoute([{lat:Number(latestDriverLocation.lat),lon:Number(latestDriverLocation.lon)},target.point],{steps:true});
+  if(version!==driverHomeNavigationRequestVersion||activeTripId!==driverHomeNavigation.tripId||!driverHomeMap)return false;
+  driverHomeNavigation.route=route;
+  driverHomeMap.addRoute('driver-home-navigation-route',route.geometry,{color:'#168447',weight:7,opacity:.92});
+  driverHomeMap.addMarker('driver-home-navigation-target',target.point,target.label);
+  driverHomeMap.fitGeometry(route.geometry,.2);
+  updateDriverHomeNavigationPosition(latestDriverLocation);
+  return true;
+ }catch(error){
+  if(version!==driverHomeNavigationRequestVersion)return false;
+  console.warn('No se pudo calcular la navegación del viaje:',error);
+  ensureDriverHomeNavigationPanel(target.stage,'No se pudo calcular la ruta.','Se volverá a intentar cuando haya señal GPS.');
+  return false;
+ }
+}
+function updateDriverHomeNavigationPosition(loc){
+ if(!activeTripId||!activeTripData||!['accepted','in_progress'].includes(activeTripData.status)||!driverHomeMap)return;
+ const target=getDriverNavigationTarget(activeTripData);
+ if(!target)return;
+ const point={lat:Number(loc.lat),lon:Number(loc.lon)};
+ if(driverHomeMap.followLocation)driverHomeMap.followLocation(point,loc.heading);
+ const same=driverHomeNavigation.tripId===activeTripId&&driverHomeNavigation.stage===target.stage;
+ if(!same||!driverHomeNavigation.route){void ensureDriverHomeNavigationRoute();return}
+ const progress=getDriverNavigationProgress(driverHomeNavigation.route,point);
+ if(!progress)return;
+ const distance=progress.distanceToManeuver===null?'':' · Próxima maniobra a '+formatDriverDistance(progress.distanceToManeuver);
+ const meta=formatDriverDistance(progress.remainingDistanceMeters)+' restantes · '+Math.max(1,Math.ceil(progress.remainingDurationSeconds/60))+' min'+distance;
+ ensureDriverHomeNavigationPanel(target.stage,progress.instruction,meta);
+ if(shouldRerouteDriver({offRouteMeters:progress.offRouteMeters,lastRerouteAt:driverHomeNavigation.lastRerouteAt,now:Date.now()})){
+  driverHomeNavigation.lastRerouteAt=Date.now();
+  void ensureDriverHomeNavigationRoute(true);
+ }
+}
 function destroyDriverHomeMap(){
  if(driverHomeMap){try{driverHomeMap.remove()}catch(error){console.warn('No se pudo desmontar el mapa de Inicio:',error)}}
- driverHomeMap=null;driverHomeMapMarker=null;driverHomeMapFirstFix=false;latestDriverLocation=null;
+ driverHomeMap=null;driverHomeMapMarker=null;driverHomeMapFirstFix=false;driverHomeRequestMarkers.clear();
 }
 function setDriverHomeFullscreen(expanded){
  document.body.classList.toggle('driver-home-map-active',!!expanded);
@@ -1309,7 +1441,7 @@ function startDriverHomeMessageCycle(){
  const label=byId('driverHomeConnectedMessage');
  if(label)label.textContent=driverHomeMessage;
  driverHomeMessageTimer=window.setInterval(()=>{
-  const car=cars[currentRole?.carId||''];
+  const car=cars[currentDriverCarId()];
   if(!car?.online){stopDriverHomeMessageCycle();return}
   driverHomeMessage=nextDriverHomeMessage(driverHomeMessage);
   const target=byId('driverHomeConnectedMessage');
