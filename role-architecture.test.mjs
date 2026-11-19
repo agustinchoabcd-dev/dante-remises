@@ -227,5 +227,5 @@ test("trip endpoints use passenger and red destination pins in both map engines"
   assert.match(mapAdapter, /pickup \? '#ed9418' : '#dc3545'/);
   assert.match(mapAdapter, /<circle cx="20" cy="16" r="5" fill="#fff"\/>/);
   assert.match(html, /addTripEndpointMarker\(markerId/);
-  assert.match(html, /'destination','Destino del viaje'/);
+  assert.match(html, /'destination','Final'/);
 });
