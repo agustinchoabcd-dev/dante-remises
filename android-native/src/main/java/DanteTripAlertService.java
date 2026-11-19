@@ -54,8 +54,8 @@ public class DanteTripAlertService extends Service {
         tripId = safe(intent.getStringExtra("tripId"), 128);
         carId = safe(intent.getStringExtra("carId"), 8);
         passenger = safe(intent.getStringExtra("passengerName"), 100);
-        origin = safe(intent.getStringExtra("origin"), 180);
-        destination = safe(intent.getStringExtra("destination"), 180);
+        origin = cleanAddress(safe(intent.getStringExtra("origin"), 180));
+        destination = cleanAddress(safe(intent.getStringExtra("destination"), 180));
         if (tripId.isEmpty()) {
             stopSelf();
             return START_NOT_STICKY;
@@ -207,8 +207,24 @@ public class DanteTripAlertService extends Service {
 
     private static String safe(String value, int max) {
         if (value == null) return "";
-        String clean = value.replace('\n', ' ').replace('\r', ' ').trim();
+        String clean = value.replace('\\n', ' ').replace('\\r', ' ').trim();
         return clean.substring(0, Math.min(clean.length(), max));
+    }
+
+    private static String cleanAddress(String value) {
+        String[] parts = safe(value, 180).split(",");
+        StringBuilder result = new StringBuilder();
+        for (String raw : parts) {
+            String part = raw.trim();
+            if (part.isEmpty()) continue;
+            if (part.matches("(?i)^\\\\d{4,5}\\\\b.*") ||
+                part.matches("(?i).*(argentina|c[oó]rdoba|santa rosa de calamuchita|calamuchita).*")) continue;
+            boolean road = part.matches("(?i).*\\\\b(calle|avenida|av\\\\.?|ruta|rp|rn|boulevard|bv\\\\.?|pasaje|camino|autopista)\\\\b.*") ||
+                part.matches(".*\\\\d+.*");
+            if (result.length() == 0) result.append(part);
+            else if (road) { result.append(" · ").append(part); break; }
+        }
+        return result.length() == 0 ? "Ubicación sin referencia" : result.toString();
     }
 
     public static void createChannels(Context context) {
