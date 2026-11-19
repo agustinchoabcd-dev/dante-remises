@@ -4202,7 +4202,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
  const parallaxAvailable=()=>state.master&&state.parallax&&!(reducedMotion&&reducedMotion.matches);
  function refreshSurfaces(){
-  surfaces=Array.from(document.querySelectorAll(surfaceSelector));
+  surfaces=Array.from(document.querySelectorAll(surfaceSelector)).filter(surface=>!surface.matches('.real-map,.demo-map')&&!surface.querySelector('.real-map,.demo-map'));
   surfaceRects.length=surfaces.length;
   for(const surface of surfaces)surface.classList.add('dante-parallax-surface');
   rectsDirty=true;
@@ -4314,6 +4314,8 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  function findTouch(list){for(let i=0;i<list.length;i++)if(list[i].identifier===touchIdentifier)return list[i];return null}
  function onTouchStart(event){
   if(!parallaxAvailable()||document.hidden||touchIdentifier!==null||!event.changedTouches.length)return;
+  /* Mapbox/Leaflet renderizan en capas GPU propias; no aplicarles transformaciones 3D táctiles ni a sus tarjetas contenedoras. */
+  if(event.target?.closest?.('.real-map,.demo-map,.mapboxgl-canvas-container,.mapboxgl-canvas,.leaflet-container,.mapboxgl-ctrl'))return;
   refreshSurfaces();
   const touch=event.changedTouches[0];touchIdentifier=touch.identifier;lastTouch={clientX:touch.clientX,clientY:touch.clientY};
   applyTouchFrame(touch);
