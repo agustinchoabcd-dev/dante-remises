@@ -1547,20 +1547,20 @@ function driverHomeRequestRouteCoordinates(trip){
 }
 async function getDriverHomeRequestRoute(trip,location=latestDriverLocation){
  if(!window.DanteMap||!driverHomeRequestRouteCoordinates(trip))throw new Error('TRIP_ROUTE_COORDINATES_MISSING');
- const id=String(trip.tripId||''),now=Date.now();
+ const id=String(trip.tripId||''),origin=trip.origin,destination=trip.destination,now=Date.now();
+ const key=[Number(origin.lat),Number(origin.lon),Number(destination.lat),Number(destination.lon),location?'gps':'no-gps'].join('|');
  const cached=driverHomeRequestDistanceCache.get(id);
- if(cached&&now-cached.updatedAt<90000&&(!location||driverHomeDistanceMeters(cached.location,location)<=100))return cached.route;
+ if(cached&&cached.key===key&&now-cached.updatedAt<90000&&(!location||driverHomeDistanceMeters(cached.location,location)<=100))return cached.route;
  const pending=driverHomeRequestDistancePending.get(id);
- if(pending)return pending.promise;
- const origin=trip.origin,destination=trip.destination;
+ if(pending?.key===key)return pending.promise;
  const points=location
   ? [{lat:Number(location.lat),lon:Number(location.lon)},{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}]
   : [{lat:Number(origin.lat),lon:Number(origin.lon)},{lat:Number(destination.lat),lon:Number(destination.lon)}];
  const promise=window.DanteMap.getDrivingRoute(points).then(route=>{
-  driverHomeRequestDistanceCache.set(id,{route,location:location?{lat:Number(location.lat),lon:Number(location.lon)}:null,updatedAt:Date.now()});
+  driverHomeRequestDistanceCache.set(id,{key,route,location:location?{lat:Number(location.lat),lon:Number(location.lon)}:null,updatedAt:Date.now()});
   return route;
  }).finally(()=>{if(driverHomeRequestDistancePending.get(id)?.promise===promise)driverHomeRequestDistancePending.delete(id)});
- driverHomeRequestDistancePending.set(id,{promise});
+ driverHomeRequestDistancePending.set(id,{key,promise});
  return promise;
 }
 async function ensureDriverHomeRequestCardDistances(trip){
