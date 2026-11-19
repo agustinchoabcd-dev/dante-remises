@@ -289,7 +289,7 @@
         ? {top:Number(padding.top)||0,bottom:Number(padding.bottom)||0,left:Number(padding.left)||0,right:Number(padding.right)||0}
         : Math.max(24,Math.round(48 + (Number(padding)||.15) * 100));
       const fitOptions={padding:fitPadding,maxZoom:17,animate:false,duration:0};
-      if(padding&&typeof padding==='object'&&Number.isFinite(Number(padding.bearing)))fitOptions.bearing=Number(padding.bearing);
+      if(padding&&typeof padding==='object'&&padding.bearing!==null&&padding.bearing!==undefined&&Number.isFinite(Number(padding.bearing)))fitOptions.bearing=Number(padding.bearing);
       this.map.fitBounds(bounds,fitOptions);
     }
     removeLayer(handle) { if (handle?.remove) handle.remove(); }
