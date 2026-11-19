@@ -115,6 +115,8 @@ test("driver request cards use structured places and separate road-leg distances
   assert.match(homeState, /export function getDriverRequestRouteDistances\(route\)/);
   assert.match(html, /data-driver-distance-kind="pickup"/);
   assert.match(html, /data-driver-distance-kind="destination"/);
+  assert.match(html, /function driverHomeRequestRoutePoints\(trip,location=latestDriverLocation\)/);
+  assert.match(html, /\.\.\.stops,trip\.destination/);
   assert.match(html, /getDrivingRoute\(points,\{steps:true\}\)/);
 });
 
