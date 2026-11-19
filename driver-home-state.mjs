@@ -9,7 +9,7 @@ export function shouldRegisterDriverPresence(role, wantsOnline, hasActiveTrip = 
 }
 export function shouldExpandDriverCurtain({ expanded, deltaY, viewportHeight }) {
   const threshold = Math.max(0, Number(viewportHeight) || 0) * 0.45;
-  return expanded ? Number(deltaY) < threshold : Number(deltaY) <= -threshold;
+  return expanded ? Number(deltaY) <= threshold : Number(deltaY) < -threshold;
 }
 export function nextDriverHomeMessage(current) {
   return current === "Estás conectado" ? "Buscando solicitud de viaje" : "Estás conectado";
