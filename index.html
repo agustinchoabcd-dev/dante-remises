@@ -409,6 +409,21 @@ body.dante-role-transition #imageLightbox{visibility:hidden!important;pointer-ev
 .driver-home-map-shell{position:relative;overflow:hidden;border-radius:20px}
 .driver-home-map{height:clamp(300px,55vh,620px);min-height:280px;width:100%;border:1px solid rgba(22,132,71,.28);border-radius:20px;overflow:hidden;background:#e7efe8;box-shadow:var(--shadow)}
 .driver-home-map .mapboxgl-ctrl-group{margin:12px}
+.driver-home-navigation{position:relative;z-index:2;max-width:900px;margin:10px auto;padding:13px 16px;border:1px solid rgba(22,132,71,.22);border-radius:16px;background:#10251beF;color:#fff;box-shadow:0 8px 24px #0002}
+.driver-home-navigation-stage{font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;color:#a8e7bd;margin-bottom:4px}
+.driver-home-navigation strong{display:block;font-size:17px;line-height:1.25}
+.driver-home-navigation-meta{margin-top:5px;font-size:12px;color:#d1e6d8}
+.driver-home-active-trip,.driver-home-requests{max-width:900px;margin:12px auto;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:var(--shadow)}
+.driver-home-active-trip strong{display:block}
+.driver-home-active-trip .actions{margin-top:10px}
+.driver-home-requests h3{margin:0 0 9px;font-size:15px}
+.driver-home-trip-inbox{display:grid;gap:9px}
+.driver-home-request-card{padding:12px;border:1px solid #e1e9e3;border-radius:13px;background:#f8fbf9}
+.driver-home-request-card strong{display:block}
+.driver-home-request-card .hint{margin-top:3px}
+.driver-home-request-card .actions{margin-top:10px}
+.driver-home-map-shell{cursor:zoom-in;transition:border-radius .28s ease,transform .28s ease}
+.driver-home-map-shell:active{transform:scale(.995)}
 .driver-connect-button{position:fixed;left:16px;right:16px;bottom:max(14px,env(safe-area-inset-bottom));z-index:1150;display:flex;align-items:center;justify-content:center;gap:12px;min-height:64px;border:1px solid rgba(0,255,130,.45);border-radius:18px;background:linear-gradient(130deg,#087b52,#18a875);color:#fff;font-size:16px;font-weight:850;box-shadow:0 12px 32px rgba(0,0,0,.3),0 0 24px rgba(0,180,90,.18)}
 .driver-connect-button svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .driver-connect-button:disabled{opacity:.6}
@@ -427,11 +442,17 @@ body.driver-home-map-active{overflow:hidden!important}
 body.driver-home-map-active>header,body.driver-home-map-active>main>nav.tabs,body.driver-home-map-active>main>#postLoginGreeting,body.driver-home-map-active #appFooter{display:none!important}
 body.driver-home-map-active #inicio.driver-home{position:fixed;inset:0;z-index:1200;width:100vw;height:100vh;height:100dvh;max-width:none;min-height:0;margin:0;padding:0;background:#08130d;overflow:hidden}
 body.driver-home-map-active #driverHomeMap{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-height:none;min-height:0;border:0;border-radius:0;box-shadow:none}
+body.driver-home-map-active .driver-home-map-shell{animation:driverMapExpand .32s cubic-bezier(.2,.8,.2,1) both}
+body.driver-home-map-active .driver-home-navigation{position:fixed;top:max(12px,env(safe-area-inset-top));left:72px;right:12px;max-width:none;margin:0;z-index:1290;padding:11px 14px}
+body.driver-home-map-active .driver-home-active-trip,body.driver-home-map-active .driver-home-requests{position:fixed;left:12px;right:12px;bottom:102px;max-width:none;max-height:28dvh;margin:0;overflow:auto;z-index:1290;box-shadow:0 8px 28px #0004}
+body.driver-home-map-active .driver-home-requests h3{display:none}
 body.driver-home-map-active .driver-home-status,body.driver-home-map-active .driver-connect-button{display:none!important}
 body.driver-home-map-active .driver-home-map-home{display:grid!important}
 body.driver-home-map-active .driver-home-curtain{z-index:1300}
 body.driver-home-map-active #driverHomeMap .mapboxgl-ctrl-bottom-right,body.driver-home-map-active #driverHomeMap .mapboxgl-ctrl-bottom-left{bottom:96px}
 body.driver-home-map-active #driverHomeMap .leaflet-bottom{bottom:96px}
+@keyframes driverMapExpand{from{opacity:.82;transform:scale(.975);border-radius:22px}to{opacity:1;transform:scale(1);border-radius:0}}
+@media(prefers-reduced-motion:reduce){.driver-home-map-shell{transition:none!important;animation:none!important}}
 @media(max-width:600px){#inicio.driver-home{padding-bottom:100px}.driver-home-status{margin:4px auto 10px;font-size:14px}.driver-home-map-shell{border-radius:15px}.driver-home-map{height:clamp(300px,54vh,560px);border-radius:15px}.driver-connect-button{left:12px;right:12px;min-height:60px}}
 @media(prefers-reduced-motion:reduce){.driver-home-curtain{transition:none}}
 </style>
