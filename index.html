@@ -878,7 +878,7 @@ let driverHomeCurtainExpanded=false,driverHomeMessage="Estás conectado",driverH
 let driverHomeConnectBusy=false,driverHomeDisconnectBusy=false;
 let driverHomePendingTrips=[],driverHomeRequestMarkers=new Map(),driverInboxRenderVersion=0;
 let driverHomeNavigation={tripId:null,stage:null,route:null,lastAttemptAt:0,lastRerouteAt:0,rerouteCount:0,failedAttempts:0};
-let driverHomeNavigationRequestVersion=0;
+let driverHomeNavigationRequestVersion=0,driverHomeMapTransitionHandler=null;
 function isDriverCapableRole(){return ['driver','admin'].includes(currentRole?.role)}
 function currentDriverCarId(){return currentRole?.role==='admin'?'144':String(currentRole?.carId||'')}
 const carMarkers={};
@@ -1448,6 +1448,7 @@ function setDriverHomeFullscreen(expanded){
    document.body.classList.add('driver-home-map-active');
    const reduceMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches===true;
    if(mapNode&&rect?.width&&rect?.height&&window.innerWidth&&window.innerHeight&&!reduceMotion){
+    if(driverHomeMapTransitionHandler){mapNode.removeEventListener('transitionend',driverHomeMapTransitionHandler);driverHomeMapTransitionHandler=null}
     mapNode.style.transition='none';
     mapNode.style.transformOrigin='top left';
     mapNode.style.transform='translate('+rect.left+'px,'+rect.top+'px) scale('+(rect.width/window.innerWidth)+','+(rect.height/window.innerHeight)+')';
@@ -1456,12 +1457,14 @@ function setDriverHomeFullscreen(expanded){
     const finish=event=>{
      if(event.propertyName!=='transform')return;
      mapNode.removeEventListener('transitionend',finish);
+     driverHomeMapTransitionHandler=null;
      mapNode.style.transition='';
      mapNode.style.transform='';
      mapNode.style.transformOrigin='';
      mapNode.style.borderRadius='';
      driverHomeMap?.invalidateSize();
     };
+    driverHomeMapTransitionHandler=finish;
     mapNode.addEventListener('transitionend',finish);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
      mapNode.style.transition='transform .32s cubic-bezier(.2,.8,.2,1),border-radius .32s ease';
@@ -1473,6 +1476,7 @@ function setDriverHomeFullscreen(expanded){
  }else{
   document.body.classList.remove('driver-home-map-active');
   if(mapNode){
+   if(driverHomeMapTransitionHandler){mapNode.removeEventListener('transitionend',driverHomeMapTransitionHandler);driverHomeMapTransitionHandler=null}
    mapNode.style.transition='';
    mapNode.style.transform='';
    mapNode.style.transformOrigin='';
