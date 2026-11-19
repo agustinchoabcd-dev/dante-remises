@@ -220,7 +220,7 @@ public class DanteTripAlertService extends Service {
         if (distance.isEmpty()) return "";
         try {
             double meters = Double.parseDouble(distance.replace(',', '.'));
-            if (!Double.isFinite(meters) || meters < 0) return "";
+            if (Double.isNaN(meters) || Double.isInfinite(meters) || meters < 0) return "";
             String formatted = meters < 1000
                 ? Math.round(meters) + " m"
                 : String.format(java.util.Locale.getDefault(), "%.1f km", meters / 1000.0);
