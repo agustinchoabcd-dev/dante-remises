@@ -565,7 +565,7 @@ body.driver-home-map-active #driverHomeMap .leaflet-bottom{bottom:96px}
 <p class="footer hidden" id="appFooter">Dante Remises · Acceso de pasajeros por DNI · Acceso de personal por correo o DNI vinculado · Roles y estados sincronizados con Firebase.</p>
 </main><div class="image-lightbox hidden" id="imageLightbox" role="dialog" aria-modal="true" aria-label="Foto ampliada"><button type="button" class="lightbox-close" id="closeImageLightbox" aria-label="Cerrar">×</button><img id="lightboxImage" alt="Imagen ampliada"><div class="lightbox-caption" id="lightboxCaption"></div></div><div class="toast" id="toast" role="status"></div>
 <script type="module">
-import { getCurrentPosition, watchPosition, clearWatch, requestStartupPermissions, requestLocationPermission, requestTripNotificationPermission, isGeolocationAvailable, chooseChatImage, isNativePlatform, getTripAlertToken, canDrawTripOverlay, requestTripOverlayPermission, canPostTripNotifications, openTripNotificationSettings, getPendingTripAction, clearPendingTripAction, stopTripAlert } from "./native-bridge.js";
+import { getCurrentPosition, watchPosition, clearWatch, requestStartupPermissions, requestLocationPermission, requestPreciseLocationPermission, requestTripNotificationPermission, isGeolocationAvailable, chooseChatImage, isNativePlatform, getTripAlertToken, canDrawTripOverlay, requestTripOverlayPermission, canPostTripNotifications, openTripNotificationSettings, getPendingTripAction, clearPendingTripAction, stopTripAlert } from "./native-bridge.js";
 import { performanceMonitor as perf } from "./perf-monitor.mjs";
 import { mediaCache, sha256 } from "./media-cache.mjs";
 import { createAvailabilityRefreshScheduler } from "./availability-refresh.mjs";
@@ -1432,9 +1432,7 @@ async function ensureDriverHomePendingRoute(force=false){
    driverHomeMap.addRoutePreview('driver-home-pending-route',previewLegs,{durationMs:2600,pauseMs:240,weight:6,opacity:.94});
    driverHomePendingRoute=route;driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
    if(!hadPreview&&!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeFitPadding(),points);
-  driverHomePendingRoute=route;driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
-  if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeFitPadding(),points);
-  return true;
+   return true;
  }catch(error){
   if(version!==driverHomePendingRouteVersion)return false;
   driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts++;
@@ -1661,8 +1659,7 @@ async function ensureDriverHomeNavigationRoute(force=false){
    driverHomeNavigation.lastRouteLocation=routeStartLocation;
    driverHomeNavigation.lastRouteRefreshAt=Date.now();
    driverHomeNavigation.failedAttempts=0;
-  driverHomeNavigation.failedAttempts=0;
-  if((latestDriverLocation?.heading===null||latestDriverLocation?.heading===undefined)&&driverHomeLastHeading===null){
+   if((latestDriverLocation?.heading===null||latestDriverLocation?.heading===undefined)&&driverHomeLastHeading===null){
    const routeHeading=driverHomeFirstRouteBearing(route.geometry);
    if(routeHeading!==null){driverHomeLastHeading=routeHeading;updateDriverHomeLocation(latestDriverLocation)}
   }
@@ -1911,10 +1908,10 @@ async function startDriverGps(){
  driverGpsStarting=true;
  byId('driverGpsStatus').textContent='Solicitando permiso de ubicación…';
  try{
-  const permitted=await requestLocationPermission();
+  const permitted=await requestPreciseLocationPermission();
   if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(gpsRole==='driver'&&!driverWantsOnline&&!activeTripId))return;
   if(!permitted){
-   byId('driverGpsStatus').textContent='Permiso de ubicación denegado. Habilitalo en Ajustes de Android y volvé a abrir la app.';
+    byId('driverGpsStatus').textContent='Se necesita ubicación precisa. Habilitá el permiso de ubicación precisa en Ajustes de Android y volvé a conectar.';
    return;
   }
    driverWatchId=watchPosition(async pos=>{if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(gpsRole==='driver'&&!driverWantsOnline&&!activeTripId))return;const carId=currentRole?.carId||'144',c=cars[carId],now=Date.now();const loc={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),heading:Number.isFinite(pos.coords.heading)?pos.coords.heading:null,speed:Number.isFinite(pos.coords.speed)?pos.coords.speed:null,updatedAt:now};updateDriverHomeLocation(loc);void updateDriverHomeNavigationPosition(loc);const activeNavigation=!!(activeTripId&&activeTripData&&['accepted','in_progress'].includes(activeTripData.status));const writeInterval=activeNavigation?2000:4000;if(now-driverLocationWriteAt<writeInterval)return;driverLocationWriteAt=now;try{if(activeNavigation){const tripLocRef=ref(db,`trips/${activeTripId}/driverLocation`);await onDisconnect(tripLocRef).remove();await set(tripLocRef,loc)}else if(c?.status==='libre'){const publicLocRef=ref(db,`driverLocations/${carId}`);await onDisconnect(publicLocRef).remove();await set(publicLocRef,loc)}byId('driverGpsStatus').textContent='GPS activo · última actualización '+new Date(loc.updatedAt).toLocaleTimeString('es-AR')}catch(err){console.error(err);byId('driverGpsStatus').textContent='No se pudo compartir la ubicación. Revisá las reglas de Firebase.'}},err=>{driverWatchId=null;byId('driverGpsStatus').textContent=err.code===1?'Permiso de ubicación denegado. Habilitalo en Ajustes de Android.':'No se pudo obtener GPS. Comprobá que la ubicación del dispositivo esté activada.'},{enableHighAccuracy:true,maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750});

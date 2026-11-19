@@ -218,7 +218,16 @@ test("preview splits a complete route into ordered legs and replaces provider le
   assert.deepEqual(Array.from(normalized.legs[1].geometry.coordinates.at(-1)),[0.02,0.01]);
 });
 
-test("driver GPS uses a one-second high-accuracy watch on Android with fresh fixes", () => {
+test("driver GPS uses a one-second high-accuracy watch and requires precise Android location", () => {
+  assert.match(nativeBridge,/interval:\s*options\.interval\s*\?\?\s*1000/);
+  assert.match(nativeBridge,/minimumUpdateInterval:\s*options\.minimumUpdateInterval\s*\?\?\s*750/);
+  assert.match(nativeBridge,/maximumAge:\s*options\.maximumAge\s*\?\?\s*1000/);
+  assert.match(nativeBridge,/current\.location === "granted"/);
+  assert.doesNotMatch(nativeBridge,/return requested\.location === "granted" \|\| requested\.coarseLocation/);
+  assert.match(html,/requestPreciseLocationPermission\(\)/);
+  assert.match(html,/maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750/);
+  assert.match(html,/activeNavigation\?2000:4000/);
+});
   assert.match(nativeBridge,/interval:\s*options\.interval\s*\?\?\s*1000/);
   assert.match(nativeBridge,/minimumUpdateInterval:\s*options\.minimumUpdateInterval\s*\?\?\s*750/);
   assert.match(nativeBridge,/maximumAge:\s*options\.maximumAge\s*\?\?\s*1000/);
