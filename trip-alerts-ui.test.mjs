@@ -240,6 +240,18 @@ test("active navigation refreshes on meaningful route age/distance or off-route 
   assert.match(html,/const previousRoute=same\?driverHomeNavigation\.route:null/);
 });
 
+test("active navigation gradient has a feathered transition and a soft glow", async () => {
+  const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
+  const sandbox = {window:{DANTE_MAPBOX_TOKEN:"pk.test"},mapboxgl:{supported:()=>true},console,URLSearchParams,fetch};
+  runInNewContext(source,sandbox);
+  const expression=Array.from(sandbox.window.DanteMap.buildProgressGradient(.5));
+  const stops=expression.filter(value=>typeof value==="number");
+  assert.ok(stops.some(value=>Math.abs(value-.482)<.002));
+  assert.ok(stops.some(value=>Math.abs(value-.518)<.002));
+  assert.match(source,/'line-blur':style\.glowBlur\|\|4/);
+  assert.match(source,/progressValue=from\+\(target-from\)\*eased/);
+});
+
 test("preview arrow and moving gradient use equal speed across legs of different lengths", async () => {
   const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
   const sandbox = { window: {}, console, URLSearchParams, fetch };
@@ -328,7 +340,7 @@ test("Mapbox preview creates every leg in one style-ready pass and animates the 
   ];
   map.addRoutePreview("preview-test",legs,{durationMs:3400,weight:6,opacity:.94});
   assert.equal(state.sources.size,2,"both route legs must have independent GeoJSON sources");
-  assert.equal(state.layers.size,4,"each leg must have a visible base line and a gradient line");
+  assert.equal(state.layers.size,6,"each leg must have a visible halo, base line and gradient line");
   assert.ok([...state.layers.keys()].some(id=>id.includes("leg-0-gradient")));
   assert.ok([...state.layers.keys()].some(id=>id.includes("leg-1-gradient")));
   let timestamp=1000;
