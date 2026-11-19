@@ -5,6 +5,7 @@ const destinationDirectory = new URL("../www/", import.meta.url);
 const webAssets = [
   "index.html",
   "role-transition.mjs",
+  "session-logout.mjs",
   "role-runtime.mjs",
   "role-view-access.mjs",
   "role-template-loader.mjs",
