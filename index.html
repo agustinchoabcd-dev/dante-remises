@@ -1287,7 +1287,7 @@ async function initDriverHomeMap(){
    driverHomeMapUserMoved=false;
    driverHomeMapUserMoveUnsub=driverHomeMap.onUserMove?.(()=>{
     driverHomeMapUserMoved=true;
-    byId('driverHomeRecenterButton')?.classList.remove('hidden');
+    if(activeTripId||driverHomePendingTrips.length)byId('driverHomeRecenterButton')?.classList.remove('hidden');
    })||null;
   }
   driverHomeMap.invalidateSize();
