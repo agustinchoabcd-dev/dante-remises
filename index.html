@@ -2600,7 +2600,7 @@ onAuthStateChanged(auth,async user=>{
  byId('staffAccess').classList.toggle('hidden',!!user);byId('staffEntryButton').classList.toggle('hidden',!!user);byId('settingsGearButton').classList.toggle('hidden',!user);
  byId('authStatus').textContent=roleText;byId('centralAuthStatus').textContent=roleText;byId('versionNote').classList.toggle('hidden',!user);byId('appFooter').classList.toggle('hidden',!user);if(user)await welcomeUser(user);else byId('postLoginGreeting').classList.add('hidden');if(authGeneration!==authStateGeneration)return;perf.mark('auth.welcome.done');
  byId('driverControls')?.classList.toggle('hidden',!user||!['driver','admin'].includes(currentRole.role));
- byId('roleSummary')?.textContent=roleText;
+ if(byId('roleSummary'))byId('roleSummary').textContent=roleText;
  
  byId('logoSettingsCard').classList.toggle('hidden',!user||user.uid!==ADMIN_UID);
  byId('centralDescription').textContent=currentRole?.role==='operator'?'Panel de operador: consulta de disponibilidad. No podés modificar estados.': 'Panel de administración total.';
