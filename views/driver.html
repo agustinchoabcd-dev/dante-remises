@@ -4,9 +4,19 @@
     <strong id="driverHomeStatusText">Desconectado</strong>
     <span class="driver-home-status-badge hidden" id="driverHomeStatusBadge"></span>
   </div>
-  <div class="driver-home-map-shell">
+  <div class="driver-home-navigation hidden" id="driverHomeNavigation" aria-live="polite">
+    <div class="driver-home-navigation-stage" id="driverHomeNavigationStage">Hacia el pasajero</div>
+    <strong id="driverHomeNavigationInstruction">Preparando navegación…</strong>
+    <div class="driver-home-navigation-meta" id="driverHomeNavigationMeta"></div>
+  </div>
+  <div class="driver-home-map-shell" id="driverHomeMapShell">
     <div id="driverHomeMap" class="driver-home-map" role="application" aria-label="Mapa de ubicación del chofer"></div>
   </div>
+  <div class="driver-home-active-trip hidden" id="driverHomeActiveTrip"></div>
+  <section class="driver-home-requests hidden" id="driverHomeRequests">
+    <h3>Solicitudes de viaje</h3>
+    <div id="driverHomeTripInbox" class="driver-home-trip-inbox">No hay solicitudes pendientes.</div>
+  </section>
   <button class="driver-connect-button" id="driverHomeConnectButton" type="button">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.1"/><path d="M5.5 5.5 9.8 9.8M18.5 5.5l-4.3 4.3M12 15.1v6.1"/></svg>
     <span>Conectarse</span>
