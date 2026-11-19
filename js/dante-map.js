@@ -132,9 +132,9 @@
       this.removeMarker(id);
       const element = document.createElement('div');
       element.className = 'dante-driver-heading';
-      element.innerHTML = '<svg viewBox="0 0 34 34" width="34" height="34" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
-      Object.assign(element.style, {width:'34px',height:'34px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)',transform:'rotate('+(Number(heading)||0)+'deg)',transformOrigin:'center'});
-      const marker = L.marker([Number(point.lat),Number(point.lon)], {icon:L.divIcon({html:element,className:'dante-driver-heading-icon',iconSize:[34,34],iconAnchor:[17,17]}),interactive:false,keyboard:false}).addTo(this.map);
+      element.innerHTML = '<svg viewBox="0 0 34 34" width="38" height="38" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+      Object.assign(element.style, {width:'38px',height:'38px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)',transform:'rotate('+(Number(heading)||0)+'deg)',transformOrigin:'center'});
+      const marker = L.marker([Number(point.lat),Number(point.lon)], {icon:L.divIcon({html:element,className:'dante-driver-heading-icon',iconSize:[38,38],iconAnchor:[19,19]}),interactive:false,keyboard:false}).addTo(this.map);
       const handle = {
         setLatLng: next => marker.setLatLng([Number(next.lat),Number(next.lon)]),
         setHeading: value => { element.style.transform='rotate('+(Number(value)||0)+'deg)'; },
@@ -302,8 +302,8 @@
       this.removeMarker(id);
       const element = document.createElement('div');
       element.className = 'dante-driver-heading';
-      element.innerHTML = '<svg viewBox="0 0 34 34" width="34" height="34" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
-      Object.assign(element.style,{width:'34px',height:'34px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
+      element.innerHTML = '<svg viewBox="0 0 34 34" width="38" height="38" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+      Object.assign(element.style,{width:'38px',height:'38px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
       const marker = new mapboxgl.Marker({element,anchor:'center',rotationAlignment:'viewport',pitchAlignment:'viewport'})
         .setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
       let currentHeading=Number(heading)||0;
