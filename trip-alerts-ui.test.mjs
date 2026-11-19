@@ -101,3 +101,39 @@ test("native trip alerts can display optional road distances supplied by FCM", a
   assert.match(service, /distanceSuffix\(destinationDistance\)/);
   assert.match(service, /safe\(data\.get\("originDistance"\), 24\)/);
 });
+
+
+test("driver request cards use structured places and separate road-leg distances", async () => {
+  const [geocoding, homeState, html] = await Promise.all([
+    readFile(new URL("./js/dante-geocoding.js", import.meta.url), "utf8"),
+    readFile(new URL("./driver-home-state.mjs", import.meta.url), "utf8"),
+    readFile(new URL("./index.html", import.meta.url), "utf8")
+  ]);
+  assert.match(geocoding, /placeName:String\(properties\.name/);
+  assert.match(geocoding, /async function reverseDetails\(point\)/);
+  assert.match(homeState, /export function formatDriverTripPlace\(point = \{\}\)/);
+  assert.match(homeState, /export function getDriverRequestRouteDistances\(route\)/);
+  assert.match(html, /data-driver-distance-kind="pickup"/);
+  assert.match(html, /data-driver-distance-kind="destination"/);
+  assert.match(html, /getDrivingRoute\(points,\{steps:true\}\)/);
+});
+
+test("Mapbox preview animates two route legs and active navigation follows GPS progress", async () => {
+  const [map, html] = await Promise.all([
+    readFile(new URL("./js/dante-map.js", import.meta.url), "utf8"),
+    readFile(new URL("./index.html", import.meta.url), "utf8")
+  ]);
+  assert.match(map, /addRoutePreview\(id, legs, options = \{\}\)/);
+  assert.match(map, /lineMetrics:true/);
+  assert.match(map, /buildMovingGradient/);
+  assert.match(map, /setRouteProgress\(id,progress\)/);
+  assert.match(map, /fill-rule="evenodd"/);
+  assert.match(html, /addRoutePreview\('driver-home-pending-route',previewLegs/);
+  assert.match(html, /setRouteProgress\?\.\('driver-home-navigation-route',progress\.progress\)/);
+  assert.match(html, /addTripEndpointMarker\(markerId,\{lat,lon\},'pickup','Inicio'\)/);
+  assert.match(html, /'destination','Final'\)/);
+  const navigation = html.match(/function updateDriverHomeNavigationPosition\(loc,skipCamera=false\)\s*\{[\s\S]*?\n\}/)?.[0] || "";
+  assert.doesNotMatch(navigation, /Rutas:|© Geoapify|© Mapbox/);
+  const accept = html.match(/async function handleDriverTripDecision\(id,decision\)\s*\{[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(accept, /removeRoute\('driver-home-pending-route'\)/);
+});
