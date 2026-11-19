@@ -181,8 +181,19 @@
       const events = ['dragstart','zoomstart','rotatestart','pitchstart'];
       const handler = (event,name) => { if(name==='dragstart'||event?.originalEvent)callback(event); };
       const handlers=new Map(events.map(name=>[name,event=>handler(event,name)]));
+      const container=this.map.getContainer();
+      const zoomClick=event=>{if(event.target?.closest?.('.mapboxgl-ctrl-zoom-in,.mapboxgl-ctrl-zoom-out'))callback(event)};
+      const wheel=event=>callback(event),touch=event=>callback(event);
       events.forEach(name=>this.map.on(name,handlers.get(name)));
-      return () => events.forEach(name=>this.map?.off(name,handlers.get(name)));
+      container.addEventListener('click',zoomClick);
+      container.addEventListener('wheel',wheel,{passive:true});
+      container.addEventListener('touchmove',touch,{passive:true});
+      return () => {
+        events.forEach(name=>this.map?.off(name,handlers.get(name)));
+        container.removeEventListener('click',zoomClick);
+        container.removeEventListener('wheel',wheel);
+        container.removeEventListener('touchmove',touch);
+      };
     }
     addHeadingMarker(id, point, heading = 0) {
       this.removeMarker(id);
