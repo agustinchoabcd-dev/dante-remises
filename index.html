@@ -1329,7 +1329,8 @@ function updateDriverHomeLocation(loc){
  const point={lat:Number(loc.lat),lon:Number(loc.lon)};
  if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return;
  const previous=latestDriverLocation;
- let heading=loc.heading!==null&&loc.heading!==undefined&&Number.isFinite(Number(loc.heading))?Number(loc.heading):null;
+ const speed=loc.speed!==null&&loc.speed!==undefined?Number(loc.speed):null;
+ let heading=loc.heading!==null&&loc.heading!==undefined&&Number.isFinite(Number(loc.heading))&&(!Number.isFinite(speed)||speed>.5)?Number(loc.heading):null;
  if(heading===null&&previous&&driverHomeDistanceMeters(previous,point)>6)heading=driverHomeBearingBetween(previous,point);
  if(heading===null)heading=driverHomeLastHeading;
  if(heading!==null)driverHomeLastHeading=heading;
