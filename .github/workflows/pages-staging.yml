@@ -33,7 +33,7 @@ jobs:
         run: npm install --include=optional
 
       - name: Inject Mapbox and Geoapify public keys for the migration preview
-        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype' || github.ref_name == 'role-modularization' || github.head_ref == 'role-modularization' || github.ref_name == 'feat/driver-requests-navigation' || github.head_ref == 'feat/driver-requests-navigation'
+        if: github.ref_name == 'mapbox-migration-prototype' || github.head_ref == 'mapbox-migration-prototype' || github.ref_name == 'role-modularization' || github.head_ref == 'role-modularization' || github.ref_name == 'feat/driver-requests-navigation' || github.head_ref == 'feat/driver-requests-navigation' || github.ref_name == 'dante-test' || github.head_ref == 'dante-test'
         env:
           MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
           GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
@@ -48,6 +48,13 @@ jobs:
           writeFileSync('js/geocoding-config.js', 'window.DANTE_GEOAPIFY_KEY = ' + JSON.stringify(geoapify) + ';\n', {encoding:'utf8'});
           console.log('Mapbox and Geoapify public keys injected into this build only.');
           NODE
+
+      - name: Validate map modules and driver UI tests
+        run: |
+          node --check js/dante-map.js
+          node --check js/dante-geocoding.js
+          node --check driver-home-state.mjs
+          node --test driver-home-state.test.mjs trip-alerts-ui.test.mjs
 
       - name: Prepare static site with all web assets
         run: |
