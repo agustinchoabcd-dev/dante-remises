@@ -425,8 +425,7 @@ body.dante-role-transition #imageLightbox{visibility:hidden!important;pointer-ev
 .driver-home-request-card strong{display:block}
 .driver-home-request-card .hint{margin-top:3px}
 .driver-home-request-card .actions{margin-top:10px}
-.driver-home-map-shell{cursor:zoom-in;transition:border-radius .28s ease,transform .28s ease}
-.driver-home-map-shell:active{transform:scale(.995)}
+.driver-home-map-shell{cursor:zoom-in;transition:border-radius .28s ease}
 .driver-home-recenter{position:absolute;top:82px;right:12px;z-index:1280;width:42px;height:42px;display:grid;place-items:center;padding:0;border:1px solid rgba(22,132,71,.45);border-radius:13px;background:var(--card);color:var(--ink);box-shadow:0 3px 12px rgba(0,0,0,.28);backdrop-filter:blur(12px)}
 .driver-home-recenter svg,.driver-home-center-location svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .driver-home-center-location{position:absolute;top:132px;right:12px;z-index:1279;width:42px;height:42px;display:grid;place-items:center;padding:0;border:1px solid rgba(22,132,71,.45);border-radius:13px;background:var(--card);color:var(--ink);box-shadow:0 3px 12px rgba(0,0,0,.28)}
@@ -1729,55 +1728,41 @@ function refitDriverHomeRoute(){
  }
 }
 function setDriverHomeFullscreen(expanded){
- const mapNode=byId('driverHomeMap');
- const wasExpanded=document.body.classList.contains('driver-home-map-active');
- if(expanded){
-  if(!wasExpanded){
-   const rect=mapNode?.getBoundingClientRect();
-   document.body.classList.add('driver-home-map-active');
-   const reduceMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches===true;
-   if(mapNode&&rect?.width&&rect?.height&&window.innerWidth&&window.innerHeight&&!reduceMotion){
-    if(driverHomeMapTransitionHandler){mapNode.removeEventListener('transitionend',driverHomeMapTransitionHandler);driverHomeMapTransitionHandler=null}
-    mapNode.style.transition='none';
-    mapNode.style.transformOrigin='top left';
-    mapNode.style.transform='translate('+rect.left+'px,'+rect.top+'px) scale('+(rect.width/window.innerWidth)+','+(rect.height/window.innerHeight)+')';
-    mapNode.style.borderRadius='16px';
-    mapNode.getBoundingClientRect();
-    const finish=event=>{
-     if(event.propertyName!=='transform')return;
-     mapNode.removeEventListener('transitionend',finish);
-     driverHomeMapTransitionHandler=null;
-     mapNode.style.transition='';
-     mapNode.style.transform='';
+ const mapNode=byId('driverHofunction setDriverHomeFullscreen(expanded){
+  const mapNode=byId('driverHomeMap');
+  const wasExpanded=document.body.classList.contains('driver-home-map-active');
+  if(expanded){
+   if(!wasExpanded){
+    document.body.classList.add('driver-home-map-active');
+    /* No escalar ni trasladar el nodo WebGL: Android WebView puede recomponer el canvas en negro durante transforms CSS. */
+    if(mapNode){
+     mapNode.style.transition='none';
+     mapNode.style.transform='none';
      mapNode.style.transformOrigin='';
-     mapNode.style.borderRadius='';
+     mapNode.style.borderRadius='0';
+     requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      mapNode.style.transition='';
+      driverHomeMap?.invalidateSize();
+      window.setTimeout(refitDriverHomeRoute,180);
+     }));
+    }else requestAnimationFrame(()=>driverHomeMap?.invalidateSize());
+   }
+  }else{
+   document.body.classList.remove('driver-home-map-active');
+   if(mapNode){
+    mapNode.style.transition='none';
+    mapNode.style.transform='none';
+    mapNode.style.transformOrigin='';
+    mapNode.style.borderRadius='';
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+     mapNode.style.transition='';
      driverHomeMap?.invalidateSize();
      window.setTimeout(refitDriverHomeRoute,180);
-    };
-    driverHomeMapTransitionHandler=finish;
-    mapNode.addEventListener('transitionend',finish);
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-     mapNode.style.transition='transform .32s cubic-bezier(.2,.8,.2,1),border-radius .32s ease';
-     mapNode.style.transform='translate(0px,0px) scale(1,1)';
-     mapNode.style.borderRadius='0';
     }));
-   }else requestAnimationFrame(()=>driverHomeMap?.invalidateSize());
+   }else requestAnimationFrame(()=>{driverHomeMap?.invalidateSize();window.setTimeout(refitDriverHomeRoute,180)});
   }
- }else{
-  document.body.classList.remove('driver-home-map-active');
-  if(mapNode){
-   if(driverHomeMapTransitionHandler){mapNode.removeEventListener('transitionend',driverHomeMapTransitionHandler);driverHomeMapTransitionHandler=null}
-   mapNode.style.transition='';
-   mapNode.style.transform='';
-   mapNode.style.transformOrigin='';
-   mapNode.style.borderRadius='';
-  }
-  requestAnimationFrame(()=>{driverHomeMap?.invalidateSize();window.setTimeout(refitDriverHomeRoute,180)});
- }
- byId('driverHomeMapHomeButton')?.classList.toggle('hidden',!expanded);
-}
-function setDriverCurtainExpanded(expanded){
- driverHomeCurtainExpanded=!!expanded;
+  byId('driverHomeMapHomeButton')?.classList.toggle('hidden',!expanded);
+}!!expanded;
  const sheet=byId('driverHomeCurtain');
  if(sheet){sheet.classList.toggle('expanded',driverHomeCurtainExpanded);sheet.style.height='';sheet.classList.remove('dragging')}
  const button=byId('driverHomeDisconnectButton');
@@ -4202,7 +4187,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
  const parallaxAvailable=()=>state.master&&state.parallax&&!(reducedMotion&&reducedMotion.matches);
  function refreshSurfaces(){
-  surfaces=Array.from(document.querySelectorAll(surfaceSelector)).filter(surface=>!surface.matches('.real-map,.demo-map')&&!surface.querySelector('.real-map,.demo-map'));
+  surfaces=Array.from(document.querySelectorAll(surfaceSelector)).filter(surface=>!(document.body.classList.contains('driver-home-map-active')&&surface.matches('#driverHomeMap,.driver-home-map-shell')));
   surfaceRects.length=surfaces.length;
   for(const surface of surfaces)surface.classList.add('dante-parallax-surface');
   rectsDirty=true;
@@ -4314,8 +4299,8 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  function findTouch(list){for(let i=0;i<list.length;i++)if(list[i].identifier===touchIdentifier)return list[i];return null}
  function onTouchStart(event){
   if(!parallaxAvailable()||document.hidden||touchIdentifier!==null||!event.changedTouches.length)return;
-  /* Mapbox/Leaflet renderizan en capas GPU propias; no aplicarles transformaciones 3D táctiles ni a sus tarjetas contenedoras. */
-  if(event.target?.closest?.('.real-map,.demo-map,.mapboxgl-canvas-container,.mapboxgl-canvas,.leaflet-container,.mapboxgl-ctrl'))return;
+  /* El mapa sólo queda fuera del Parallax mientras ocupa la pantalla completa. En Inicio conserva el efecto táctil. */
+  if(document.body.classList.contains('driver-home-map-active')&&event.target?.closest?.('#driverHomeMap,.driver-home-map-shell'))return;
   refreshSurfaces();
   const touch=event.changedTouches[0];touchIdentifier=touch.identifier;lastTouch={clientX:touch.clientX,clientY:touch.clientY};
   applyTouchFrame(touch);
