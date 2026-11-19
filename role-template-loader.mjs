@@ -1,5 +1,6 @@
 const ROLE_TEMPLATE_URLS = Object.freeze({
-  passenger: "./views/passenger.html"
+  passenger: "./views/passenger.html",
+  driver: "./views/driver.html"
 });
 
 /**
