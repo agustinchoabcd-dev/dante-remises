@@ -1,3 +1,29 @@
+<section id="inicio" class="hidden driver-home">
+  <div class="driver-home-status" id="driverHomeStatus" data-tone="red" aria-live="polite">
+    <span class="driver-home-status-dot" id="driverHomeStatusDot" data-tone="red" aria-hidden="true"></span>
+    <strong id="driverHomeStatusText">Desconectado</strong>
+    <span class="driver-home-status-badge hidden" id="driverHomeStatusBadge"></span>
+  </div>
+  <div class="driver-home-map-shell">
+    <div id="driverHomeMap" class="driver-home-map" role="application" aria-label="Mapa de ubicación del chofer"></div>
+  </div>
+  <button class="driver-connect-button" id="driverHomeConnectButton" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="3.1"/><path d="M5.5 5.5 9.8 9.8M18.5 5.5l-4.3 4.3M12 15.1v6.1"/></svg>
+    <span>Conectarse</span>
+  </button>
+  <button class="driver-home-map-home hidden" id="driverHomeMapHomeButton" type="button" aria-label="Volver a Inicio" title="Volver a Inicio">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
+  </button>
+  <div class="driver-home-curtain hidden" id="driverHomeCurtain">
+    <div class="driver-home-curtain-grip" id="driverHomeCurtainGrip" role="button" tabindex="0" aria-label="Deslizar para mostrar desconexión" aria-expanded="false">
+      <span class="driver-home-curtain-handle" aria-hidden="true"></span>
+      <strong id="driverHomeConnectedMessage">Estás conectado</strong>
+    </div>
+    <div class="driver-home-curtain-actions">
+      <button class="danger driver-home-disconnect" id="driverHomeDisconnectButton" type="button">Desconectarse</button>
+    </div>
+  </div>
+</section>
 <section id="chofer" class="hidden">
 <h2>Mi espacio de personal</h2><p class="muted">Gestioná tu estado. Agustín también puede administrar los estados de todos los coches desde la Central.</p>
 <div class="card panel" id="driverControls" style="margin-top:12px">
