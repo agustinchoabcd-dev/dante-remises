@@ -1355,7 +1355,7 @@ async function disconnectDriverHome(){
 bindRoleDom('driverHomeConnectButton','click',connectDriverHome);
 bindRoleDom('driverHomeMapHomeButton','click',()=>setDriverHomeFullscreen(false));
 bindRoleDom('driverHomeDisconnectButton','click',disconnectDriverHome);
-bindRoleDom('driverHomeCurtainGrip','click',()=>setDriverCurtainExpanded(!driverHomeCurtainExpanded));
+bindRoleDom('driverHomeCurtainGrip','keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();setDriverCurtainExpanded(!driverHomeCurtainExpanded)}});
 bindRoleDom('driverHomeCurtainGrip','pointerdown',event=>{
  if(event.pointerType==='mouse'&&event.button!==0)return;
  const sheet=byId('driverHomeCurtain');
