@@ -36,6 +36,48 @@
     return 6371008.8 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
   }
 
+  function splitRouteGeometryByWaypoints(geometry, waypoints) {
+    const coordinates = geoCoordinates(geometry);
+    if (!Array.isArray(waypoints) || waypoints.length < 2 || coordinates.length < waypoints.length) return [];
+    const boundaries = [0];
+    let startIndex = 0;
+    for (let waypointIndex = 1; waypointIndex < waypoints.length - 1; waypointIndex++) {
+      const remainingLegs = waypoints.length - 1 - waypointIndex;
+      const minIndex = startIndex + 1;
+      const maxIndex = coordinates.length - 1 - remainingLegs;
+      if (minIndex > maxIndex) return [];
+      const waypoint = [Number(waypoints[waypointIndex].lon), Number(waypoints[waypointIndex].lat)];
+      let nearestIndex = minIndex, nearestDistance = Infinity;
+      for (let index = minIndex; index <= maxIndex; index++) {
+        const distance = coordinateDistanceMeters(coordinates[index], waypoint);
+        if (distance < nearestDistance) { nearestDistance = distance; nearestIndex = index; }
+      }
+      boundaries.push(nearestIndex);
+      startIndex = nearestIndex;
+    }
+    boundaries.push(coordinates.length - 1);
+    const legs = [];
+    for (let index = 0; index < boundaries.length - 1; index++) {
+      const line = coordinates.slice(boundaries[index], boundaries[index + 1] + 1);
+      if (line.length < 2) return [];
+      legs.push({type:'LineString',coordinates:line});
+    }
+    return legs;
+  }
+
+  function normalizeRouteLegs(route, waypoints) {
+    const expected = Math.max(0,(waypoints || []).length - 1);
+    if (!expected) return route;
+    const fallback = splitRouteGeometryByWaypoints(route?.geometry,waypoints);
+    const source = Array.isArray(route?.legs) ? route.legs : [];
+    const legs = Array.from({length:expected},(_,index) => {
+      const leg = source[index] || {};
+      const hasGeometry = geoCoordinates(leg.geometry).length > 1;
+      return {...leg,geometry:hasGeometry?leg.geometry:(fallback[index] || null)};
+    });
+    return {...route,legs};
+  }
+
   function routePositionAt(geometry, progress) {
     const coordinates = geometry?.type === 'MultiLineString'
       ? geometry.coordinates.flat()
@@ -87,12 +129,17 @@
   }
 
   function buildMovingGradient(progress, baseColor, highlightColor) {
-    const start = Math.max(0.001, Math.min(0.72, Number(progress) * 0.72 + 0.001));
-    const middle = Math.min(0.999, start + 0.14);
-    const end = Math.min(1, start + 0.28);
-    const expression = ['interpolate', ['linear'], ['line-progress'], 0, baseColor, start, baseColor, middle, highlightColor, end, baseColor];
-    if (end < 1) expression.push(1, baseColor);
-    return expression;
+    const value = Math.max(0,Math.min(1,Number(progress)||0));
+    const halfWidth = 0.09;
+    const start = Math.max(0,value-halfWidth);
+    const end = Math.min(1,value+halfWidth);
+    if (value <= halfWidth) {
+      return ['interpolate',['linear'],['line-progress'],0,highlightColor,end,baseColor,1,baseColor];
+    }
+    if (value >= 1-halfWidth) {
+      return ['interpolate',['linear'],['line-progress'],0,baseColor,start,baseColor,1,highlightColor];
+    }
+    return ['interpolate',['linear'],['line-progress'],0,baseColor,start,baseColor,value,highlightColor,end,baseColor,1,baseColor];
   }
 
   function interpolateHexColor(fromColor,toColor,amount) {
@@ -462,8 +509,7 @@
       if (!reduceMotion) {
         const element = document.createElement('div');
         element.className = 'dante-driver-preview-arrow';
-        element.innerHTML = '<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><path d="M20 2.5 35 36 20 27 5 36Z M20 12 24 29 20 25.5 16 29Z" fill="#facc15" fill-rule="evenodd" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg>';
-        const arrowPath = element.querySelector('path');
+        element.innerHTML = '<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><path d="M20 2.5 35 36 20 27 5 36Z M20 12 24 29 20 25.5 16 29Z" fill="#198754" fill-rule="evenodd"/><path d="M20 2.5 35 36 20 27 5 36Z" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg>';
         Object.assign(element.style,{width:'40px',height:'40px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
         const first = routePositionAt(validLegs[0].geometry,0);
         if (first) {
@@ -486,7 +532,6 @@
           const progress = Math.max(0,Math.min(1,(now-startedAt)/duration));
           const colors = palette[currentLeg] || palette[1];
           handles[currentLeg]?.setGradient(buildMovingGradient(progress,colors.base,colors.highlight));
-          arrowPath?.setAttribute('fill',movingGradientColorAt(progress,colors.base,colors.highlight));
           const position = routePositionAt(validLegs[currentLeg].geometry,progress);
           if (position && arrowMarker) {
             arrowMarker.setLngLat(position.coordinates);
@@ -649,13 +694,13 @@
       return {distance:leg.distance, duration:leg.time, geometry:line.length>1?{type:'LineString',coordinates:line}:null, steps};
     });
     if (coordinates.length < 2) throw new Error('Geoapify devolvió una geometría de ruta incompleta.');
-    return {
+    return normalizeRouteLegs({
       geometry: {type:'LineString', coordinates},
       distance: properties.distance,
       duration: properties.time,
       legs,
       provider: 'Geoapify'
-    };
+    },points);
   }
 
   async function getMapboxDrivingRoute(points, options = {}) {
@@ -680,7 +725,7 @@
       });
       return {...leg,geometry:coordinates.length>1?{type:'LineString',coordinates}:null};
     });
-    return {...route,legs,provider:'Mapbox'};
+    return normalizeRouteLegs({...route,legs,provider:'Mapbox'},points);
   }
 
   async function getDrivingRoute(points, options = {}) {
@@ -710,6 +755,8 @@
   window.DanteMap = Object.freeze({
     create,
     getDrivingRoute,
+    normalizeRouteLegs,
+    buildMovingGradient,
     get backendPreference() { return MAPBOX_TOKEN && window.mapboxgl && mapboxgl.supported() ? 'mapbox' : 'leaflet'; },
     get tokenConfigured() { return !!MAPBOX_TOKEN; },
     get routingProvider() { return GEOAPIFY_KEY ? 'geoapify' : (MAPBOX_TOKEN ? 'mapbox' : 'none'); }

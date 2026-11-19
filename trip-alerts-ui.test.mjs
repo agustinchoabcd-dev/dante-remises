@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { runInNewContext } from "node:vm";
 
 const [html, nativeBridge, webBridge] = await Promise.all([
   readFile(new URL("./index.html", import.meta.url), "utf8"),
@@ -181,4 +182,37 @@ test("Mapbox preview animates all route legs and active navigation follows GPS p
   assert.doesNotMatch(navigation, /Rutas:|© Geoapify|© Mapbox/);
   const accept = html.match(/async function handleDriverTripDecision\(id,decision\)\s*\{[\s\S]*?\n\}/)?.[0] || "";
   assert.match(accept, /removeRoute\('driver-home-pending-route'\)/);
+});
+
+
+test("preview reconstructs a missing destination leg from the complete route geometry", async () => {
+  const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
+  const sandbox = { window: {}, console, URLSearchParams, fetch };
+  runInNewContext(source, sandbox);
+  const points = [{lat:0,lon:0},{lat:0,lon:0.01},{lat:0.01,lon:0.02}];
+  const route = {
+    geometry: {type:"LineString",coordinates:[[0,0],[0.005,0],[0.01,0],[0.015,0.005],[0.02,0.01]]},
+    legs: [{geometry:{type:"LineString",coordinates:[[0,0],[0.005,0],[0.01,0]]}}, {geometry:null}]
+  };
+  const normalized = sandbox.window.DanteMap.normalizeRouteLegs(route,points);
+  assert.equal(normalized.legs.length,2);
+  assert.ok(normalized.legs[0].geometry.coordinates.length>=2);
+  assert.ok(normalized.legs[1].geometry.coordinates.length>=2);
+  assert.deepEqual(Array.from(normalized.legs[1].geometry.coordinates[0]),[0.01,0]);
+  assert.deepEqual(Array.from(normalized.legs[1].geometry.coordinates.at(-1)),[0.02,0.01]);
+});
+
+test("preview gradient highlight is centered on arrow progress and arrow remains green with a transparent window", async () => {
+  const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
+  const sandbox = { window: {}, console, URLSearchParams, fetch };
+  runInNewContext(source, sandbox);
+  const gradient = Array.from(sandbox.window.DanteMap.buildMovingGradient(0.5,"#14532d","#4ade80"));
+  assert.equal(gradient[5],0.41);
+  assert.equal(gradient[7],0.5);
+  assert.equal(gradient[8],"#4ade80");
+  assert.equal(gradient[9],0.59);
+  assert.match(source,/fill="#198754" fill-rule="evenodd"/);
+  assert.match(source,/stroke="#fff" stroke-width="2\\.4"/);
+  assert.doesNotMatch(source,/arrowPath\\?\\.setAttribute\\('fill'/);
+  assert.match(source,/handles\\[currentLeg\\]\\?\\.setGradient\\(buildMovingGradient\\(progress/);
 });

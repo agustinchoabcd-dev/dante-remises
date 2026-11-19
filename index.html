@@ -1423,9 +1423,10 @@ async function ensureDriverHomePendingRoute(force=false){
   const routeDistances=getDriverRequestRouteDistances(route);
   updateDriverHomeRequestDistanceLabels(trip.tripId,routeDistances.pickupMeters===null?'Distancia no disponible':formatDriverCardDistance(routeDistances.pickupMeters),routeDistances.destinationMeters===null?'Distancia no disponible':formatDriverCardDistance(routeDistances.destinationMeters));
   driverHomePendingRoute=route;driverHomePendingRouteLoading=false;driverHomePendingRouteFailedAttempts=0;
-  const previewLegs=(route.legs||[]).filter(leg=>leg?.geometry?.coordinates?.length>1);
-  if(driverHomeMap.addRoutePreview&&previewLegs.length>=2)driverHomeMap.addRoutePreview('driver-home-pending-route',previewLegs,{durationMs:3400,pauseMs:240,weight:6,opacity:.94});
-  else driverHomeMap.addRoute('driver-home-pending-route',route.geometry,{color:'#168447',weight:6,opacity:.9});
+  const previewLegs=route.legs||[];
+  if(previewLegs.length!==points.length-1||previewLegs.some(leg=>!leg?.geometry?.coordinates||leg.geometry.coordinates.length<2))throw new Error('La ruta previa no contiene todos los tramos; se evita mostrar un recorrido parcial o una animación incompleta.');
+  if(typeof driverHomeMap.addRoutePreview==='function')driverHomeMap.addRoutePreview('driver-home-pending-route',previewLegs,{durationMs:3400,pauseMs:240,weight:6,opacity:.94});
+  else throw new Error('El mapa activo no admite la animación de vista previa.');
   if(!driverHomeMapUserMoved)driverHomeMap.fitGeometry(route.geometry,driverHomeFitPadding(),points);
   return true;
  }catch(error){
