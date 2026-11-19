@@ -247,3 +247,127 @@ test("preview gradient highlight is centered on arrow progress and arrow remains
   assert.equal(source.includes("arrowPath?.setAttribute('fill'"),false);
   assert.ok(source.includes("handles[currentLeg]?.setGradient(buildMovingGradient(progress"));
 });
+
+
+test("Mapbox preview creates every leg in one style-ready pass and animates the gradient layers", async () => {
+  const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
+  const state = {sources:new Map(),layers:new Map(),paintUpdates:[],listeners:new Map()};
+  class FakeMap {
+    constructor(){this.styleLoaded=true;}
+    addControl(){}
+    isStyleLoaded(){return this.styleLoaded;}
+    addSource(id,source){state.sources.set(id,source);this.styleLoaded=false;}
+    addLayer(layer){
+      state.layers.set(layer.id,{...layer,paint:{...layer.paint}});
+      this.styleLoaded=false;
+    }
+    getSource(id){return state.sources.get(id);}
+    getLayer(id){return state.layers.get(id);}
+    setPaintProperty(id,name,value){
+      const layer=state.layers.get(id);
+      if(!layer)throw new Error("missing layer "+id);
+      layer.paint[name]=value;
+      state.paintUpdates.push({id,name,value});
+    }
+    removeLayer(id){state.layers.delete(id);}
+    removeSource(id){state.sources.delete(id);}
+    on(name,callback){state.listeners.set(name,callback);}
+    off(name,callback){if(state.listeners.get(name)===callback)state.listeners.delete(name);}
+    once(name,callback){const list=state.listeners.get(name)||[];state.listeners.set(name,[...list,callback]);}
+    getBearing(){return 0;}
+  }
+  class FakeMarker {
+    setLngLat(value){this.position=value;return this;}
+    addTo(){return this;}
+    setRotation(value){this.rotation=value;return this;}
+    remove(){}
+  }
+  const mapboxgl={supported:()=>true,Map:FakeMap,Marker:FakeMarker,NavigationControl:class{}};
+  const windowRef={
+    DANTE_MAPBOX_TOKEN:"pk.test-public-token",
+    mapboxgl,
+    matchMedia:()=>({matches:false}),
+    addEventListener(){},
+    removeEventListener(){},
+    visualViewport:{addEventListener(){},removeEventListener(){}}
+  };
+  const frames=[];
+  const sandbox={
+    window:windowRef,mapboxgl,console,URLSearchParams,fetch,
+    document:{createElement:()=>({style:{}})},
+    requestAnimationFrame:callback=>{frames.push(callback);return frames.length;},
+    cancelAnimationFrame(){}
+  };
+  runInNewContext(source,sandbox);
+  const map=sandbox.window.DanteMap.create({},[-32.07,-64.53],13,"");
+  const legs=[
+    {geometry:{type:"LineString",coordinates:[[-64.53,-32.07],[-64.52,-32.07],[-64.51,-32.07]]}},
+    {geometry:{type:"LineString",coordinates:[[-64.51,-32.07],[-64.50,-32.06],[-64.49,-32.05]]}}
+  ];
+  map.addRoutePreview("preview-test",legs,{durationMs:3400,weight:6,opacity:.94});
+  assert.equal(state.sources.size,2,"both route legs must have independent GeoJSON sources");
+  assert.equal(state.layers.size,4,"each leg must have a visible base line and a gradient line");
+  assert.ok([...state.layers.keys()].some(id=>id.includes("leg-0-gradient")));
+  assert.ok([...state.layers.keys()].some(id=>id.includes("leg-1-gradient")));
+  let frame=frames.shift();frame(1000);
+  frame=frames.shift();frame(1400);
+  assert.ok(state.paintUpdates.some(update=>update.id.includes("leg-0-gradient")&&update.name==="line-gradient"));
+  frame=frames.shift();frame(4400);
+  frame=frames.shift();frame(4640);
+  frame=frames.shift();frame(4680);
+  assert.ok(state.paintUpdates.some(update=>update.id.includes("leg-1-gradient")&&update.name==="line-gradient"));
+});
+
+test("Mapbox preview keeps route legs visible and animates a color fallback if line-gradient is rejected", async () => {
+  const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
+  const state = {sources:new Map(),layers:new Map(),paintUpdates:[]};
+  class FakeMap {
+    constructor(){this.styleLoaded=true;}
+    addControl(){}
+    isStyleLoaded(){return this.styleLoaded;}
+    addSource(id,source){state.sources.set(id,source);this.styleLoaded=false;}
+    addLayer(layer){
+      if(layer.paint?.["line-gradient"])throw new Error("line-gradient unavailable");
+      state.layers.set(layer.id,{...layer,paint:{...layer.paint}});
+      this.styleLoaded=false;
+    }
+    getSource(id){return state.sources.get(id);}
+    getLayer(id){return state.layers.get(id);}
+    setPaintProperty(id,name,value){
+      const layer=state.layers.get(id);
+      if(!layer)throw new Error("missing layer "+id);
+      layer.paint[name]=value;
+      state.paintUpdates.push({id,name,value});
+    }
+    removeLayer(id){state.layers.delete(id);}
+    removeSource(id){state.sources.delete(id);}
+    on(){}
+    off(){}
+    once(){}
+    getBearing(){return 0;}
+  }
+  class FakeMarker {
+    setLngLat(value){this.position=value;return this;}
+    addTo(){return this;}
+    setRotation(value){this.rotation=value;return this;}
+    remove(){}
+  }
+  const mapboxgl={supported:()=>true,Map:FakeMap,Marker:FakeMarker,NavigationControl:class{}};
+  const sandbox={
+    window:{DANTE_MAPBOX_TOKEN:"pk.test-public-token",mapboxgl,matchMedia:()=>({matches:false}),addEventListener(){},removeEventListener(){},visualViewport:{addEventListener(){},removeEventListener(){}}},
+    mapboxgl,console,URLSearchParams,fetch,
+    document:{createElement:()=>({style:{}})},
+    requestAnimationFrame:callback=>{state.nextFrame=callback;return 1;},
+    cancelAnimationFrame(){}
+  };
+  runInNewContext(source,sandbox);
+  const map=sandbox.window.DanteMap.create({},[-32.07,-64.53],13,"");
+  map.addRoutePreview("preview-fallback",[
+    {geometry:{type:"LineString",coordinates:[[-64.53,-32.07],[-64.52,-32.07]]}},
+    {geometry:{type:"LineString",coordinates:[[-64.52,-32.07],[-64.51,-32.06]]}}
+  ],{durationMs:3400,weight:6});
+  assert.equal(state.layers.size,2,"base lines must survive a rejected gradient layer");
+  state.nextFrame(1000);
+  state.nextFrame(1400);
+  assert.ok(state.paintUpdates.some(update=>update.name==="line-color"),"fallback line color must animate");
+});

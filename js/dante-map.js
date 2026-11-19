@@ -510,20 +510,90 @@
       if (!validLegs.length) return null;
       const palette = [
         {base:'#facc15',highlight:'#ef4444'},
-        {base:'#14532d',highlight:'#4ade80'}
+        {base:'#16a34a',highlight:'#4ade80'}
       ];
-      const childIds = validLegs.map((leg,index) => id + '-leg-' + index);
-      const handles = validLegs.map((leg,index) => {
+      const routeLayers = validLegs.map((leg,index) => {
         const colors = palette[index] || palette[1];
-        return this.addRoute(childIds[index],leg.geometry,{
-          gradient:['interpolate',['linear'],['line-progress'],0,colors.base,1,colors.highlight],
-          weight:options.weight || 6,
-          opacity:options.opacity ?? .94
-        });
+        const sourceId = 'dante-route-' + String(id).replace(/[^a-z0-9_-]/gi, '-') + '-leg-' + index;
+        const baseLayerId = sourceId + '-base';
+        const gradientLayerId = sourceId + '-gradient';
+        let currentGradient = buildMovingGradient(0,colors.base,colors.highlight);
+        let gradientLayerAdded = false;
+        return {
+          sourceId,baseLayerId,gradientLayerId,colors,leg,
+          add:() => {
+            this.map.addSource(sourceId,{
+              type:'geojson',
+              lineMetrics:true,
+              data:{type:'Feature',geometry:leg.geometry,properties:{}}
+            });
+            // Keep a visible route underneath the animated layer. If a WebView
+            // rejects line-gradient, the route itself must remain visible.
+            this.map.addLayer({
+              id:baseLayerId,type:'line',source:sourceId,
+              layout:{'line-cap':'round','line-join':'round'},
+              paint:{'line-color':colors.base,'line-width':(Number(options.weight)||6)+3,'line-opacity':.3}
+            });
+            try {
+              this.map.addLayer({
+                id:gradientLayerId,type:'line',source:sourceId,
+                layout:{'line-cap':'round','line-join':'round'},
+                paint:{'line-gradient':currentGradient,'line-width':options.weight||6,'line-opacity':options.opacity??.98}
+              });
+              gradientLayerAdded = true;
+            } catch (error) {
+              console.warn('Mapbox no pudo crear la capa de gradiente; se conserva la trazada base:',error);
+            }
+          },
+          setGradient:(expression,fallbackColor) => {
+            currentGradient = expression;
+            if (!this.map?.getLayer(baseLayerId)) return;
+            if (gradientLayerAdded && this.map.getLayer(gradientLayerId)) {
+              try {
+                this.map.setPaintProperty(gradientLayerId,'line-gradient',expression);
+                return;
+              } catch (error) {
+                console.warn('No se pudo actualizar el gradiente de la ruta; se usa el color animado de respaldo:',error);
+                gradientLayerAdded = false;
+              }
+            }
+            if (fallbackColor) {
+              try { this.map.setPaintProperty(baseLayerId,'line-color',fallbackColor); }
+              catch (error) { console.warn('No se pudo actualizar el color de respaldo de la ruta:',error); }
+            }
+          },
+          remove:() => {
+            if (!this.map) return;
+            if (this.map.getLayer(gradientLayerId)) this.map.removeLayer(gradientLayerId);
+            if (this.map.getLayer(baseLayerId)) this.map.removeLayer(baseLayerId);
+            if (this.map.getSource(sourceId)) this.map.removeSource(sourceId);
+          }
+        };
       });
+      let cancelled = false, frame = 0;
+      const addLayers = () => {
+        if (cancelled || !this.map) return;
+        // isStyleLoaded() can become false after adding a source/layer. Check it
+        // once, then add every leg in the same style-ready transaction; checking
+        // between legs can strand leg 2 waiting for the one-shot initial "load".
+        if (!this.map.isStyleLoaded()) {
+          this.map.once('idle',addLayers);
+          return;
+        }
+        try {
+          routeLayers.forEach(routeLayer => routeLayer.add());
+        } catch (error) {
+          console.warn('No se pudieron crear todas las capas de la ruta previa:',error);
+          routeLayers.forEach(routeLayer => {
+            try { routeLayer.remove(); } catch {}
+          });
+        }
+      };
+      if (this.map.isStyleLoaded()) addLayers();
+      else this.map.once('idle',addLayers);
+
       const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
-      let arrowMarker = null, currentBearing = 0, frame = 0, cancelled = false;
-      let currentLeg = 0, nextLeg = 0, startedAt = 0, pausedUntil = 0, lastFrameAt = 0;
+      let arrowMarker = null, currentBearing = 0, currentLeg = 0, nextLeg = 0, startedAt = 0, pausedUntil = 0, lastFrameAt = 0;
       const updateRotation = () => arrowMarker?.setRotation(currentBearing - (this.map?.getBearing?.() || 0));
       if (!reduceMotion) {
         const element = document.createElement('div');
@@ -554,7 +624,10 @@
           const duration = legDurations[currentLeg] || referenceDuration;
           const progress = Math.max(0,Math.min(1,(now-startedAt)/duration));
           const colors = palette[currentLeg] || palette[1];
-          handles[currentLeg]?.setGradient(buildMovingGradient(progress,colors.base,colors.highlight));
+          routeLayers[currentLeg]?.setGradient(
+            buildMovingGradient(progress,colors.base,colors.highlight),
+            movingGradientColorAt(progress,colors.base,colors.highlight)
+          );
           const position = routePositionAt(validLegs[currentLeg].geometry,progress);
           if (position && arrowMarker) {
             arrowMarker.setLngLat(position.coordinates);
@@ -573,10 +646,11 @@
       const handle = {
         remove:() => {
           cancelled = true;
+          this.map?.off('idle',addLayers);
           if (frame) cancelAnimationFrame(frame);
           this.map?.off('rotate',updateRotation);
           arrowMarker?.remove();
-          childIds.forEach(childId => this.removeRoute(childId));
+          routeLayers.forEach(routeLayer => routeLayer.remove());
         }
       };
       this.routes.set(id,handle);
