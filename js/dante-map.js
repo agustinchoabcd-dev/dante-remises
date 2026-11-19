@@ -586,14 +586,24 @@
       coordinates.push(...(coordinates.length ? line.slice(1) : line));
     });
     let routeLegLines = legLines;
-    if (points.length === 3 && legLines.length === 1 && legLines[0].length > 2) {
-      const line = legLines[0], pickup = points[1];
-      let nearestIndex = 0, nearestDistance = Infinity;
-      line.forEach((coordinate,index) => {
-        const distance = coordinateDistanceMeters(coordinate,[Number(pickup.lon),Number(pickup.lat)]);
-        if (distance < nearestDistance) { nearestDistance = distance; nearestIndex = index; }
-      });
-      routeLegLines = [line.slice(0,nearestIndex+1),line.slice(nearestIndex)];
+    if (points.length > 2 && legLines.length === 1 && legLines[0].length > points.length - 1) {
+      const line = legLines[0];
+      routeLegLines = [];
+      let startIndex = 0;
+      for (let waypointIndex = 1; waypointIndex < points.length - 1; waypointIndex++) {
+        const remainingLegs = points.length - 1 - waypointIndex;
+        const minIndex = Math.min(line.length - 1, startIndex + 1);
+        const maxIndex = Math.max(minIndex, line.length - 1 - remainingLegs);
+        let nearestIndex = minIndex, nearestDistance = Infinity;
+        for (let index = minIndex; index <= maxIndex; index++) {
+          const coordinate = line[index], waypoint = points[waypointIndex];
+          const distance = coordinateDistanceMeters(coordinate,[Number(waypoint.lon),Number(waypoint.lat)]);
+          if (distance < nearestDistance) { nearestDistance = distance; nearestIndex = index; }
+        }
+        routeLegLines.push(line.slice(startIndex,nearestIndex+1));
+        startIndex = nearestIndex;
+      }
+      routeLegLines.push(line.slice(startIndex));
     }
     const legs = (properties.legs || []).map((leg, legIndex) => {
       const line = routeLegLines[legIndex] || [];
