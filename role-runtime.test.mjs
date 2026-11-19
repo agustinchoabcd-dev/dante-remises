@@ -18,6 +18,19 @@ test("passenger activation waits for photo readiness and selects only the passen
   assert.equal(result.view, "pasajero");
 });
 
+test("temporary passenger photo verification failures keep the authenticated passenger workspace", async () => {
+  const calls = [];
+  const result = await activateRole("passenger", {
+    loadPassengerPhoto: async () => { calls.push("photo"); return null; },
+    showView: view => calls.push("view:" + view),
+    showPassengerOnboarding: () => calls.push("onboarding")
+  });
+
+  assert.deepEqual(calls, ["photo", "view:pasajero"]);
+  assert.equal(result.view, "pasajero");
+  assert.equal(result.photoCheckUnavailable, true);
+});
+
 test("passenger without a ready photo uses onboarding, not another role view", async () => {
   const calls = [];
   const result = await activateRole("passenger", {
