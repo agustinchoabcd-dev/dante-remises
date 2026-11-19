@@ -40,5 +40,7 @@ test("route progress returns nearest route point and next localized maneuver", (
 test("rerouting is distance-gated and throttled", () => {
   assert.equal(shouldRerouteDriver({ offRouteMeters: 50, lastRerouteAt: 0, now: 30000 }), false);
   assert.equal(shouldRerouteDriver({ offRouteMeters: 80, lastRerouteAt: 20000, now: 30000 }), false);
-  assert.equal(shouldRerouteDriver({ offRouteMeters: 80, lastRerouteAt: 0, now: 30000 }), true);
+  assert.equal(shouldRerouteDriver({ offRouteMeters: 80, lastRerouteAt: 0, now: 30000, cooldownMs: 20000 }), true);
+  assert.equal(shouldRerouteDriver({ offRouteMeters: 80, lastRerouteAt: 0, now: 30000 }), false);
+  assert.equal(shouldRerouteDriver({ offRouteMeters: 80, lastRerouteAt: 0, now: 90000 }), true);
 });
