@@ -35,6 +35,7 @@ test("driver activation shows the driver view and starts driver operations", asy
   const result = await activateRole("driver", {
     user: { uid: "driver-1" },
     role: { role: "driver", carId: "109" },
+    loadRoleView: async role => calls.push("mount:" + role),
     showView: view => calls.push("view:" + view),
     syncDriverPushRegistration: () => calls.push("push"),
     listenDriverInbox: () => calls.push("inbox"),
@@ -45,7 +46,7 @@ test("driver activation shows the driver view and starts driver operations", asy
 
   assert.equal(result.view, "chofer");
   await result.background;
-  assert.deepEqual(calls, ["view:chofer", "push", "inbox", "restore", "gps", "pending"]);
+  assert.deepEqual(calls, ["mount:driver", "view:chofer", "push", "inbox", "restore", "gps", "pending"]);
 });
 
 test("operator activation does not load driver operations", async () => {
@@ -65,6 +66,7 @@ test("admin activation keeps central tools and the car 144 driver runtime", asyn
   const result = await activateRole("admin", {
     user: { uid: "admin-1" },
     role: { role: "admin", carId: "144" },
+    loadRoleView: async role => calls.push("mount:" + role),
     showView: view => calls.push("view:" + view),
     setAdminTripAlertPanel: enabled => calls.push("admin-alerts:" + enabled),
     loadAdminProfiles: async () => calls.push("profiles"),
@@ -79,7 +81,7 @@ test("admin activation keeps central tools and the car 144 driver runtime", asyn
   assert.equal(result.view, "central");
   await result.background;
   assert.deepEqual(calls, [
-    "view:central", "admin-alerts:true", "profiles", "cars",
+    "mount:driver", "view:central", "admin-alerts:true", "profiles", "cars",
     "push", "inbox", "restore", "gps", "pending"
   ]);
 });
