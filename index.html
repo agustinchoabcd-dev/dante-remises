@@ -1728,13 +1728,12 @@ function refitDriverHomeRoute(){
  }
 }
 function setDriverHomeFullscreen(expanded){
- const mapNode=byId('driverHofunction setDriverHomeFullscreen(expanded){
   const mapNode=byId('driverHomeMap');
   const wasExpanded=document.body.classList.contains('driver-home-map-active');
   if(expanded){
    if(!wasExpanded){
     document.body.classList.add('driver-home-map-active');
-    /* No escalar ni trasladar el nodo WebGL: Android WebView puede recomponer el canvas en negro durante transforms CSS. */
+    /* Evitar transforms sobre el nodo que contiene el canvas WebGL; sólo cambiar tamaño y notificar a Mapbox. */
     if(mapNode){
      mapNode.style.transition='none';
      mapNode.style.transform='none';
@@ -1762,7 +1761,9 @@ function setDriverHomeFullscreen(expanded){
    }else requestAnimationFrame(()=>{driverHomeMap?.invalidateSize();window.setTimeout(refitDriverHomeRoute,180)});
   }
   byId('driverHomeMapHomeButton')?.classList.toggle('hidden',!expanded);
-}!!expanded;
+}
+function setDriverCurtainExpanded(expanded){
+ driverHomeCurtainExpanded=!!expanded;
  const sheet=byId('driverHomeCurtain');
  if(sheet){sheet.classList.toggle('expanded',driverHomeCurtainExpanded);sheet.style.height='';sheet.classList.remove('dragging')}
  const button=byId('driverHomeDisconnectButton');
@@ -4187,7 +4188,7 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
  const parallaxAvailable=()=>state.master&&state.parallax&&!(reducedMotion&&reducedMotion.matches);
  function refreshSurfaces(){
-  surfaces=Array.from(document.querySelectorAll(surfaceSelector)).filter(surface=>!(document.body.classList.contains('driver-home-map-active')&&surface.matches('#driverHomeMap,.driver-home-map-shell')));
+  surfaces=Array.from(document.querySelectorAll(surfaceSelector)).filter(surface=>!(document.body.classList.contains('driver-home-map-active')&&surface.matches('#driverHomeMap')));
   surfaceRects.length=surfaces.length;
   for(const surface of surfaces)surface.classList.add('dante-parallax-surface');
   rectsDirty=true;
@@ -4299,8 +4300,6 @@ html.dante-parallax-active #centralCars>.card.dante-parallax-surface{
  function findTouch(list){for(let i=0;i<list.length;i++)if(list[i].identifier===touchIdentifier)return list[i];return null}
  function onTouchStart(event){
   if(!parallaxAvailable()||document.hidden||touchIdentifier!==null||!event.changedTouches.length)return;
-  /* El mapa sólo queda fuera del Parallax mientras ocupa la pantalla completa. En Inicio conserva el efecto táctil. */
-  if(document.body.classList.contains('driver-home-map-active')&&event.target?.closest?.('#driverHomeMap,.driver-home-map-shell'))return;
   refreshSurfaces();
   const touch=event.changedTouches[0];touchIdentifier=touch.identifier;lastTouch={clientX:touch.clientX,clientY:touch.clientY};
   applyTouchFrame(touch);
