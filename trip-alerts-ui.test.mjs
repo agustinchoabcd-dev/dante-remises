@@ -91,3 +91,13 @@ test("native floating trip alert strips postal and administrative address detail
   assert.match(service, /private static String cleanAddress\(String value\)/);
   assert.match(service, /Ubicación sin referencia/);
 });
+
+
+test("native trip alerts can display optional road distances supplied by FCM", async () => {
+  const service = await readFile(new URL("./android-native/src/main/java/DanteTripAlertService.java", import.meta.url), "utf8");
+  assert.match(service, /originDistance = safe\(intent\.getStringExtra\("originDistance"\), 24\)/);
+  assert.match(service, /destinationDistance = safe\(intent\.getStringExtra\("destinationDistance"\), 24\)/);
+  assert.match(service, /distanceSuffix\(originDistance\)/);
+  assert.match(service, /distanceSuffix\(destinationDistance\)/);
+  assert.match(service, /safe\(data\.get\("originDistance"\), 24\)/);
+});
