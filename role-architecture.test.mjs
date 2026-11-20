@@ -241,3 +241,12 @@ test("provider credits are centralized in Settings and absent from role template
     assert.doesNotMatch(template, /Powered by Geoapify|OpenStreetMap|LocationIQ/, role + " must not show inline credits");
   }
 });
+
+test("stopping the selected passenger driver also detaches its Firebase location listener", () => {
+  const start = html.indexOf("function stopPassengerLocationWatch()");
+  const end = html.indexOf("\nbindRoleDom('requestSelectedDriver'", start);
+  assert.ok(start >= 0 && end > start);
+  const cleanup = html.slice(start, end);
+  assert.match(cleanup, /if\(liveLocationUnsub\)\{liveLocationUnsub\(\);liveLocationUnsub=null\}/);
+  assert.match(cleanup, /selectedCarMarker/);
+});
