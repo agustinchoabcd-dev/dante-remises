@@ -996,7 +996,7 @@ async function calculateTripAlertRoadDistances(carId,origin,destination){
  return result;
 }
 function showDriverMarker(loc){if(!realMap)return;const point={lat:Number(loc.lat),lon:Number(loc.lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return;if(loc.updatedAt&&Date.now()-Number(loc.updatedAt)>45000){if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}byId('driverLocationNote').textContent='La ubicación del coche está desactualizada; esperando una nueva señal GPS.';return}if(selectedCarMarker)selectedCarMarker.setLatLng(point);else selectedCarMarker=realMap.addCircleMarker('selected-driver',point,{radius:9,color:'#fff',weight:3,fillColor:'#176b3a',fillOpacity:1,popup:'Ubicación del remis seleccionado'});}
-function stopPassengerLocationWatch(){if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}}
+function stopPassengerLocationWatch(){if(liveLocationUnsub){liveLocationUnsub();liveLocationUnsub=null}if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}}
 bindRoleDom('requestSelectedDriver','click',async()=>{
  const c=cars[selectedPassengerDriver];
  if(!currentUser||currentRole?.role!=='passenger'){notify('Iniciá sesión como pasajero para solicitar un viaje.');return}
