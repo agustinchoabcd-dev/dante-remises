@@ -229,3 +229,15 @@ test("trip endpoints use passenger and red destination pins in both map engines"
   assert.match(html, /addTripEndpointMarker\(markerId/);
   assert.match(html, /'destination','Final'/);
 });
+
+test("Geoapify and OpenStreetMap attribution is visible in passenger, driver and admin trip views", () => {
+  for (const [role, template] of [
+    ["passenger", passengerTemplate],
+    ["driver", driverTemplate],
+    ["central", centralTemplate]
+  ]) {
+    assert.match(template, /Powered by Geoapify/, role + " must credit Geoapify");
+    assert.match(template, /https:\/\/www\.geoapify\.com/, role + " must link to Geoapify");
+    assert.match(template, /https:\/\/www\.openstreetmap\.org\/copyright/, role + " must credit OpenStreetMap");
+  }
+});
