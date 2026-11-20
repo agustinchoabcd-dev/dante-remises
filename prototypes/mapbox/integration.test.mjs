@@ -71,7 +71,7 @@ test("provider credits stay in Settings while required map attribution remains i
   assert.match(html, /id="creditsSettingsCard"/);
   assert.match(html, /Créditos y APIs utilizadas/);
   for (const provider of ["Mapbox","Geoapify","LocationIQ","OpenStreetMap","Leaflet","Firebase","Cloudflare Workers","Backblaze B2","Capacitor"]) {
-    assert.match(html, new RegExp(provider.replace(/[.*+?^${}()|[\]\\]/g, "\\  assert.match(html, /Créditos y APIs utilizadas/);")), "Missing provider credit: " + provider);
+    assert.ok(html.includes("<span>" + provider + "</span>"), "Missing provider credit: " + provider);
   }
   assert.match(adapter, /new mapboxgl\.AttributionControl\(\{[\s\S]*?compact:false,[\s\S]*?Powered by Geoapify/);
   assert.match(adapter, /attributionControl\?\.addAttribution\(.*Powered by Geoapify/);
