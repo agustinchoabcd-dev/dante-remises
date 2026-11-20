@@ -191,6 +191,7 @@
           maxZoom: 20,
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://locationiq.com">LocationIQ</a>'
         }).addTo(this.map);
+      this.map.attributionControl?.addAttribution('<a href="https://www.geoapify.com/" target="_blank" rel="noopener">Powered by Geoapify</a>');
     }
     onClick(callback) {
       this.map.on('click', event => callback({lat: event.latlng.lat, lon: event.latlng.lng}));
@@ -343,6 +344,7 @@
         container, style: DEFAULT_STYLE,
         center: [Number(center[1]), Number(center[0])],
         zoom, attributionControl: true,
+        customAttribution: '<a href="https://www.geoapify.com/" target="_blank" rel="noopener">Powered by Geoapify</a>',
         antialias: false, fadeDuration: 0,
         pitchWithRotate: false, dragRotate: false,
         // Android WebView changes its visual viewport while the software keyboard opens/closes.
