@@ -137,9 +137,12 @@
     if (value <= 0) return ['interpolate', ['linear'], ['line-progress'], 0, pendingStart, 1, pendingEnd];
     if (value >= 1) return ['interpolate', ['linear'], ['line-progress'], 0, completed, 1, completed];
     const boundary = Math.max(0.001, Math.min(0.999, value));
-    const after = Math.min(1, boundary + 0.001);
-    const expression = ['interpolate', ['linear'], ['line-progress'], 0, completed, boundary, completed, after, pendingStart];
-    if (after < 1) expression.push(1, pendingEnd);
+    const feather = Math.min(0.018,boundary,1-boundary);
+    const before = Math.max(0,boundary-feather);
+    const after = Math.min(1,boundary+feather);
+    const blend = interpolateHexColor(completed,pendingStart,.5);
+    const expression = ['interpolate',['linear'],['line-progress'],0,completed,before,completed,boundary,blend,after,pendingStart];
+    if(after<1)expression.push(1,pendingEnd);
     return expression;
   }
 
@@ -383,20 +386,27 @@
     }
     addHeadingMarker(id, point, heading = 0) {
       this.removeMarker(id);
-      const element = document.createElement('div');
-      element.className = 'dante-driver-heading';
-      element.innerHTML = '<svg viewBox="0 0 34 34" width="42" height="42" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+      const element=document.createElement('div');
+      element.className='dante-driver-heading';
+      element.innerHTML='<svg viewBox="0 0 34 34" width="42" height="42" aria-hidden="true"><path d="M17 2.5 29 30 17 23.2 5 30Z" fill="#18a86b" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>';
       Object.assign(element.style,{width:'42px',height:'42px',display:'grid',placeItems:'center',filter:'drop-shadow(0 2px 4px #001b0d99)'});
-      const marker = new mapboxgl.Marker({element,anchor:'center',rotationAlignment:'viewport',pitchAlignment:'viewport'})
-        .setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
-      let currentHeading=Number(heading)||0;
+      const marker=new mapboxgl.Marker({element,anchor:'center',rotationAlignment:'viewport',pitchAlignment:'viewport'}).setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
+      let currentHeading=Number(heading)||0,markerFrame=0,currentLngLat=[Number(point.lon),Number(point.lat)];
       const updateRotation=()=>marker.setRotation(currentHeading-(this.map?.getBearing?.()||0));
-      this.map.on('rotate',updateRotation);
-      const handle = {
-        setLatLng: next => marker.setLngLat([Number(next.lon),Number(next.lat)]),
-        setHeading: value => {currentHeading=Number(value)||0;updateRotation()},
-        remove: () => {this.map?.off('rotate',updateRotation);marker.remove();this.markers.delete(id)}
+      const setLatLng=next=>{
+        if(markerFrame)cancelAnimationFrame(markerFrame);
+        const from=currentLngLat.slice(),to=[Number(next.lon),Number(next.lat)];let startedAt=0;
+        const step=now=>{
+          if(!startedAt)startedAt=now;
+          const t=Math.max(0,Math.min(1,(now-startedAt)/850)),eased=1-Math.pow(1-t,3);
+          currentLngLat=[from[0]+(to[0]-from[0])*eased,from[1]+(to[1]-from[1])*eased];
+          marker.setLngLat(currentLngLat);
+          if(t<1)markerFrame=requestAnimationFrame(step);else markerFrame=0;
+        };
+        markerFrame=requestAnimationFrame(step);
       };
+      this.map.on('rotate',updateRotation);
+      const handle={setLatLng,setHeading:value=>{currentHeading=Number(value)||0;updateRotation()},remove:()=>{if(markerFrame)cancelAnimationFrame(markerFrame);this.map?.off('rotate',updateRotation);marker.remove();this.markers.delete(id)}};
       handle.setHeading(heading);
       this.markers.set(id,handle);
       return handle;
@@ -416,23 +426,28 @@
     }
     addCircleMarker(id, point, options = {}) {
       this.removeMarker(id);
-      const element = document.createElement('div');
-      const diameter = Math.max(12, (options.radius || 9) * 2);
-      Object.assign(element.style, {
-        width: diameter + 'px', height: diameter + 'px', borderRadius: '50%',
-        border: (options.weight || 3) + 'px solid ' + (options.color || '#fff'),
-        background: options.fillColor || '#176b3a',
-        opacity: String(options.fillOpacity ?? 1),
-        boxShadow: '0 1px 5px #0008'
-      });
-      const marker = new mapboxgl.Marker({element, anchor:'center'})
-        .setLngLat([Number(point.lon), Number(point.lat)]).addTo(this.map);
-      if (options.popup) marker.setPopup(new mapboxgl.Popup({offset:14}).setText(options.popup));
-      const handle = {
-        setLatLng: next => marker.setLngLat([Number(next.lon), Number(next.lat)]),
-        remove: () => { marker.remove(); this.markers.delete(id); }
+      const element=document.createElement('div');
+      const diameter=Math.max(12,(options.radius||9)*2);
+      Object.assign(element.style,{width:diameter+'px',height:diameter+'px',borderRadius:'50%',border:(options.weight||3)+'px solid '+(options.color||'#fff'),background:options.fillColor||'#176b3a',opacity:String(options.fillOpacity??1),boxShadow:'0 1px 5px #0008'});
+      const marker=new mapboxgl.Marker({element,anchor:'center'}).setLngLat([Number(point.lon),Number(point.lat)]).addTo(this.map);
+      if(options.popup)marker.setPopup(new mapboxgl.Popup({offset:14}).setText(options.popup));
+      let markerFrame=0,currentLngLat=[Number(point.lon),Number(point.lat)];
+      const handle={
+        setLatLng:next=>{
+          if(markerFrame)cancelAnimationFrame(markerFrame);
+          const from=currentLngLat.slice(),to=[Number(next.lon),Number(next.lat)];let startedAt=0;
+          const step=now=>{
+            if(!startedAt)startedAt=now;
+            const t=Math.max(0,Math.min(1,(now-startedAt)/850)),eased=1-Math.pow(1-t,3);
+            currentLngLat=[from[0]+(to[0]-from[0])*eased,from[1]+(to[1]-from[1])*eased];
+            marker.setLngLat(currentLngLat);
+            if(t<1)markerFrame=requestAnimationFrame(step);else markerFrame=0;
+          };
+          markerFrame=requestAnimationFrame(step);
+        },
+        remove:()=>{if(markerFrame)cancelAnimationFrame(markerFrame);marker.remove();this.markers.delete(id)}
       };
-      this.markers.set(id, handle);
+      this.markers.set(id,handle);
       return handle;
     }
     removeMarker(id) { const marker = this.markers.get(id); if (marker) marker.remove(); }
@@ -463,7 +478,8 @@
       this.removeRoute(id);
       const sourceId = 'dante-route-' + String(id).replace(/[^a-z0-9_-]/gi, '-');
       const layerId = sourceId + '-line';
-      let cancelled = false;
+      const glowLayerId = layerId + '-glow';
+      let cancelled = false,glowLayerAdded=false,progressFrame=0,progressValue=Math.max(0,Math.min(1,Number(style.progress)||0)),lastProgressPaintAt=0;
       let currentGradient = style.gradient || (style.progress !== undefined ? buildProgressGradient(style.progress, style) : null);
       const add = () => {
         if (cancelled || !this.map || !this.map.isStyleLoaded()) return;
@@ -474,31 +490,44 @@
           data:{type:'Feature', geometry, properties:{}},
           ...(currentGradient ? {lineMetrics:true} : {})
         });
-        const paint = {
-          'line-width':style.weight || 6,
-          'line-opacity':style.opacity ?? .9
-        };
-        if (currentGradient) paint['line-gradient'] = currentGradient;
-        else paint['line-color'] = style.color || '#168447';
-        this.map.addLayer({
-          id:layerId, type:'line', source:sourceId,
-          layout:{'line-cap':'round','line-join':'round'},
-          paint
-        });
+        if(currentGradient){
+          try{
+            this.map.addLayer({id:glowLayerId,type:'line',source:sourceId,layout:{'line-cap':'round','line-join':'round'},paint:{'line-gradient':currentGradient,'line-width':style.glowWidth||15,'line-blur':style.glowBlur||4,'line-opacity':style.glowOpacity??.22}});
+            glowLayerAdded=true;
+          }catch(error){console.warn('No se pudo crear el halo de navegación; se conserva la línea principal:',error)}
+        }
+        const paint={'line-width':style.weight||6,'line-opacity':style.opacity??.96};
+        if(currentGradient)paint['line-gradient']=currentGradient;else paint['line-color']=style.color||'#168447';
+        this.map.addLayer({id:layerId,type:'line',source:sourceId,layout:{'line-cap':'round','line-join':'round'},paint});
       };
       if (this.map.isStyleLoaded()) add(); else this.map.once('load', add);
-      const handle = {
-        setGradient: expression => {
-          currentGradient = expression;
-          if (this.map?.getLayer(layerId)) this.map.setPaintProperty(layerId,'line-gradient',expression);
+      const paintGradient=expression=>{
+        currentGradient=expression;
+        if(glowLayerAdded&&this.map?.getLayer(glowLayerId)){try{this.map.setPaintProperty(glowLayerId,'line-gradient',expression)}catch(error){console.warn('No se pudo actualizar el halo de navegación:',error)}}
+        if(this.map?.getLayer(layerId))this.map.setPaintProperty(layerId,'line-gradient',expression);
+      };
+      const handle={
+        setGradient:expression=>{if(progressFrame)cancelAnimationFrame(progressFrame);progressFrame=0;paintGradient(expression)},
+        setProgress:value=>{
+          const target=Math.max(0,Math.min(1,Number(value)||0)),from=progressValue;
+          if(progressFrame)cancelAnimationFrame(progressFrame);
+          let startedAt=0;
+          const animateProgress=now=>{
+            if(!startedAt)startedAt=now;
+            const t=Math.max(0,Math.min(1,(now-startedAt)/850)),eased=1-Math.pow(1-t,3);
+            progressValue=from+(target-from)*eased;
+            if(now-lastProgressPaintAt>=40||t>=1){paintGradient(buildProgressGradient(progressValue,style));lastProgressPaintAt=now}
+            if(t<1)progressFrame=requestAnimationFrame(animateProgress);else progressFrame=0;
+          };
+          progressFrame=requestAnimationFrame(animateProgress);
         },
-        setProgress: value => handle.setGradient(buildProgressGradient(value,style)),
-        remove: () => {
-          cancelled = true;
-          this.map?.off('load', add);
-          if (!this.map) return;
-          if (this.map.getLayer(layerId)) this.map.removeLayer(layerId);
-          if (this.map.getSource(sourceId)) this.map.removeSource(sourceId);
+        remove:()=>{
+          cancelled=true;if(progressFrame)cancelAnimationFrame(progressFrame);
+          this.map?.off('load',add);
+          if(!this.map)return;
+          if(this.map.getLayer(layerId))this.map.removeLayer(layerId);
+          if(this.map.getLayer(glowLayerId))this.map.removeLayer(glowLayerId);
+          if(this.map.getSource(sourceId))this.map.removeSource(sourceId);
         }
       };
       this.routes.set(id, handle);
@@ -516,9 +545,10 @@
         const colors = palette[index] || palette[1];
         const sourceId = 'dante-route-' + String(id).replace(/[^a-z0-9_-]/gi, '-') + '-leg-' + index;
         const baseLayerId = sourceId + '-base';
+        const glowLayerId = sourceId + '-glow';
         const gradientLayerId = sourceId + '-gradient';
         let currentGradient = buildMovingGradient(0,colors.base,colors.highlight);
-        let gradientLayerAdded = false;
+        let gradientLayerAdded = false,glowLayerAdded=false;
         return {
           sourceId,baseLayerId,gradientLayerId,colors,leg,
           add:() => {
@@ -529,6 +559,10 @@
             });
             // Keep a visible route underneath the animated layer. If a WebView
             // rejects line-gradient, the route itself must remain visible.
+            try{
+              this.map.addLayer({id:glowLayerId,type:'line',source:sourceId,layout:{'line-cap':'round','line-join':'round'},paint:{'line-gradient':currentGradient,'line-width':(Number(options.weight)||6)+10,'line-blur':4,'line-opacity':.22}});
+              glowLayerAdded=true;
+            }catch(error){console.warn('No se pudo crear el halo de la previsualización:',error)}
             this.map.addLayer({
               id:baseLayerId,type:'line',source:sourceId,
               layout:{'line-cap':'round','line-join':'round'},
@@ -540,7 +574,7 @@
                 layout:{'line-cap':'round','line-join':'round'},
                 paint:{'line-gradient':currentGradient,'line-width':options.weight||6,'line-opacity':options.opacity??.98}
               });
-              gradientLayerAdded = true;
+              gradientLayerAdded=true;
             } catch (error) {
               console.warn('Mapbox no pudo crear la capa de gradiente; se conserva la trazada base:',error);
             }
@@ -548,6 +582,9 @@
           setGradient:(expression,fallbackColor) => {
             currentGradient = expression;
             if (!this.map?.getLayer(baseLayerId)) return;
+            if(glowLayerAdded&&this.map.getLayer(glowLayerId)){
+              try{this.map.setPaintProperty(glowLayerId,'line-gradient',expression)}catch(error){console.warn('No se pudo actualizar el halo de la previsualización:',error)}
+            }
             if (gradientLayerAdded && this.map.getLayer(gradientLayerId)) {
               try {
                 this.map.setPaintProperty(gradientLayerId,'line-gradient',expression);
@@ -566,6 +603,7 @@
             if (!this.map) return;
             if (this.map.getLayer(gradientLayerId)) this.map.removeLayer(gradientLayerId);
             if (this.map.getLayer(baseLayerId)) this.map.removeLayer(baseLayerId);
+            if (this.map.getLayer(glowLayerId)) this.map.removeLayer(glowLayerId);
             if (this.map.getSource(sourceId)) this.map.removeSource(sourceId);
           }
         };
@@ -607,7 +645,7 @@
           this.map.on('rotate',updateRotation);
         }
       }
-      const referenceDuration = Math.max(1400,Number(options.durationMs)||3400);
+      const referenceDuration = Math.max(1200,Number(options.durationMs)||2600);
       const referenceLength = Math.max(1,routeGeometryLengthMeters(validLegs[0].geometry));
       const metersPerMs = referenceLength / referenceDuration;
       const legDurations = validLegs.map(leg => Math.max(1,routeGeometryLengthMeters(leg.geometry)) / metersPerMs);
@@ -674,7 +712,7 @@
     }
     followLocation(point, bearing) {
       if (!validPoint(point) || !this.map) return;
-      const options = {center:[Number(point.lon), Number(point.lat)], zoom:Math.max(this.map.getZoom(), 16), pitch:48, duration:550, essential:true};
+      const options = {center:[Number(point.lon), Number(point.lat)], zoom:Math.max(this.map.getZoom(),16), pitch:48, duration:900, essential:true};
       if (bearing !== null && bearing !== undefined && Number.isFinite(Number(bearing))) options.bearing = Number(bearing);
       this.map.easeTo(options);
     }
@@ -854,6 +892,7 @@
     getDrivingRoute,
     normalizeRouteLegs,
     buildMovingGradient,
+    buildProgressGradient,
     routeGeometryLengthMeters,
     get backendPreference() { return MAPBOX_TOKEN && window.mapboxgl && mapboxgl.supported() ? 'mapbox' : 'leaflet'; },
     get tokenConfigured() { return !!MAPBOX_TOKEN; },

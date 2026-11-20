@@ -76,6 +76,6 @@ export function getDriverNavigationProgress(route, location, options = {}) {
   const routeDistance=Number(route.distance||globalNearest.totalDistance);
   return {offRouteMeters:globalNearest.distance,progress,remainingDistanceMeters:Math.max(0,routeDistance*(1-progress)),remainingDurationSeconds:Math.max(0,Number(route.duration||0)*(1-progress)),stepIndex:nextStepIndex,instruction:nextStep?.maneuver?.instruction||nextStep?.name||"Continuá por la ruta",distanceToManeuver};
 }
-export function shouldRerouteDriver({ offRouteMeters, lastRerouteAt = 0, now = Date.now(), thresholdMeters = 65, cooldownMs = 60000 } = {}) {
+export function shouldRerouteDriver({ offRouteMeters, lastRerouteAt = 0, now = Date.now(), thresholdMeters = 40, cooldownMs = 15000 } = {}) {
   return Number(offRouteMeters) > thresholdMeters && Number(now) - Number(lastRerouteAt) >= cooldownMs;
 }

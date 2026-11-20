@@ -36,9 +36,10 @@ export function watchPosition(success, error, options = {}) {
   watches.set(localId, entry);
   Geolocation.watchPosition({
     enableHighAccuracy: options.enableHighAccuracy ?? true,
-    timeout: options.timeout ?? 20000,
-    maximumAge: options.maximumAge ?? 5000,
-    interval: 3000
+    timeout: options.timeout ?? 15000,
+    maximumAge: options.maximumAge ?? 1000,
+    interval: options.interval ?? 1000,
+    minimumUpdateInterval: options.minimumUpdateInterval ?? 750
   }, (position, err) => {
     if (entry.cancelled) return;
     if (err) error?.({ code: 2, message: err.message || "No se pudo obtener GPS." });
@@ -76,6 +77,19 @@ export async function requestLocationPermission() {
     return requested.location === "granted" || requested.coarseLocation === "granted";
   } catch (error) {
     console.warn("Permiso de ubicación no concedido o servicio GPS desactivado:", error);
+    return false;
+  }
+}
+
+export async function requestPreciseLocationPermission() {
+  if (!native) return !!navigator.geolocation;
+  try {
+    const current = await Geolocation.checkPermissions();
+    if (current.location === "granted") return true;
+    const requested = await Geolocation.requestPermissions({ permissions: ["location"] });
+    return requested.location === "granted";
+  } catch (error) {
+    console.warn("Se requiere ubicación precisa para la navegación del chofer:", error);
     return false;
   }
 }

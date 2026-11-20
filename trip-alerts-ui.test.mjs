@@ -146,12 +146,12 @@ test("local GPS updates are not throttled by Firebase writes", () => {
   const callback=html.match(/driverWatchId=watchPosition\(async pos=>\{([\s\S]*?)\},err=>/)?.[1]||"";
   const mapUpdate=callback.indexOf("updateDriverHomeLocation(loc)");
   const navigationUpdate=callback.indexOf("updateDriverHomeNavigationPosition(loc)");
-  const writeThrottle=callback.indexOf("if(now-driverLocationWriteAt<4000)return");
+  const writeThrottle=callback.indexOf("const writeInterval=activeNavigation?2000:4000");
   assert.ok(mapUpdate>=0&&navigationUpdate>mapUpdate&&writeThrottle>navigationUpdate);
-});
+}); 
 
 test("active navigation requires fresh GPS and preserves progress across fixes", () => {
-  assert.match(html,/gpsAge>=45000/);
+  assert.match(html,/gpsAge>=15000/);
   assert.match(html,/previousProgress:driverHomeNavigation\.lastProgress/);
   assert.match(html,/driverHomeNavigation\.lastProgress=progress\.progress/);
   assert.match(html,/La ubicación cambió durante el cálculo/);
@@ -216,6 +216,47 @@ test("preview splits a complete route into ordered legs and replaces provider le
   assert.equal(normalized.legs.length,2);
   assert.deepEqual(Array.from(normalized.legs[1].geometry.coordinates[0]),[0.01,0]);
   assert.deepEqual(Array.from(normalized.legs[1].geometry.coordinates.at(-1)),[0.02,0.01]);
+});
+
+test("driver GPS uses a one-second high-accuracy watch and requires precise Android location", () => {
+  assert.match(nativeBridge,/interval:\s*options\.interval\s*\?\?\s*1000/);
+  assert.match(nativeBridge,/minimumUpdateInterval:\s*options\.minimumUpdateInterval\s*\?\?\s*750/);
+  assert.match(nativeBridge,/maximumAge:\s*options\.maximumAge\s*\?\?\s*1000/);
+  assert.match(nativeBridge,/current\.location === "granted"/);
+  const precisePermission=nativeBridge.match(/export async function requestPreciseLocationPermission\(\)\s*\{[\s\S]*?\n\}/)?.[0]||"";
+  assert.match(precisePermission,/Geolocation\.checkPermissions\(\)/);
+  assert.match(precisePermission,/requestPermissions\(\{ permissions: \["location"\] \}\)/);
+  assert.match(precisePermission,/return requested\.location === "granted"/);
+  assert.doesNotMatch(precisePermission,/coarseLocation/);
+  assert.match(html,/requestPreciseLocationPermission\(\)/);
+  assert.match(html,/maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750/);
+  assert.match(html,/activeNavigation\?2000:4000/);
+});
+
+test("stage-one preview refreshes with smaller GPS movement and keeps its micropause", () => {
+  assert.match(html,/driverHomeDistanceMeters\(driverHomePendingRouteLastLocation,latestDriverLocation\)>25/);
+  assert.match(html,/now-driverHomePendingRouteLastAttemptAt<10000/);
+  assert.match(html,/durationMs:2600,pauseMs:240/);
+});
+
+test("active navigation refreshes on meaningful route age/distance or off-route deviation", () => {
+  assert.match(html,/cooldownMs:15000/);
+  assert.match(html,/thresholdMeters:Math\.max\(35,accuracyMeters\*1\.5\)/);
+  assert.match(html,/distanceFromRouteStart>=220&&routeAgeMs>=60000/);
+  assert.match(html,/rerouteCount\|\|0\)<20/);
+  assert.match(html,/const previousRoute=same\?driverHomeNavigation\.route:null/);
+});
+
+test("active navigation gradient has a feathered transition and a soft glow", async () => {
+  const source = await readFile(new URL("./js/dante-map.js", import.meta.url), "utf8");
+  const sandbox = {window:{DANTE_MAPBOX_TOKEN:"pk.test"},mapboxgl:{supported:()=>true},console,URLSearchParams,fetch};
+  runInNewContext(source,sandbox);
+  const expression=Array.from(sandbox.window.DanteMap.buildProgressGradient(.5));
+  const stops=expression.filter(value=>typeof value==="number");
+  assert.ok(stops.some(value=>Math.abs(value-.482)<.002));
+  assert.ok(stops.some(value=>Math.abs(value-.518)<.002));
+  assert.match(source,/'line-blur':style\.glowBlur\|\|4/);
+  assert.match(source,/progressValue=from\+\(target-from\)\*eased/);
 });
 
 test("preview arrow and moving gradient use equal speed across legs of different lengths", async () => {
@@ -306,7 +347,7 @@ test("Mapbox preview creates every leg in one style-ready pass and animates the 
   ];
   map.addRoutePreview("preview-test",legs,{durationMs:3400,weight:6,opacity:.94});
   assert.equal(state.sources.size,2,"both route legs must have independent GeoJSON sources");
-  assert.equal(state.layers.size,4,"each leg must have a visible base line and a gradient line");
+  assert.equal(state.layers.size,6,"each leg must have a visible halo, base line and gradient line");
   assert.ok([...state.layers.keys()].some(id=>id.includes("leg-0-gradient")));
   assert.ok([...state.layers.keys()].some(id=>id.includes("leg-1-gradient")));
   let timestamp=1000;

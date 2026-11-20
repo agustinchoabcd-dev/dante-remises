@@ -34,6 +34,10 @@ export async function requestLocationPermission() {
   return !!geolocation();
 }
 
+export async function requestPreciseLocationPermission() {
+  return !!geolocation();
+}
+
 export async function requestStartupPermissions() {}
 
 
