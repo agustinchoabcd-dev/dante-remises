@@ -19,6 +19,7 @@
     </button>
   </div>
   <div class="driver-home-active-trip hidden" id="driverHomeActiveTrip"></div>
+  <div class="hint">Direcciones: <a href="https://www.geoapify.com" target="_blank" rel="noopener">Powered by Geoapify</a> · Datos © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.</div>
   <section class="driver-home-requests hidden" id="driverHomeRequests">
     <h3>Solicitudes de viaje</h3>
     <div id="driverHomeTripInbox" class="driver-home-trip-inbox">No hay solicitudes pendientes.</div>
@@ -43,7 +44,7 @@
 <section id="chofer" class="hidden">
 <h2>Mi espacio de personal</h2><p class="muted">Gestioná tu estado. Agustín también puede administrar los estados de todos los coches desde la Central.</p>
 <div class="card panel" id="driverControls" style="margin-top:12px">
-<div id="roleSummary" class="hint"></div><div id="driverStatus"></div><div class="divider"></div><h3>Solicitudes de viaje</h3><div id="driverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="driverActiveTrip" class="request hidden"></div><div class="driver-location-note" id="driverGpsStatus">La ubicación GPS todavía no está activa.</div>
+<div id="roleSummary" class="hint"></div><div id="driverStatus"></div><div class="divider"></div><h3>Solicitudes de viaje</h3><div id="driverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="driverActiveTrip" class="request hidden"></div><div class="hint">Direcciones: <a href="https://www.geoapify.com" target="_blank" rel="noopener">Powered by Geoapify</a> · Datos © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.</div><div class="driver-location-note" id="driverGpsStatus">La ubicación GPS todavía no está activa.</div>
 <div class="divider"></div>
 <div class="field"><label for="busyDuration">Duración de “Ocupado”</label><select id="busyDuration"><option value="5">5 minutos</option><option value="10">10 minutos</option><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option><option value="120">2 horas</option><option value="240">4 horas</option><option value="480">8 horas</option></select></div>
 <button class="primary" id="setBusy">Ocupado durante el plazo elegido</button>
