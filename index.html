@@ -1985,7 +1985,7 @@ function renderDriverActiveTrip(trip,id){
  byId('driverActiveTrip').classList.remove('hidden');
  byId('driverActiveTrip').innerHTML=html;
  const adminBox=byId('adminDriverActiveTrip');
- if(adminBox){adminBox.classList.remove('hidden');adminBox.innerHTML='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Recogida: '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div>''<div class="hint">Usá “Inicio” para seguir la navegación e iniciar o finalizar el viaje.</div>';}
+ if(adminBox){adminBox.classList.remove('hidden');adminBox.innerHTML='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Recogida: '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div>'+'<div class="hint">Usá “Inicio” para seguir la navegación e iniciar o finalizar el viaje.</div>';}
 }
 function renderDriverTripPreview(trip,id){
  return showDriverTripOnHome(trip,id);

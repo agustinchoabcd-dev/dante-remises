@@ -323,7 +323,7 @@ test("Mapbox preview creates every leg in one style-ready pass and animates the 
     setRotation(value){this.rotation=value;return this;}
     remove(){}
   }
-  const mapboxgl={supported:()=>true,Map:FakeMap,Marker:FakeMarker,NavigationControl:class{}};
+  const mapboxgl={supported:()=>true,Map:FakeMap,Marker:FakeMarker,NavigationControl:class{},AttributionControl:class{constructor(options){this.options=options;}}};
   const windowRef={
     DANTE_MAPBOX_TOKEN:"pk.test-public-token",
     mapboxgl,
@@ -395,7 +395,7 @@ test("Mapbox preview keeps route legs visible and animates a color fallback if l
     setRotation(value){this.rotation=value;return this;}
     remove(){}
   }
-  const mapboxgl={supported:()=>true,Map:FakeMap,Marker:FakeMarker,NavigationControl:class{}};
+  const mapboxgl={supported:()=>true,Map:FakeMap,Marker:FakeMarker,NavigationControl:class{},AttributionControl:class{constructor(options){this.options=options;}}};
   const sandbox={
     window:{DANTE_MAPBOX_TOKEN:"pk.test-public-token",mapboxgl,matchMedia:()=>({matches:false}),addEventListener(){},removeEventListener(){},visualViewport:{addEventListener(){},removeEventListener(){}}},
     mapboxgl,console,URLSearchParams,fetch,
