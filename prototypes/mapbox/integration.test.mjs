@@ -70,7 +70,7 @@ test("provider credits stay in Settings while required map attribution remains i
   }
   assert.match(html, /id="creditsSettingsCard"/);
   assert.match(html, /Créditos y APIs utilizadas/);
-  assert.match(adapter, /customAttribution:.*Powered by Geoapify/);
+  assert.match(adapter, /new mapboxgl\.AttributionControl\(\{[\s\S]*?compact:false,[\s\S]*?Powered by Geoapify/);
   assert.match(adapter, /attributionControl\?\.addAttribution\(.*Powered by Geoapify/);
   assert.match(adapter, /OpenStreetMap/);
   assert.match(adapter, /LocationIQ/);
