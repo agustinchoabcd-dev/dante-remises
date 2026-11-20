@@ -191,7 +191,7 @@
           maxZoom: 20,
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://locationiq.com">LocationIQ</a>'
         }).addTo(this.map);
-      this.map.attributionControl?.addAttribution('<a href="https://www.geoapify.com/" target="_blank" rel="noopener">Powered by Geoapify</a>');
+      if(GEOAPIFY_KEY)this.map.attributionControl?.addAttribution('<a href="https://www.geoapify.com/" target="_blank" rel="noopener">Powered by Geoapify</a>');
     }
     onClick(callback) {
       this.map.on('click', event => callback({lat: event.latlng.lat, lon: event.latlng.lng}));
@@ -362,7 +362,7 @@
       window.visualViewport?.addEventListener('resize', this._resizeHandler, {passive:true});
       this.map.addControl(new mapboxgl.AttributionControl({
         compact:false,
-        customAttribution:'<a href="https://www.geoapify.com/" target="_blank" rel="noopener">Powered by Geoapify</a>'
+        customAttribution:GEOAPIFY_KEY?'<a href="https://www.geoapify.com/" target="_blank" rel="noopener">Powered by Geoapify</a>':''
       }), 'bottom-right');
       this.map.addControl(new mapboxgl.NavigationControl({showCompass:false}), 'top-right');
       this.markers = new Map();
