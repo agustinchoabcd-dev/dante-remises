@@ -8,6 +8,9 @@ const config = await readFile(new URL("../../js/mapbox-config.js", import.meta.u
 const geocoding = await readFile(new URL("../../js/dante-geocoding.js", import.meta.url), "utf8");
 const geocodingConfig = await readFile(new URL("../../js/geocoding-config.js", import.meta.url), "utf8");
 const copyScript = await readFile(new URL("../../scripts/copy-web.mjs", import.meta.url), "utf8");
+const passengerTemplate = await readFile(new URL("../../views/passenger.html", import.meta.url), "utf8");
+const driverTemplate = await readFile(new URL("../../views/driver.html", import.meta.url), "utf8");
+const centralTemplate = await readFile(new URL("../../views/central.html", import.meta.url), "utf8");
 
 test("the app pins Mapbox GL JS 3.35.0 and keeps the compatibility renderer isolated", () => {
   assert.match(html, /mapbox-gl-js\/v3\.35\.0\/mapbox-gl\.js/);
@@ -57,10 +60,17 @@ test("Geoapify handles address autocomplete and reverse geocoding for Argentina"
   assert.match(html, /Esperá a que se resuelva la dirección del punto seleccionado/);
 });
 
-test("Geoapify attribution remains visible when saved trip addresses are reused by drivers", () => {
+test("Geoapify and OpenStreetMap attribution is visible wherever geocoded trip addresses are shown", () => {
+  for (const [name, template] of [
+    ["passenger", passengerTemplate],
+    ["driver", driverTemplate],
+    ["central", centralTemplate]
+  ]) {
+    assert.match(template, /Powered by Geoapify/, name + " must credit Geoapify");
+    assert.match(template, /https:\/\/www\.geoapify\.com/, name + " must link to Geoapify");
+    assert.match(template, /https:\/\/www\.openstreetmap\.org\/copyright/, name + " must credit OpenStreetMap");
+  }
   assert.match(html, /const GEOAPIFY_ATTRIBUTION_HTML=/);
-  assert.ok((html.match(/GEOAPIFY_ATTRIBUTION_HTML/g) || []).length >= 4);
-  assert.match(html, /https:\/\/www\.openstreetmap\.org\/copyright/);
 });
 
 test("the token is injected at runtime and no access token is committed in source", () => {
