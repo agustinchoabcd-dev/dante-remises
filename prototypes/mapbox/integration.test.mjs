@@ -60,17 +60,20 @@ test("Geoapify handles address autocomplete and reverse geocoding for Argentina"
   assert.match(html, /Esperá a que se resuelva la dirección del punto seleccionado/);
 });
 
-test("Geoapify and OpenStreetMap attribution is visible wherever geocoded trip addresses are shown", () => {
+test("provider credits stay in Settings while required map attribution remains inside map controls", () => {
   for (const [name, template] of [
     ["passenger", passengerTemplate],
     ["driver", driverTemplate],
     ["central", centralTemplate]
   ]) {
-    assert.match(template, /Powered by Geoapify/, name + " must credit Geoapify");
-    assert.match(template, /https:\/\/www\.geoapify\.com/, name + " must link to Geoapify");
-    assert.match(template, /https:\/\/www\.openstreetmap\.org\/copyright/, name + " must credit OpenStreetMap");
+    assert.doesNotMatch(template, /Powered by Geoapify|OpenStreetMap|LocationIQ/);
   }
-  assert.match(html, /const GEOAPIFY_ATTRIBUTION_HTML=/);
+  assert.match(html, /id="creditsSettingsCard"/);
+  assert.match(html, /Créditos y APIs utilizadas/);
+  assert.match(adapter, /customAttribution:.*Powered by Geoapify/);
+  assert.match(adapter, /attributionControl\?\.addAttribution\(.*Powered by Geoapify/);
+  assert.match(adapter, /OpenStreetMap/);
+  assert.match(adapter, /LocationIQ/);
 });
 
 test("the token is injected at runtime and no access token is committed in source", () => {
