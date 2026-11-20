@@ -9,6 +9,8 @@ function createHarness({token="pk.test-public-token", supported=true, fetchImpl}
   const state = {maps:[], markers:[], sources:new Map(), layers:new Map(), fetchCalls:[]};
   class FakeMap {
     constructor(options) { this.options=options; this.handlers={}; this.loaded=true; this.removed=false; state.maps.push(this); }
+    stop() { this.stopped=true; }
+    off(name, callback) { if (this.handlers[name]===callback) delete this.handlers[name]; }
     addControl(control, position) { this.control={control,position}; }
     on(name, callback) { this.handlers[name]=callback; }
     once(name, callback) { this.handlers[name]=callback; }
@@ -47,7 +49,8 @@ function createHarness({token="pk.test-public-token", supported=true, fetchImpl}
     Marker:FakeMarker,
     Popup:FakePopup,
     LngLatBounds:FakeBounds,
-    NavigationControl:class {constructor(options){this.options=options;}}
+    NavigationControl:class {constructor(options){this.options=options;}},
+    AttributionControl:class {constructor(options){this.options=options;}}
   };
   const fakeFetch = fetchImpl || (async url => {
     state.fetchCalls.push(String(url));
@@ -155,10 +158,10 @@ test("Mapbox Directions returns the first route and sends the requested coordina
   assert.match(state.fetchCalls[0],/directions\/v5\/mapbox\/driving\/-64\.5,-32\.1;-64\.6,-32\.2/);
 });
 
-test("Mapbox Directions refuses to silently use another provider when token is missing",async()=>{
+test("routing fails clearly when neither provider is configured",async()=>{
   let calls=0;
   const {api}=createHarness({token:"",fetchImpl:async()=>{calls++;throw new Error("unexpected fetch");}});
-  await assert.rejects(api.getDrivingRoute([{lat:-32.1,lon:-64.5},{lat:-32.2,lon:-64.6}]),/MAPBOX_TOKEN_NOT_CONFIGURED/);
+  await assert.rejects(api.getDrivingRoute([{lat:-32.1,lon:-64.5},{lat:-32.2,lon:-64.6}]),/ROUTING_PROVIDER_NOT_CONFIGURED/);
   assert.equal(calls,0);
 });
 
