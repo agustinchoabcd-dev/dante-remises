@@ -48,8 +48,8 @@ test("Geoapify is the primary routing provider and Mapbox is the fallback", () =
   assert.match(adapter, /getMapboxDrivingRoute/);
   assert.match(adapter, /GEOAPIFY_KEY/);
   assert.match(adapter, /MAPBOX_TOKEN/);
-  assert.match(adapter, /provider:'Geoapify'/);
-  assert.match(adapter, /provider:'Mapbox'/);
+  assert.match(adapter, /provider:\s*['"]Geoapify['"]/);
+  assert.match(adapter, /provider:\s*['"]Mapbox['"]/);
   assert.match(adapter, /ROUTING_PROVIDER_NOT_CONFIGURED/);
   assert.doesNotMatch(adapter, /locationiq\.com\/v1\/directions/);
 });
@@ -85,6 +85,7 @@ test("provider credits stay in Settings while required map attribution remains i
   assert.match(adapter, /if\(GEOAPIFY_KEY\)this\.map\.attributionControl\?\.addAttribution\(.*Powered by Geoapify/);
   assert.match(adapter, /OpenStreetMap/);
   assert.match(adapter, /LocationIQ/);
+  assert.match(adapter, /attributionControl\?\.setPrefix\(false\)/);
 });
 
 test("the token is injected at runtime and no access token is committed in source", () => {

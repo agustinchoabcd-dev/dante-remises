@@ -185,6 +185,7 @@
       if (!window.L) throw new Error('Leaflet no está disponible para el mapa alternativo.');
       this.backend = 'leaflet';
       this.map = L.map(container,{zoomControl:false}).setView([Number(center[0]), Number(center[1])], zoom);
+      this.map.attributionControl?.setPrefix(false);
       L.control.zoom({position:'topright'}).addTo(this.map);
       L.tileLayer('https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=' +
         encodeURIComponent(locationIqKey), {
