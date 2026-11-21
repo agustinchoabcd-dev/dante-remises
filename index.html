@@ -1306,9 +1306,9 @@ function renderDriverHomeStatus(){
  if(label)label.textContent=state.label;
  if(dot)dot.dataset.tone=state.tone;
  if(badge){badge.textContent=state.badge;badge.classList.toggle('hidden',!state.badge)}
- byId('driverHomeConnectButton')?.classList.toggle('hidden',!!car?.online||currentRole?.role==='admin');
+ byId('driverHomeConnectButton')?.classList.toggle('hidden',!!car?.online);
  byId('driverHomeCurtain')?.classList.toggle('hidden',!car?.online);
- byId('driverHomeDisconnectButton')?.classList.toggle('hidden',!driverHomeCurtainExpanded||currentRole?.role==='admin');
+ byId('driverHomeDisconnectButton')?.classList.toggle('hidden',!driverHomeCurtainExpanded);
  if(car?.online)startDriverHomeMessageCycle();
  else{
   stopDriverHomeMessageCycle();
@@ -1787,7 +1787,7 @@ function setDriverCurtainExpanded(expanded){
  const sheet=byId('driverHomeCurtain');
  if(sheet){sheet.classList.toggle('expanded',driverHomeCurtainExpanded);sheet.style.height='';sheet.classList.remove('dragging')}
  const button=byId('driverHomeDisconnectButton');
- if(button)button.classList.toggle('hidden',!driverHomeCurtainExpanded||currentRole?.role==='admin');
+ if(button)button.classList.toggle('hidden',!driverHomeCurtainExpanded);
  const grip=byId('driverHomeCurtainGrip');
  if(grip)grip.setAttribute('aria-expanded',String(driverHomeCurtainExpanded));
 }
@@ -1811,7 +1811,7 @@ function stopDriverHomeMessageCycle(){
  if(label)label.textContent=driverHomeMessage;
 }
 async function connectDriverHome(){
- if(driverHomeConnectBusy||currentRole?.role!=='driver'||!currentUser)return;
+ if(driverHomeConnectBusy||!isDriverCapableRole()||!currentUser)return;
  driverHomeConnectBusy=true;
  const button=byId('driverHomeConnectButton');
  if(button)button.disabled=true;
@@ -1820,7 +1820,7 @@ async function connectDriverHome(){
   if(!mapReady)throw new Error('MAP_NOT_READY');
   driverWantsOnline=true;
   await registerDriverPresence(currentUser,currentRole);
-  const carId=String(currentRole.carId);
+  const carId=currentDriverCarId();
   cars[carId].online=true;
   render('driver-home-connected');
   setDriverHomeFullscreen(true);
@@ -1841,7 +1841,7 @@ async function connectDriverHome(){
  }
 }
 async function disconnectDriverHome(){
- if(driverHomeDisconnectBusy||currentRole?.role!=='driver')return;
+ if(driverHomeDisconnectBusy||!isDriverCapableRole())return;
  if(activeTripId){
   notify('No podés desconectarte mientras tenés un viaje activo.');
   return;
@@ -1853,8 +1853,9 @@ async function disconnectDriverHome(){
   driverWantsOnline=false;
   stopDriverGps();
   await clearDriverPresence();
-  try{await remove(ref(db,'driverLocations/'+String(currentRole.carId)))}catch(error){console.warn('No se pudo limpiar la última ubicación pública:',error)}
-  const car=cars[String(currentRole.carId)];
+  const carId=currentDriverCarId();
+  try{await remove(ref(db,'driverLocations/'+carId))}catch(error){console.warn('No se pudo limpiar la última ubicación pública:',error)}
+  const car=cars[carId];
   if(car)car.online=false;
   setDriverHomeFullscreen(false);
   setDriverCurtainExpanded(false);
@@ -1907,20 +1908,20 @@ bindRoleDom('driverHomeCurtain','pointercancel',event=>{
 
 let driverGpsStarting=false;
 async function startDriverGps(){
- if(currentRole?.role==='driver'&&activeTripId&&!driverWantsOnline){driverWantsOnline=true;if(currentUser)void registerDriverPresence(currentUser,currentRole).catch(error=>console.warn('No se pudo restaurar la presencia durante un viaje activo:',error))}
- if(currentRole?.role==='driver'&&!driverWantsOnline&&!activeTripId)return;
+ if(isDriverCapableRole()&&activeTripId&&!driverWantsOnline){driverWantsOnline=true;if(currentUser)void registerDriverPresence(currentUser,currentRole).catch(error=>console.warn('No se pudo restaurar la presencia durante un viaje activo:',error))}
+ if(isDriverCapableRole()&&!driverWantsOnline&&!activeTripId)return;
  if(!isGeolocationAvailable()||driverWatchId!==null||driverGpsStarting)return;
  const gpsUid=currentUser?.uid,gpsRole=currentRole?.role;
  driverGpsStarting=true;
  byId('driverGpsStatus').textContent='Solicitando permiso de ubicación…';
  try{
   const permitted=await requestPreciseLocationPermission();
-  if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(gpsRole==='driver'&&!driverWantsOnline&&!activeTripId))return;
+  if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;
   if(!permitted){
    byId('driverGpsStatus').textContent='Se necesita ubicación precisa. Habilitá el permiso de ubicación precisa en Ajustes de Android y volvé a conectar.';
    return;
   }
-  driverWatchId=watchPosition(async pos=>{if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(gpsRole==='driver'&&!driverWantsOnline&&!activeTripId))return;const carId=currentRole?.carId||'144',c=cars[carId],now=Date.now();const loc={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),heading:Number.isFinite(pos.coords.heading)?pos.coords.heading:null,speed:Number.isFinite(pos.coords.speed)?pos.coords.speed:null,updatedAt:now};updateDriverHomeLocation(loc);void updateDriverHomeNavigationPosition(loc);const activeNavigation=!!(activeTripId&&activeTripData&&['accepted','in_progress'].includes(activeTripData.status));const writeInterval=activeNavigation?2000:4000;if(now-driverLocationWriteAt<writeInterval)return;driverLocationWriteAt=now;try{if(activeNavigation){const tripLocRef=ref(db,`trips/${activeTripId}/driverLocation`);await onDisconnect(tripLocRef).remove();await set(tripLocRef,loc)}else if(c?.status==='libre'){const publicLocRef=ref(db,`driverLocations/${carId}`);await onDisconnect(publicLocRef).remove();await set(publicLocRef,loc)}byId('driverGpsStatus').textContent='GPS activo · última actualización '+new Date(loc.updatedAt).toLocaleTimeString('es-AR')}catch(err){console.error(err);byId('driverGpsStatus').textContent='No se pudo compartir la ubicación. Revisá las reglas de Firebase.'}},err=>{driverWatchId=null;byId('driverGpsStatus').textContent=err.code===1?'Permiso de ubicación denegado. Habilitalo en Ajustes de Android.':'No se pudo obtener GPS. Comprobá que la ubicación del dispositivo esté activada.'},{enableHighAccuracy:true,maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750});
+  driverWatchId=watchPosition(async pos=>{if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;const carId=currentDriverCarId(),c=cars[carId],now=Date.now();const loc={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),heading:Number.isFinite(pos.coords.heading)?pos.coords.heading:null,speed:Number.isFinite(pos.coords.speed)?pos.coords.speed:null,updatedAt:now};updateDriverHomeLocation(loc);void updateDriverHomeNavigationPosition(loc);const activeNavigation=!!(activeTripId&&activeTripData&&['accepted','in_progress'].includes(activeTripData.status));const writeInterval=activeNavigation?2000:4000;if(now-driverLocationWriteAt<writeInterval)return;driverLocationWriteAt=now;try{if(activeNavigation){const tripLocRef=ref(db,`trips/${activeTripId}/driverLocation`);await onDisconnect(tripLocRef).remove();await set(tripLocRef,loc)}else if(c?.status==='libre'){const publicLocRef=ref(db,`driverLocations/${carId}`);await onDisconnect(publicLocRef).remove();await set(publicLocRef,loc)}byId('driverGpsStatus').textContent='GPS activo · última actualización '+new Date(loc.updatedAt).toLocaleTimeString('es-AR')}catch(err){console.error(err);byId('driverGpsStatus').textContent='No se pudo compartir la ubicación. Revisá las reglas de Firebase.'}},err=>{driverWatchId=null;byId('driverGpsStatus').textContent=err.code===1?'Permiso de ubicación denegado. Habilitalo en Ajustes de Android.':'No se pudo obtener GPS. Comprobá que la ubicación del dispositivo esté activada.'},{enableHighAccuracy:true,maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750});
  }catch(error){
   driverWatchId=null;
   byId('driverGpsStatus').textContent='No se pudo iniciar GPS. Comprobá los permisos y la ubicación del dispositivo.';
