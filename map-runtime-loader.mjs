@@ -99,6 +99,7 @@ export function createMapRuntimeLoader({
 
       if (!mapboxReady) {
         windowRef.mapboxgl = undefined;
+        loadedScripts.delete(MAP_ENGINE_SCRIPTS[1].src);
         const [leafletStyle, leafletScript] = await Promise.all([
           ensureStyle(MAP_STYLES[0]),
           ensureScript(MAP_ENGINE_SCRIPTS[0])
@@ -106,6 +107,7 @@ export function createMapRuntimeLoader({
         const leafletReady = leafletStyle && leafletScript && !!windowRef.L;
         if (!leafletReady) {
           windowRef.L = undefined;
+          loadedScripts.delete(MAP_ENGINE_SCRIPTS[0].src);
           throw new Error("No se pudo cargar ningún motor cartográfico compatible.");
         }
       }
