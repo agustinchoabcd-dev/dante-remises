@@ -1913,7 +1913,7 @@ async function startDriverGps(){
  if(!isGeolocationAvailable()||driverWatchId!==null||driverGpsStarting)return;
  const gpsUid=currentUser?.uid,gpsRole=currentRole?.role;
  driverGpsStarting=true;
- byId('driverGpsStatus').textContent='Solicitando permiso de ubicación…';
+ if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='Solicitando permiso de ubicación…';
  try{
   const permitted=await requestPreciseLocationPermission();
   if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;
@@ -1990,8 +1990,8 @@ function renderDriverActiveTrip(trip,id){
   '<div class="hint">Origen (recogida): '+esc(trip.origin?.label||'No informado')+'</div>'+
   '<div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div>'+
   '<div class="actions"><button class="secondary" data-show-active-trip>Ver viaje</button><button class="secondary" id="openTripChatButton">Chat con pasajero</button>'+startButton+finishButton+'</div>';
- byId('driverActiveTrip').classList.remove('hidden');
- byId('driverActiveTrip').innerHTML=html;
+ byId('driverActiveTrip')?.classList.remove('hidden');
+ if(byId('driverActiveTrip'))byId('driverActiveTrip').innerHTML=html;
  const adminBox=byId('adminDriverActiveTrip');
  if(adminBox){adminBox.classList.remove('hidden');adminBox.innerHTML='<strong>Viaje '+(trip.status==='in_progress'?'en curso':'aceptado')+' · '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Recogida: '+esc(trip.origin?.label||'No informado')+'</div><div class="hint">Destino: '+esc(trip.destination?.label||'No informado')+'</div>'+'<div class="hint">Usá “Inicio” para seguir la navegación e iniciar o finalizar el viaje.</div>';}
 }
@@ -2123,7 +2123,7 @@ async function handleDriverTripDecision(id,decision){
   try{
    await update(ref(db,'trips/'+id),{status:'rejected',updatedAt:Date.now()});
    await update(ref(db,`tripInbox/${carId}/${id}`),{status:'rejected'});
-   byId('driverActiveTrip').classList.add('hidden');
+   byId('driverActiveTrip')?.classList.add('hidden');
    await dismissNativeTripAlert();notify('Solicitud rechazada.');return true;
   }catch(err){console.error(err);notify('No se pudo rechazar la solicitud.');return false}
  }
