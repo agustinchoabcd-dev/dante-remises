@@ -828,7 +828,7 @@ async function setStatus(id,status,minutes=null,indefinite=false){
   diagnostics.mark('firebase.status.write.success',{carId:id,status,durationMs:Date.now()-writeStartedAt,version});
   if(statusWriteVersions[id]===version){
    if(status!=='libre'){try{await remove(ref(db,'driverLocations/'+id))}catch(cleanupError){diagnostics.mark('firebase.status.location_cleanup.error',{carId:id,code:cleanupError?.code||'',name:cleanupError?.name||'Error'});console.warn('El estado se guardó, pero no se pudo limpiar la ubicación anterior:',cleanupError)}}
-   else if((currentRole?.role==='driver'||currentRole?.role==='admin')&&(currentRole.carId===id||currentUser.uid===ADMIN_UID))startDriverGps();
+   else if((isDriverWorkspaceActive()||currentRole?.role==='admin')&&(currentRole.carId===id||currentUser.uid===ADMIN_UID))startDriverGps();
   }
   notify('Estado sincronizado: '+c.driver);
  }catch(err){
@@ -922,20 +922,20 @@ let driverHomeNavigationRequestVersion=0,driverHomeMapTransitionHandler=null;
 function isDriverCapableRole(){return ['driver','admin'].includes(currentRole?.role)}
 function currentDriverCarId(){return currentRole?.role==='admin'?'144':String(currentRole?.carId||'')}
 const carMarkers={};
-async function choosePassengerDriver(id){if(currentRole?.role!=='passenger'||!byId('passengerDriverScreen'))return;const c=cars[id];if(!c||!c.online||c.status!=='libre'){notify('Ese chofer ya no está disponible.');render('invalid-driver-selection');return}selectedPassengerDriver=id;byId('passengerDriverScreen').classList.add('hidden');byId('passengerTripScreen').classList.remove('hidden');byId('selectedDriverCard').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${esc(c.driver)}</div><div class="model">Coche ${c.id} · ${esc(c.model)}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;byId('requestResult').classList.add('hidden');byId('requestResult').textContent='';originPoint=null;destinationPoint=null;byId('origin').value='';byId('destination').value='';if(realMap){if(routeLayer){realMap.removeLayer(routeLayer);routeLayer=null}if(window.originMarker){realMap.removeLayer(window.originMarker);window.originMarker=null}if(window.destinationMarker){realMap.removeLayer(window.destinationMarker);window.destinationMarker=null}}['origin','destination','useMyLocation','pickOrigin','pickDestination'].forEach(controlId=>byId(controlId).disabled=true);byId('routeSummary').textContent='Cargando mapa…';const selectionGeneration=passengerViewGeneration;const mapReady=await initRealMap();if(selectionGeneration!==passengerViewGeneration||currentRole?.role!=='passenger'||!byId('realMap'))return;if(mapReady){['origin','destination','useMyLocation','pickOrigin','pickDestination'].forEach(controlId=>byId(controlId).disabled=false);byId('routeSummary').textContent='Elegí el origen y el destino para calcular el recorrido.';watchSelectedDriver(id)}else{byId('routeSummary').textContent='No se pudo cargar el mapa. Volvé a la lista de choferes e intentá nuevamente.'}}
+async function choosePassengerDriver(id){if(!isPassengerWorkspaceActive()||!byId('passengerDriverScreen'))return;const c=cars[id];if(!c||!c.online||c.status!=='libre'){notify('Ese chofer ya no está disponible.');render('invalid-driver-selection');return}selectedPassengerDriver=id;byId('passengerDriverScreen').classList.add('hidden');byId('passengerTripScreen').classList.remove('hidden');byId('selectedDriverCard').innerHTML=`<div class="carhead"><div class="photos">${avatar(c.driverPhoto,'driver',c.driverPhotoTransform)}${avatar(c.vehiclePhoto,'vehicle',c.vehiclePhotoTransform)}</div><div><div class="carname">${esc(c.driver)}</div><div class="model">Coche ${c.id} · ${esc(c.model)}</div><span class="status ${cls(!c.online?'desconectado':c.status)}">${statusText(c)}</span></div></div>`;byId('requestResult').classList.add('hidden');byId('requestResult').textContent='';originPoint=null;destinationPoint=null;byId('origin').value='';byId('destination').value='';if(realMap){if(routeLayer){realMap.removeLayer(routeLayer);routeLayer=null}if(window.originMarker){realMap.removeLayer(window.originMarker);window.originMarker=null}if(window.destinationMarker){realMap.removeLayer(window.destinationMarker);window.destinationMarker=null}}['origin','destination','useMyLocation','pickOrigin','pickDestination'].forEach(controlId=>byId(controlId).disabled=true);byId('routeSummary').textContent='Cargando mapa…';const selectionGeneration=passengerViewGeneration;const mapReady=await initRealMap();if(selectionGeneration!==passengerViewGeneration||!isPassengerWorkspaceActive()||!byId('realMap'))return;if(mapReady){['origin','destination','useMyLocation','pickOrigin','pickDestination'].forEach(controlId=>byId(controlId).disabled=false);byId('routeSummary').textContent='Elegí el origen y el destino para calcular el recorrido.';watchSelectedDriver(id)}else{byId('routeSummary').textContent='No se pudo cargar el mapa. Volvé a la lista de choferes e intentá nuevamente.'}}
 bindRoleDom('passengerCars','click',e=>{if(e.target.closest('.avatar'))return;const btn=e.target.closest('[data-driver-id]');if(btn&&!btn.disabled)choosePassengerDriver(btn.dataset.driverId)});
 bindRoleDom('randomFreeDriver','click',()=>{refreshExpired();const available=Object.values(cars).filter(c=>c.online&&c.status==='libre');if(!available.length){notify('En este momento no hay choferes libres.');return}const chosen=available[Math.floor(Math.random()*available.length)];choosePassengerDriver(chosen.id)});
-bindRoleDom('backToDrivers','click',()=>{const tripScreen=byId('passengerTripScreen'),driverScreen=byId('passengerDriverScreen');if(currentRole?.role!=='passenger'||!tripScreen||!driverScreen)return;stopPassengerLocationWatch();tripScreen.classList.add('hidden');driverScreen.classList.remove('hidden');selectedPassengerDriver=null;originPoint=null;destinationPoint=null;});
+bindRoleDom('backToDrivers','click',()=>{const tripScreen=byId('passengerTripScreen'),driverScreen=byId('passengerDriverScreen');if(!isPassengerWorkspaceActive()||!tripScreen||!driverScreen)return;stopPassengerLocationWatch();tripScreen.classList.add('hidden');driverScreen.classList.remove('hidden');selectedPassengerDriver=null;originPoint=null;destinationPoint=null;});
 async function initRealMap(){
  const generation=passengerViewGeneration;
  try{
   await ensureMapRuntime();
-  if(generation!==passengerViewGeneration||currentRole?.role!=='passenger'||!byId('realMap'))return false;
+  if(generation!==passengerViewGeneration||!isPassengerWorkspaceActive()||!byId('realMap'))return false;
   if(!window.DanteMap||!window.DanteGeocoding||(!window.L&&!window.mapboxgl))throw new Error('MAP_RUNTIME_UNAVAILABLE');
   if(!realMap){
    realMap=window.DanteMap.create(byId('realMap'),HOME_CENTER,14,LOCATIONIQ_KEY);
    realMap.onClick(point=>{
-    if(generation!==passengerViewGeneration||currentRole?.role!=='passenger'||!mapPickMode)return;
+    if(generation!==passengerViewGeneration||!isPassengerWorkspaceActive()||!mapPickMode)return;
     const kind=mapPickMode;mapPickMode=null;
     const selected={lat:point.lat,lon:point.lon,label:'Buscando dirección…'};
     setPoint(kind,selected);void resolvePointAddress(kind,selected);
@@ -978,15 +978,15 @@ bindRoleDom('useMyLocation','click',async()=>{
  if(!isGeolocationAvailable()){notify('Este dispositivo no ofrece geolocalización.');return}
  const generation=passengerViewGeneration,uid=currentUser?.uid;
  const permitted=await requestLocationPermission();
- if(generation!==passengerViewGeneration||currentRole?.role!=='passenger'||currentUser?.uid!==uid)return;
+ if(generation!==passengerViewGeneration||!isPassengerWorkspaceActive()||currentUser?.uid!==uid)return;
  if(!permitted){notify('No hay permiso de ubicación. Habilitalo en los ajustes del dispositivo y volvé a intentarlo.');return}
  notify('Buscando tu ubicación…');
  getCurrentPosition(async pos=>{
-  if(generation!==passengerViewGeneration||currentRole?.role!=='passenger'||currentUser?.uid!==uid)return;
+  if(generation!==passengerViewGeneration||!isPassengerWorkspaceActive()||currentUser?.uid!==uid)return;
   const lat=pos.coords.latitude,lon=pos.coords.longitude;
   let details=null;
   try{details=await DanteGeocoding.reverseDetails({lat,lon})}catch(error){console.warn('No se pudo resolver la dirección GPS:',error)}
-  if(generation!==passengerViewGeneration||currentRole?.role!=='passenger'||currentUser?.uid!==uid)return;
+  if(generation!==passengerViewGeneration||!isPassengerWorkspaceActive()||currentUser?.uid!==uid)return;
   setPoint('origin',{lat,lon,...(details||{}),label:details?.label||'Calle cercana no disponible'});
  },error=>{
   if(generation===passengerViewGeneration)notify(error.code===1?'Tenés que permitir el acceso a la ubicación.':'No se pudo obtener tu ubicación. Comprobá que el GPS esté activado.')
@@ -994,8 +994,8 @@ bindRoleDom('useMyLocation','click',async()=>{
 });
 bindRoleDom('pickOrigin','click',()=>{mapPickMode='origin';byId('pickOrigin').classList.add('active');byId('pickDestination').classList.remove('active');notify('Tocá el mapa para marcar el origen.')});bindRoleDom('pickDestination','click',()=>{mapPickMode='destination';byId('pickDestination').classList.add('active');byId('pickOrigin').classList.remove('active');notify('Tocá el mapa para marcar el destino.')});
 let passengerRouteRequestVersion=0;
-async function updateRoute(){if(!originPoint||!destinationPoint){byId('routeSummary').textContent='Elegí el origen y el destino para calcular el recorrido.';return}const requestVersion=++passengerRouteRequestVersion,generation=passengerViewGeneration;const points=[{lat:originPoint.lat,lon:originPoint.lon},{lat:destinationPoint.lat,lon:destinationPoint.lon}];try{const route=await window.DanteMap.getDrivingRoute(points);if(requestVersion!==passengerRouteRequestVersion||generation!==passengerViewGeneration||currentRole?.role!=='passenger'||!realMap)return;if(routeLayer)realMap.removeLayer(routeLayer);routeLayer=realMap.addRoute('passenger-route',route.geometry,{color:'#168447',weight:6,opacity:.85});realMap.fitGeometry(route.geometry,.15);byId('routeSummary').textContent=`Recorrido estimado: ${(route.distance/1000).toFixed(1)} km · ${Math.max(1,Math.round(route.duration/60))} min · ${route.provider} (estimación de ruta, no de espera del remis).`}catch(err){if(requestVersion!==passengerRouteRequestVersion||generation!==passengerViewGeneration)return;console.error(err);byId('routeSummary').textContent='No se pudo calcular la ruta. Podés continuar si ambos puntos están seleccionados.';}}
-function watchSelectedDriver(carId){stopPassengerLocationWatch();if(liveLocationUnsub){liveLocationUnsub();liveLocationUnsub=null}const generation=passengerViewGeneration;liveLocationUnsub=onValue(ref(db,'driverLocations/'+carId),snap=>{if(generation!==passengerViewGeneration||currentRole?.role!=='passenger'||selectedPassengerDriver!==carId)return;const loc=snap.val();if(loc&&cars[carId]?.online&&cars[carId]?.status==='libre'&&Date.now()-Number(loc.updatedAt||0)<45000){showDriverMarker(loc);if(byId('driverLocationNote'))byId('driverLocationNote').textContent='Ubicación en vivo del coche '+carId+' mientras figura Libre.'}else{if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}if(byId('driverLocationNote'))byId('driverLocationNote').textContent='El coche no está compartiendo ubicación en este momento.'}},err=>console.warn('No se pudo leer la ubicación pública',err));}
+async function updateRoute(){if(!originPoint||!destinationPoint){byId('routeSummary').textContent='Elegí el origen y el destino para calcular el recorrido.';return}const requestVersion=++passengerRouteRequestVersion,generation=passengerViewGeneration;const points=[{lat:originPoint.lat,lon:originPoint.lon},{lat:destinationPoint.lat,lon:destinationPoint.lon}];try{const route=await window.DanteMap.getDrivingRoute(points);if(requestVersion!==passengerRouteRequestVersion||generation!==passengerViewGeneration||!isPassengerWorkspaceActive()||!realMap)return;if(routeLayer)realMap.removeLayer(routeLayer);routeLayer=realMap.addRoute('passenger-route',route.geometry,{color:'#168447',weight:6,opacity:.85});realMap.fitGeometry(route.geometry,.15);byId('routeSummary').textContent=`Recorrido estimado: ${(route.distance/1000).toFixed(1)} km · ${Math.max(1,Math.round(route.duration/60))} min · ${route.provider} (estimación de ruta, no de espera del remis).`}catch(err){if(requestVersion!==passengerRouteRequestVersion||generation!==passengerViewGeneration)return;console.error(err);byId('routeSummary').textContent='No se pudo calcular la ruta. Podés continuar si ambos puntos están seleccionados.';}}
+function watchSelectedDriver(carId){stopPassengerLocationWatch();if(liveLocationUnsub){liveLocationUnsub();liveLocationUnsub=null}const generation=passengerViewGeneration;liveLocationUnsub=onValue(ref(db,'driverLocations/'+carId),snap=>{if(generation!==passengerViewGeneration||!isPassengerWorkspaceActive()||selectedPassengerDriver!==carId)return;const loc=snap.val();if(loc&&cars[carId]?.online&&cars[carId]?.status==='libre'&&Date.now()-Number(loc.updatedAt||0)<45000){showDriverMarker(loc);if(byId('driverLocationNote'))byId('driverLocationNote').textContent='Ubicación en vivo del coche '+carId+' mientras figura Libre.'}else{if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}if(byId('driverLocationNote'))byId('driverLocationNote').textContent='El coche no está compartiendo ubicación en este momento.'}},err=>console.warn('No se pudo leer la ubicación pública',err));}
 async function calculateTripAlertRoadDistances(carId,origin,destination){
  const result={originDistanceMeters:null,destinationDistanceMeters:null};let driverLocation=null;
  try{const snapshot=await get(ref(db,'driverLocations/'+carId)),candidate=snapshot.val(),age=Date.now()-Number(candidate?.updatedAt||0),accuracy=Number(candidate?.accuracy);if(candidate&&age>=0&&age<45000&&Number.isFinite(Number(candidate.lat))&&Number.isFinite(Number(candidate.lon))&&(!Number.isFinite(accuracy)||accuracy<=200))driverLocation={lat:Number(candidate.lat),lon:Number(candidate.lon)}}catch(error){console.warn('No se pudo leer el GPS reciente del coche para la alerta:',error?.code||error?.name||'Error')}
@@ -1018,7 +1018,7 @@ function showDriverMarker(loc){if(!realMap)return;const point={lat:Number(loc.la
 function stopPassengerLocationWatch(){if(liveLocationUnsub){liveLocationUnsub();liveLocationUnsub=null}if(selectedCarMarker&&realMap){realMap.removeLayer(selectedCarMarker);selectedCarMarker=null}}
 bindRoleDom('requestSelectedDriver','click',async()=>{
  const c=cars[selectedPassengerDriver];
- if(!currentUser||currentRole?.role!=='passenger'){notify('Iniciá sesión como pasajero para solicitar un viaje.');return}
+ if(!currentUser||!isPassengerWorkspaceActive()){notify('Iniciá sesión como pasajero para solicitar un viaje.');return}
  if(!c||!c.online||c.status!=='libre'){notify('El chofer seleccionado ya no está disponible o se desconectó.');return}
  if(!passengerPhotoReady){showView('configuracion');notify('Primero completá y comprobá tu foto de perfil.');return}
  if(!originPoint||!destinationPoint){notify('Seleccioná el origen y el destino, usando el GPS, el buscador o el mapa.');return}
@@ -1071,8 +1071,8 @@ bindRoleDom('requestSelectedDriver','click',async()=>{
  }
  activeTripId=tripId;result.innerHTML='<strong>Solicitud registrada en la bandeja del coche.</strong><br>'+esc(tripPushStatusById.get(tripId)||'El estado de la alerta todavía no está confirmado.')+'<div class="actions"><button class="secondary" data-open-passenger-trip-chat="'+tripId+'">Chatear con el chofer</button></div>';listenPassengerTrip(tripId);notify('Solicitud registrada.');
 });
-function listenPassengerTrip(id){if(passengerTripUnsub)passengerTripUnsub();passengerTripUnsub=onValue(ref(db,'trips/'+id),snap=>{const trip=snap.val();if(!trip)return;activeTripData=trip;const box=byId('requestResult');if(!box||currentRole?.role!=='passenger')return;box.classList.remove('hidden');if(trip.status==='requested')box.innerHTML='<strong>Solicitud enviada.</strong><br>Esperando aceptación del chofer…<div class="hint">'+esc(tripPushStatusById.get(id)||'El estado de la alerta todavía no está confirmado.')+'</div><div class="actions"><button class="secondary" data-open-passenger-trip-chat="'+id+'">Chatear con el chofer</button></div>';else if(trip.status==='accepted'||trip.status==='in_progress'){box.innerHTML=`<strong class="trip-status">Viaje ${trip.status==='accepted'?'aceptado':'en curso'}</strong><br>${esc(trip.driverName)} · Coche ${esc(trip.carId)}<br>El mapa mostrará la ubicación del coche durante el servicio.<div class="actions"><button class="secondary" data-open-passenger-trip-chat="${esc(id)}">Chatear con el chofer</button></div>`;watchTripLocation(id)}else if(trip.status==='rejected'){box.innerHTML='<strong>El chofer rechazó la solicitud.</strong> Podés volver a elegir otro coche.';byId('requestSelectedDriver').disabled=false;}else if(trip.status==='completed'){box.innerHTML='<strong>Viaje finalizado.</strong> Gracias por viajar con Dante Remises.';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}else if(trip.status==='cancelled'){box.innerHTML='<strong>Solicitud cancelada.</strong>';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}},err=>console.error('No se pudo leer el viaje',err));}
-let tripLocationUnsub=null;function watchTripLocation(id){if(tripLocationUnsub)tripLocationUnsub();const generation=passengerViewGeneration;tripLocationUnsub=onValue(ref(db,'trips/'+id+'/driverLocation'),snap=>{if(generation!==passengerViewGeneration||currentRole?.role!=='passenger')return;const loc=snap.val();if(loc){showDriverMarker(loc);if(byId('driverLocationNote'))byId('driverLocationNote').textContent='Seguimiento GPS del coche durante tu viaje.'}},err=>console.warn(err))}function stopTripLocationWatch(){if(tripLocationUnsub){tripLocationUnsub();tripLocationUnsub=null}stopPassengerLocationWatch()}
+function listenPassengerTrip(id){if(passengerTripUnsub)passengerTripUnsub();passengerTripUnsub=onValue(ref(db,'trips/'+id),snap=>{const trip=snap.val();if(!trip)return;activeTripData=trip;const box=byId('requestResult');if(!box||!isPassengerWorkspaceActive())return;box.classList.remove('hidden');if(trip.status==='requested')box.innerHTML='<strong>Solicitud enviada.</strong><br>Esperando aceptación del chofer…<div class="hint">'+esc(tripPushStatusById.get(id)||'El estado de la alerta todavía no está confirmado.')+'</div><div class="actions"><button class="secondary" data-open-passenger-trip-chat="'+id+'">Chatear con el chofer</button></div>';else if(trip.status==='accepted'||trip.status==='in_progress'){box.innerHTML=`<strong class="trip-status">Viaje ${trip.status==='accepted'?'aceptado':'en curso'}</strong><br>${esc(trip.driverName)} · Coche ${esc(trip.carId)}<br>El mapa mostrará la ubicación del coche durante el servicio.<div class="actions"><button class="secondary" data-open-passenger-trip-chat="${esc(id)}">Chatear con el chofer</button></div>`;watchTripLocation(id)}else if(trip.status==='rejected'){box.innerHTML='<strong>El chofer rechazó la solicitud.</strong> Podés volver a elegir otro coche.';byId('requestSelectedDriver').disabled=false;}else if(trip.status==='completed'){box.innerHTML='<strong>Viaje finalizado.</strong> Gracias por viajar con Dante Remises.';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}else if(trip.status==='cancelled'){box.innerHTML='<strong>Solicitud cancelada.</strong>';stopTripLocationWatch();byId('requestSelectedDriver').disabled=false;}},err=>console.error('No se pudo leer el viaje',err));}
+let tripLocationUnsub=null;function watchTripLocation(id){if(tripLocationUnsub)tripLocationUnsub();const generation=passengerViewGeneration;tripLocationUnsub=onValue(ref(db,'trips/'+id+'/driverLocation'),snap=>{if(generation!==passengerViewGeneration||!isPassengerWorkspaceActive())return;const loc=snap.val();if(loc){showDriverMarker(loc);if(byId('driverLocationNote'))byId('driverLocationNote').textContent='Seguimiento GPS del coche durante tu viaje.'}},err=>console.warn(err))}function stopTripLocationWatch(){if(tripLocationUnsub){tripLocationUnsub();tripLocationUnsub=null}stopPassengerLocationWatch()}
 
 const passengerPhotoInput=()=>byId('passengerProfilePhotoGallery');
 const passengerPhotoCameraInput=()=>byId('passengerProfilePhotoCamera');
@@ -1164,7 +1164,7 @@ async function getVerifiedPassengerPhoto(key,token){
 }
 async function loadPassengerPhoto(){
  const version=++passengerPhotoLoadVersion;
- const card=byId('passengerPhotoCard'),isPassenger=currentRole?.role==='passenger',preview=byId('passengerProfilePhotoPreview');
+ const card=byId('passengerPhotoCard'),isPassenger=isPassengerWorkspaceActive(),preview=byId('passengerProfilePhotoPreview');
  passengerPhotoReady=false;passengerPhotoCheckUnavailable=false;if(!card||!preview)return false;card.classList.toggle('hidden',!isPassenger);if(!isPassenger)return false;
  const key=currentRole.profile?.profilePhotoKey||'',uid=currentUser?.uid||'';
  if(!key){preview.removeAttribute('src');if(uid)void mediaCache.removePrefix(`private:${uid}:passenger-profile:`);setPassengerPhotoStatus('Todavía falta tu foto. Guardala para poder pedir viajes.');return false}
@@ -1203,7 +1203,7 @@ async function handlePassengerPhotoSelection(event){
   if(version!==passengerPhotoLoadVersion)return;
   setPassengerPhotoStatus('Analizando la foto en este dispositivo para comprobar que aparezca un solo rostro…');
   await detectSinglePassengerFace(blob);
-  if(version!==passengerPhotoLoadVersion||currentRole?.role!=='passenger')return;
+  if(version!==passengerPhotoLoadVersion||!isPassengerWorkspaceActive())return;
   const preview=byId('passengerProfilePhotoPreview');
   if(!preview)return;
   pendingPassengerPhotoBlob=blob;
@@ -1226,7 +1226,7 @@ async function deletePassengerPhoto(key,token){
 }
 bindRoleDom('refreshPassengerProfilePhoto','click',()=>loadPassengerPhoto());
 bindRoleDom('savePassengerProfilePhoto','click',async()=>{
- if(currentRole?.role!=='passenger'||!currentUser){notify('Iniciá sesión como pasajero para guardar la foto.');return}
+ if(!isPassengerWorkspaceActive()||!currentUser){notify('Iniciá sesión como pasajero para guardar la foto.');return}
  if(!pendingPassengerPhotoBlob){notify('Primero elegí o sacá una foto.');return}
  const button=byId('savePassengerProfilePhoto'),oldKey=currentRole.profile?.profilePhotoKey||'';if(!button)return;button.disabled=true;const operationVersion=++passengerPhotoLoadVersion;setPassengerPhotoStatus('Preparando una versión liviana y privada…');
  let newKey='',profileRefSaved=false;
@@ -1266,7 +1266,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!imageLightbox.clas
 function showPassengerOnboarding(){
  const home=byId('passengerPhotoCardHome'),photoCard=byId('passengerPhotoCard');
  if(home&&photoCard)home.appendChild(photoCard);
- if(!applyRoleView(document,currentRole?.role,'passengerOnboarding'))return;
+ if(!applyRoleView(document,currentWorkspaceRole(),'passengerOnboarding'))return;
  ['acceso','staffAccess'].forEach(id=>byId(id)?.classList.add('hidden'));
  document.querySelectorAll('.tabs').forEach(el=>el.classList.add('hidden'));
  byId('postLoginGreeting')?.classList.add('hidden');
@@ -2285,11 +2285,11 @@ function getChatApiClient(){
  return chatApiClient;
 }
 async function sendOperatorPresence(){
- if(currentRole?.role!=='operator'||operatorPresenceBusy)return;
+ if(!isOperatorWorkspaceActive()||operatorPresenceBusy)return;
  operatorPresenceBusy=true;
  try{
   await ensureChatModules();
-  if(currentRole?.role!=='operator')return;
+  if(!isOperatorWorkspaceActive())return;
   const api=getChatApiClient();if(!api)return;
   await api.setOperatorPresence();
  }catch(error){
@@ -2304,10 +2304,10 @@ function startOperatorPresence(){
  if(operatorPresenceTimer!==null)clearInterval(operatorPresenceTimer);
  operatorPresenceTimer=null;
  operatorPresenceUnavailable=false;
- if(currentRole?.role!=='operator')return;
+ if(!isOperatorWorkspaceActive())return;
  const uid=currentUser?.uid;
  void ensureChatModules().then(()=>{
-  if(currentRole?.role!=='operator'||currentUser?.uid!==uid)return;
+  if(!isOperatorWorkspaceActive()||currentUser?.uid!==uid)return;
   void sendOperatorPresence();
   operatorPresenceTimer=setInterval(()=>void sendOperatorPresence(),10_000);
  }).catch(error=>console.warn('No se pudo cargar el servicio de presencia del operador:',error));
@@ -2315,7 +2315,7 @@ function startOperatorPresence(){
 async function stopOperatorPresence(){
  if(operatorPresenceTimer!==null)clearInterval(operatorPresenceTimer);
  operatorPresenceTimer=null;
- if(currentRole?.role==='operator'){
+ if(isOperatorWorkspaceActive()){
   try{
    await ensureChatModules();
    const api=getChatApiClient();
@@ -2365,7 +2365,7 @@ function startChatPolling(){
  if(chatOperatorPollTimer!==null)clearInterval(chatOperatorPollTimer);
  if(!getChatApiClient())return;
  chatPollTimer=setInterval(()=>{if(!byId('chat').classList.contains('hidden'))refreshChatConversations(true)},7000);
- if(currentRole?.role==='passenger'&&!chatOperatorServiceUnavailable)chatOperatorPollTimer=setInterval(()=>{if(!byId('chat').classList.contains('hidden'))void refreshChatOperators()},15_000);
+ if(isPassengerWorkspaceActive()&&!chatOperatorServiceUnavailable)chatOperatorPollTimer=setInterval(()=>{if(!byId('chat').classList.contains('hidden'))void refreshChatOperators()},15_000);
 }
 function chatRecipientLabel(value){
  if(value==='operators')return 'Operadores de Dante Remises';
@@ -2459,7 +2459,7 @@ async function configureChatRecipients(){
 }
 function updateChatRecipientTitle(){byId('chatTitle').textContent='Chat con '+chatRecipientLabel(byId('contactChoice').value)}
 async function refreshChatOperators(){
- if(currentRole?.role!=='passenger'||chatOperatorServiceUnavailable)return;
+ if(!isPassengerWorkspaceActive()||chatOperatorServiceUnavailable)return;
  const api=getChatApiClient();if(!api)return;
  try{
   const result=await api.listOperators();
@@ -2539,22 +2539,22 @@ function updatePassengerOperatorSelector(conversation){
 }
 function conversationTitle(conversation){
  const cached=chatResolvedTitles.get(conversation.conversationId);if(cached)return cached;
- if(conversation.kind==='operator-support')return currentRole?.role==='operator'?'Consulta de pasajero':'Operadores de Dante Remises';
+ if(conversation.kind==='operator-support')return isOperatorWorkspaceActive()?'Consulta de pasajero':'Operadores de Dante Remises';
  const otherUid=Object.keys(conversation.participantUids||{}).find(uid=>uid!==currentUser?.uid);
- if(currentRole?.role==='passenger'&&conversation.kind==='passenger-operator'){
+ if(isPassengerWorkspaceActive()&&conversation.kind==='passenger-operator'){
   const operator=chatOperators.find(item=>item.uid===otherUid);
   if(operator)return operator.firstName+' · operador';
   const fallback=USER_ROLES[otherUid]?.name||'Operador';
   return fallback.split(/\\s+/)[0]+' · operador';
  }
  if(otherUid&&USER_ROLES[otherUid]?.name)return USER_ROLES[otherUid].name;
- if(currentRole?.role==='passenger')return 'Chofer de Dante Remises';
- if(currentRole?.role==='driver')return 'Pasajero';
+ if(isPassengerWorkspaceActive())return 'Chofer de Dante Remises';
+ if(isDriverWorkspaceActive())return 'Pasajero';
  return currentRole?.role==='admin'?'Chat con pasajero':'Conversación directa';
 }
 async function resolveConversationTitle(conversation){
  const cached=chatResolvedTitles.get(conversation.conversationId);if(cached)return cached;
- const canResolvePassengerName=['admin','driver'].includes(currentRole?.role)&&conversation.kind==='passenger-driver'||currentRole?.role==='operator'&&['passenger-operator','operator-support'].includes(conversation.kind);
+ const canResolvePassengerName=['admin','driver'].includes(currentRole?.role)&&conversation.kind==='passenger-driver'||isOperatorWorkspaceActive()&&['passenger-operator','operator-support'].includes(conversation.kind);
  if(canResolvePassengerName){
   const otherUid=Object.keys(conversation.participantUids||{}).find(uid=>uid!==currentUser?.uid);
   if(otherUid){
@@ -3115,7 +3115,7 @@ async function listAllChatConversations(api){
  return {conversations,complete:!hasMore};
 }
 function getDefaultChatConversation(){
- if(currentRole?.role==='passenger'){
+ if(isPassengerWorkspaceActive()){
   if(!chatOperators.length)return null;
   const support=chatConversations.find(conversation=>conversation.kind==='operator-support');
   if(support)return support;
@@ -3128,7 +3128,7 @@ function getDefaultChatConversation(){
  return chatConversations[0]||null;
 }
 async function ensurePassengerDefaultChat(){
- if(currentRole?.role!=='passenger'||activeChatConversation||!chatOperators.length)return;
+ if(!isPassengerWorkspaceActive()||activeChatConversation||!chatOperators.length)return;
  const preferred=getDefaultChatConversation();
  if(preferred){await selectChatConversation(preferred);return}
  const api=getChatApiClient();if(!api)return;
@@ -3181,7 +3181,7 @@ async function loadChatView(){
  if(cachedList?.conversations?.length){
   chatConversations=cachedList.conversations;
   renderChatConversationList();renderChatOperatorMenu();updatePassengerOperatorSelector(activeChatConversation);
-  if(!activeChatConversation&&currentRole?.role!=='passenger'){
+  if(!activeChatConversation&&!isPassengerWorkspaceActive()){
    const cachedActive=chatConversations[0];
    activeChatConversation=cachedActive;
    await selectChatConversation(cachedActive);
@@ -3213,7 +3213,7 @@ async function openChatConversation(payload){
   const current=chatConversations.find(c=>c.conversationId===activeChatConversation.conversationId)||activeChatConversation;
   await selectChatConversation(current);showView('chat');
  }catch(error){setChatStatus(error.message||'No se pudo abrir la conversación.');notify(error.message||'No se pudo abrir la conversación.')}
- finally{chatBusy=false;byId('chatStartButton').disabled=currentRole?.role==='driver'||!getChatApiClient()}
+ finally{chatBusy=false;byId('chatStartButton').disabled=isDriverWorkspaceActive()||!getChatApiClient()}
 }
 async function startChatFromSelection(){
  try{await ensureChatModules()}catch(error){setChatStatus('No se pudo cargar el módulo de chat. Revisá tu conexión e intentá nuevamente.');return}
@@ -3427,7 +3427,7 @@ async function resolveAuthenticatedRole(user){
  catch(error){console.error('No se pudo leer el perfil dinámico:',error);throw new Error('No se pudo verificar tu perfil. Intentá nuevamente.')}
  return resolveRoleFromProfile({uid:user.uid,profile,legacyStaff,adminUid:ADMIN_UID,userEmail:user.email});
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&currentRole?.role==='operator')void sendOperatorPresence()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&isOperatorWorkspaceActive())void sendOperatorPresence()});
 function renderBuildInfo(){const info=window.DANTE_BUILD_INFO||{};byId("infoHtmlVersion").textContent=info.htmlVersion||"0.6.1";byId("infoApkVersion").textContent=info.apkVersionName||"No disponible en versión web";byId("infoApkVersionCode").textContent=info.apkVersionCode??"—";byId("infoBuildNumber").textContent=info.buildNumber??"—";byId("infoBuildRun").textContent=info.runId||"—";byId("infoBuildBranch").textContent=info.branch||"—";byId("infoBuildCommit").textContent=info.commit||"—";byId("infoBuildDate").textContent=info.buildDateUtc||"—";byId("infoAndroidPackage").textContent=info.androidPackage||"com.danteremises.test";byId("infoBuildType").textContent=info.buildType||"Web / no informado"}
 renderBuildInfo();
 let startupScreenFinished=false;
@@ -3511,7 +3511,7 @@ onAuthStateChanged(auth,async user=>{
  if(!shouldRegisterDriverPresence(currentRole.role,driverWantsOnline,!!activeTripId))return;
  void registerDriverPresence(user,currentRole).then(()=>{
   perf.mark('auth.driver-presence.done');diagnostics.mark('firebase.presence.registered',{carId:currentRole?.carId||(currentRole?.role==='admin'?'144':'')});
-  if(currentRole?.role==='driver'){const car=cars[String(currentRole.carId)];if(car)car.online=true;render('driver-presence-restored');void startDriverGps()}
+  if(isDriverWorkspaceActive()){const car=cars[String(currentRole.carId)];if(car)car.online=true;render('driver-presence-restored');void startDriverGps()}
   void diagnostics.flush();
  }).catch(error=>{diagnostics.mark('firebase.presence.error',{code:error?.code||'',name:error?.name||'Error'});console.error('No se pudo registrar la presencia del chofer:',error);notify('No se pudo confirmar tu conexión como chofer. No recibirás solicitudes hasta reconectar.')})
 })}}else{latestDriverPresence={};refreshCarPresenceFromSnapshot();render('unspecified')}
