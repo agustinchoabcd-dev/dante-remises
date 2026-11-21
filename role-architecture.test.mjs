@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, centralTemplate, roleDomBindings, passengerModule, driverModule, operatorModule, adminModule, mapAdapter, diagnosticsMonitor] = await Promise.all([
+const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, centralTemplate, roleDomBindings, passengerModule, driverModule, operatorModule, adminModule, mapAdapter, diagnosticsMonitor, driverInboxState] = await Promise.all([
   readFile(new URL("./index.html", import.meta.url), "utf8"),
   readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8"),
   readFile(new URL("./service-worker.js", import.meta.url), "utf8"),
@@ -17,7 +17,8 @@ const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, pass
   readFile(new URL("./roles/operator.mjs", import.meta.url), "utf8"),
   readFile(new URL("./roles/admin.mjs", import.meta.url), "utf8"),
   readFile(new URL("./js/dante-map.js", import.meta.url), "utf8"),
-  readFile(new URL("./diagnostics-monitor.mjs", import.meta.url), "utf8")
+  readFile(new URL("./diagnostics-monitor.mjs", import.meta.url), "utf8"),
+  readFile(new URL("./driver-inbox-state.mjs", import.meta.url), "utf8")
 ]);
 
 
@@ -378,4 +379,45 @@ test("authentication is a lazy isolated template and startup waits for Firebase 
 test("admin workspace hides the floating driver map control", () => {
   assert.match(html, /admin-workspace-active/);
   assert.match(html, /driverHomeMapHomeButton.*classList\.add\('hidden'\)/);
+});
+
+test("driver inbox handles absent role mounts and loads trip records concurrently",()=>{
+ const start=html.indexOf("function listenDriverInbox(){");
+ const end=html.indexOf("\nasync function dismissNativeTripAlert()",start);
+ const inbox=html.slice(start,end);
+ assert.match(inbox,/if\(driverTarget\)targets\.push/);
+ assert.match(inbox,/if\(adminTarget\)targets\.push/);
+ assert.match(inbox,/loadPendingDriverTrips\(snap\.val\(\)/);
+ assert.match(inbox,/\.catch\(error=>/);
+ assert.match(driverInboxState,/Promise\.all\(/);
+ assert.ok(copyScript.includes('"driver-inbox-state.mjs"'));
+});
+
+test("driver can connect and start GPS without waiting for the map engine",()=>{
+ const start=html.indexOf("async function connectDriverHome(){");
+ const end=html.indexOf("\nasync function disconnectDriverHome()",start);
+ const connect=html.slice(start,end);
+ assert.equal(connect.includes("await initDriverHomeMap()"),false);
+ assert.match(connect,/await registerDriverPresence/);
+ assert.match(connect,/void startDriverGps\(\)/);
+ assert.match(connect,/scheduleDriverHomeMapInit\(\)/);
+ const showStart=html.indexOf("function showView(v){");
+ const showEnd=html.indexOf("\nfunction renderDriverHomeStatus",showStart);
+ assert.match(html.slice(showStart,showEnd),/scheduleDriverHomeMapInit\(\)/);
+});
+
+test("root admin role skips the profile network read and role template preloads in parallel",()=>{
+ const roleStart=html.indexOf("async function resolveAuthenticatedRole(user)");
+ const roleEnd=html.indexOf("\ndocument.addEventListener('visibilitychange'",roleStart);
+ const resolver=html.slice(roleStart,roleEnd);
+ assert.match(resolver,/if\(user\.uid===ADMIN_UID\)return resolveRoleFromProfile/);
+ assert.match(html,/Promise\.all\(\[activateRole\(currentRole\.role/);
+ assert.match(html,/roleTemplateLoader\.preload\(initialTemplateRole\)/);
+});
+
+test("driver location fixes are validated and published without re-registering onDisconnect every sample",()=>{
+ assert.match(html,/validateDriverLocationFix\(pos/);
+ assert.match(html,/driverLocationDisconnectPaths\.has\(locationPath\)/);
+ assert.match(html,/driverLocationDisconnectPaths\.clear\(\)/);
+ assert.match(html,/maximumAge:5000,timeout:20000,interval:2000,minimumUpdateInterval:1500/);
 });
