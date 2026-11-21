@@ -75,12 +75,13 @@ test("operator activation does not load driver operations", async () => {
   assert.deepEqual(calls, ["mount:central", "view:central", "operator-presence"]);
 });
 
-test("admin activation keeps central tools and the car 144 driver runtime", async () => {
+test("admin starts in driver workspace and lazily opens/unloads the admin panel", async () => {
   const calls = [];
   const result = await activateRole("admin", {
     user: { uid: "admin-1" },
     role: { role: "admin", carId: "144" },
     loadRoleView: async role => calls.push("mount:" + role),
+    unloadRoleView: role => calls.push("unmount:" + role),
     showView: view => calls.push("view:" + view),
     setAdminTripAlertPanel: enabled => calls.push("admin-alerts:" + enabled),
     loadAdminProfiles: async () => calls.push("profiles"),
@@ -92,12 +93,21 @@ test("admin activation keeps central tools and the car 144 driver runtime", asyn
     processPendingTripAction: async () => calls.push("pending")
   });
 
-  assert.equal(result.view, "central");
+  assert.equal(result.view, "inicio");
+  assert.deepEqual(calls.slice(0, 2), ["mount:driver", "view:inicio"]);
+  assert.equal(typeof result.workspaceController.openAdminPanel, "function");
+  await result.workspaceController.openAdminPanel();
+  assert.ok(calls.includes("mount:central"));
+  assert.ok(calls.includes("admin-alerts:true"));
+  assert.ok(calls.includes("profiles"));
+  assert.equal(calls.at(-1), "view:central");
+
+  result.workspaceController.openDriverWorkspace();
+  assert.deepEqual(calls.slice(-2), ["view:inicio", "unmount:central"]);
   await result.background;
-  assert.deepEqual(calls, [
-    "mount:central", "mount:driver", "view:central", "admin-alerts:true", "profiles", "cars",
-    "push", "inbox", "restore", "gps", "pending"
-  ]);
+  for (const operation of ["cars", "push", "inbox", "restore", "gps", "pending"]) {
+    assert.ok(calls.includes(operation), "Missing admin driver operation: " + operation);
+  }
 });
 
 test("stale passenger auth callback cannot reveal its view after a newer login", async () => {
