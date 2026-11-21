@@ -275,3 +275,18 @@ test("stopping the selected passenger driver also detaches its Firebase location
   assert.match(cleanup, /if\(liveLocationUnsub\)\{liveLocationUnsub\(\);liveLocationUnsub=null\}/);
   assert.match(cleanup, /selectedCarMarker/);
 });
+
+test("admin workspace switching separates identity from the active workspace", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  const admin = await readFile(new URL("./roles/admin.mjs", import.meta.url), "utf8");
+  assert.ok(html.includes("let activeWorkspaceRole = null;"));
+  assert.ok(html.includes("function currentWorkspaceRole()"));
+  assert.ok(html.includes("function isPassengerWorkspaceActive()"));
+  assert.ok(html.includes("function isOperatorWorkspaceActive()"));
+  assert.ok(html.includes("passengerActiveTripId=null,passengerActiveTripData=null"));
+  assert.ok(html.includes('id="adminWorkspaceSelector"'));
+  assert.ok(html.includes('id="adminWorkspaceReturnButton"'));
+  assert.ok(admin.includes("openOperatorWorkspace()"));
+  assert.ok(admin.includes("openPassengerWorkspace()"));
+  assert.ok(admin.includes('context.setWorkspaceRole?.("passenger")'));
+});
