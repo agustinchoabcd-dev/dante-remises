@@ -3918,11 +3918,8 @@ onAuthStateChanged(auth,async user=>{
      renderDriverHomeStatus();
      const car=cars[currentDriverCarId()];
      if(car?.online||activeTripId){
-      const ready=await initDriverHomeMap();
-      if(!ready||authGeneration!==authStateGeneration)return;
-      // Keep the normal three-tab driver workspace visible when returning from Central.
-      // A connected car or active trip must not force the map into full-screen mode.
-      if(activeTripId)await focusDriverHomeMap();
+      // The view is already mounted; map startup runs after paint and never blocks the workspace switch.
+      scheduleDriverHomeMapInit();
       if(car?.online)startDriverHomeMessageCycle();
      }
     }
