@@ -79,6 +79,9 @@ export function createDiagnosticsMonitor({
   let timer = null;
   let inFlight = null;
   let retryDelayMs = 1500;
+  let lastUploadStatus = "idle";
+  let lastUploadError = "";
+  let lastUploadAt = 0;
 
   const setTimer = runtime.setTimeout?.bind(runtime) || setTimeout;
   const clearTimer = runtime.clearTimeout?.bind(runtime) || clearTimeout;
@@ -120,7 +123,7 @@ export function createDiagnosticsMonitor({
       let authenticated = false;
       try {
         const token = await getToken();
-        if (!token) return false;
+        if (!token) { lastUploadStatus = "no_token"; lastUploadError = "No hay token de autenticación"; return false; }
         authenticated = true;
         const revisionAtSend = revision;
         const context = typeof getContext === "function" ? getContext() || {} : {};
@@ -147,13 +150,20 @@ export function createDiagnosticsMonitor({
           keepalive: true
         });
         if (!response?.ok) {
+          lastUploadStatus = "http_" + String(response?.status ?? "unknown");
+          lastUploadError = "HTTP " + String(response?.status ?? "desconocido");
           retryDelayMs = Math.min(60_000, Math.max(1500, retryDelayMs * 2));
           return false;
         }
         uploadedRevision = payload.events[payload.events.length - 1].seq;
+        lastUploadStatus = "ok";
+        lastUploadError = "";
+        lastUploadAt = Date.now();
         retryDelayMs = 1500;
         return true;
-      } catch {
+      } catch (error) {
+        lastUploadStatus = "network_error";
+        lastUploadError = ((error?.name || "Error") + ": " + String(error?.message || "falló la conexión")).slice(0, 140);
         retryDelayMs = Math.min(60_000, Math.max(1500, retryDelayMs * 2));
         return false;
       } finally {
@@ -204,7 +214,10 @@ export function createDiagnosticsMonitor({
     sessionId,
     startedAt,
     snapshot: () => events.map(event => ({ ...event, details: { ...event.details } })),
-    get pendingCount() { return Math.max(0, revision - uploadedRevision); }
+    get pendingCount() { return Math.max(0, revision - uploadedRevision); },
+    get syncStatus() { return lastUploadStatus; },
+    get syncError() { return lastUploadError; },
+    get lastUploadAt() { return lastUploadAt; }
   };
 }
 
