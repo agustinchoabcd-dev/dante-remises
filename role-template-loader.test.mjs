@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createRoleTemplateLoader } from "./role-template-loader.mjs";
 
 function makeDocument(existingIds = []) {
-  const mounts = Object.fromEntries(["roleViewMount", "centralViewMount"].map(id => [id, {
+  const mounts = Object.fromEntries(["roleViewMount", "centralViewMount", "authViewMount"].map(id => [id, {
     children: [],
     dataset: {},
     replaceChildren(...children) { this.children = children; },
@@ -215,4 +215,22 @@ test("onMounted runs after the fragment is attached", async () => {
   });
   await loader.load("passenger");
   assert.equal(mounted, true);
+});
+
+test("authentication template mounts separately from passenger, driver and Central workspaces", async () => {
+  const document = makeDocument();
+  const requests = [];
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: async url => {
+      requests.push(url);
+      return response('<section id="' + (url.includes("auth") ? "acceso" : "driverView") + '"></section>');
+    },
+    parseTemplate: parseIds
+  });
+  await loader.load("driver");
+  await loader.load("auth");
+  assert.equal(document.mounts.roleViewMount.dataset.role, "driver");
+  assert.equal(document.mounts.authViewMount.dataset.role, "auth");
+  assert.deepEqual(requests, ["./views/driver.html", "./views/auth.html"]);
 });
