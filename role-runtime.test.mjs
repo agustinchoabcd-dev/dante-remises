@@ -158,3 +158,60 @@ test("stale staff callbacks cannot reveal or activate an old role", async () => 
   }
   assert.deepEqual(calls, []);
 });
+
+test("admin can enter operator and passenger workspaces while retaining the admin identity", async () => {
+  const calls = [];
+  const result = await activateRole("admin", {
+    user: { uid: "admin-1" }, role: { role: "admin", carId: "144" },
+    loadRoleView: async role => { calls.push("mount:" + role); return {}; },
+    unloadRoleView: role => calls.push("unmount:" + role),
+    showView: view => calls.push("view:" + view),
+    setWorkspaceRole: role => calls.push("workspace:" + role),
+    stopOperatorPresence: async () => calls.push("stop-operator"),
+    startOperatorPresence: () => calls.push("start-operator"),
+    suspendDriverWorkspace: () => calls.push("suspend-driver"),
+    suspendPassengerWorkspace: () => calls.push("suspend-passenger"),
+    setAdminTripAlertPanel: enabled => calls.push("admin-alerts:" + enabled),
+    loadPassengerPhoto: async () => { calls.push("passenger-photo"); return true; },
+    showPassengerOnboarding: () => calls.push("passenger-onboarding"),
+    resumePassengerWorkspace: () => calls.push("resume-passenger"),
+    initializeAdminCars: async () => calls.push("cars")
+  });
+  await result.workspaceController.openOperatorWorkspace();
+  assert.ok(calls.includes("workspace:operator"));
+  assert.ok(calls.includes("start-operator"));
+  assert.ok(calls.includes("view:central"));
+  assert.ok(calls.includes("unmount:driver"));
+  await result.workspaceController.openPassengerWorkspace();
+  assert.ok(calls.includes("workspace:passenger"));
+  assert.ok(calls.includes("mount:passenger"));
+  assert.ok(calls.includes("passenger-photo"));
+  assert.ok(calls.includes("view:pasajero"));
+  assert.ok(calls.includes("resume-passenger"));
+  assert.ok(calls.includes("unmount:central"));
+  await result.background;
+});
+
+test("a stale Central load cannot override a newer driver workspace selection", async () => {
+  let finishCentral;
+  const calls = [];
+  const result = await activateRole("admin", {
+    user: { uid: "admin-1" }, role: { role: "admin", carId: "144" },
+    loadRoleView: role => role === "central"
+      ? new Promise(resolve => { finishCentral = resolve; })
+      : Promise.resolve({}),
+    unloadRoleView: role => calls.push("unmount:" + role),
+    showView: view => calls.push("view:" + view),
+    setWorkspaceRole: role => calls.push("workspace:" + role),
+    initializeAdminCars: async () => {}
+  });
+  const central = result.workspaceController.openAdminPanel();
+  await Promise.resolve();
+  const driver = await result.workspaceController.openDriverWorkspace();
+  finishCentral({});
+  const staleCentral = await central;
+  assert.deepEqual(driver, { view: "inicio" });
+  assert.deepEqual(staleCentral, { stale: true });
+  assert.equal(calls.includes("view:central"), false);
+  await result.background;
+});
