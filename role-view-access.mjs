@@ -16,8 +16,9 @@ export function canAccessRoleView(role, view) {
 }
 export function canShowRoleTab(role, view) {
   if (!canAccessRoleView(role, view)) return false;
-  // Admin abre Central desde Configuración; no debe aparecer en la navegación inicial de chófer.
-  return !(role === "admin" && view === "central");
+  // El administrador usa su propio índice de Central; los demás espacios se eligen desde allí.
+  // Su navegación superior no debe mezclarse con la de los roles operativos.
+  return role !== "admin";
 }
 export function hideRoleViews(documentRef) {
   if (!documentRef?.getElementById || !documentRef?.querySelectorAll) throw new TypeError("A document reference is required");
