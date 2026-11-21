@@ -286,6 +286,12 @@ test("admin workspace switching separates identity from the active workspace", a
   assert.ok(html.includes("passengerActiveTripId=null,passengerActiveTripData=null"));
   assert.ok(html.includes('id="adminWorkspaceSelector"'));
   assert.ok(html.includes('id="adminWorkspaceReturnButton"'));
+  assert.ok(html.includes('id="allRolesWorkspace"'));
+  assert.ok(html.includes('id="allRoleAdminButton"'));
+  assert.ok(html.includes('id="allRoleDriverButton"'));
+  assert.ok(html.includes('id="allRoleOperatorButton"'));
+  assert.ok(html.includes('id="allRolePassengerButton"'));
+  assert.ok(html.includes('function setAllRolesMode(enabled)'));
   assert.ok(admin.includes("openOperatorWorkspace()"));
   assert.ok(admin.includes("openPassengerWorkspace()"));
   assert.ok(admin.includes('context.setWorkspaceRole?.("passenger")'));
