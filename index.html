@@ -792,7 +792,7 @@ function renderContent(){
   const passengerCars=byId('passengerCars');
   if(passengerCars)passengerCars.innerHTML=initial.map(x=>passengerDriverCard(cars[x.id])).join('');
   const centralCars=byId('centralCars');
-  if(centralCars)centralCars.innerHTML=initial.map(x=>carCard(cars[x.id],currentRole?.role==='admin')).join('');
+  if(centralCars)centralCars.innerHTML=initial.map(x=>carCard(cars[x.id],isAdminWorkspaceActive())).join('');
   const passengerTripScreen=byId('passengerTripScreen');
   if(selectedPassengerDriver&&passengerTripScreen&&!passengerTripScreen.classList.contains('hidden')){
    const chosen=cars[selectedPassengerDriver],selectedCard=byId('selectedDriverCard');
@@ -849,6 +849,9 @@ window.quickSet=(id,status)=>{if(!currentUser||currentRole?.role!=='admin'){noti
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 bindRoleDom('settingsGearButton','click',()=>showView('configuracion'));
 bindRoleDom('adminWorkspaceReturnButton','click',async()=>{await adminWorkspaceController?.openAdminPanel()});
+bindRoleDom('adminWorkspaceDriverButton','click',async()=>{await adminWorkspaceController?.openDriverWorkspace()});
+bindRoleDom('adminWorkspaceOperatorButton','click',async()=>{await adminWorkspaceController?.openOperatorWorkspace()});
+bindRoleDom('adminWorkspacePassengerButton','click',async()=>{await adminWorkspaceController?.openPassengerWorkspace()});
  bindRoleDom('openAdminWorkspaceButton','click',async()=>{
  if(currentUser?.uid!==ADMIN_UID||currentRole?.role!=='admin')return;
  try{await adminWorkspaceController?.openAdminPanel()}catch(error){console.error('No se pudo abrir el panel administrativo:',error);notify('No se pudo abrir el panel administrativo. Intentá nuevamente.')}
