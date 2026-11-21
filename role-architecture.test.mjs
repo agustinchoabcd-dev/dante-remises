@@ -448,3 +448,11 @@ test("GPS retries and in-flight writes are declared and invalidated on stop",()=
  assert.match(html,/driverLocationDisconnectPaths=new Set\(\)/);
  assert.match(html,/driverGpsGeneration\+\+/);
 });
+
+test("driver GPS reacquires a fresh watch when the app returns to foreground",()=>{
+ assert.match(html,/document\.addEventListener\('visibilitychange',\(\)=>\{/);
+ assert.match(html,/if\(document\.visibilityState!=='visible'\)return/);
+ assert.match(html,/if\(isDriverCapableRole\(\)&&\(driverWantsOnline\|\|activeTripId\)\)/);
+ assert.match(html,/clearWatch\(driverWatchId\);driverWatchId=null/);
+ assert.match(html,/perf\.mark\('gps\.watch\.foreground_resume'\)/);
+});
