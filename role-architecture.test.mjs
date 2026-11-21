@@ -39,7 +39,8 @@ test("Central HTML is physically extracted and mounted for operators and adminis
   assert.match(html, /adminWorkspaceSettingsCard'\)\?\.classList\.toggle\('hidden',!isAdmin\)/);
   assert.match(adminModule, /context\.unloadRoleView\("central"\)/);
   assert.match(adminModule, /workspaceController/);
-  assert.match(centralTemplate, /id="adminReturnToDriverButton"/);
+  assert.match(centralTemplate, /class="secondary hidden" id="adminReturnToDriverButton"/);
+  assert.match(html, /adminReturnToDriverButton'\)\?\.classList\.toggle\('hidden',currentRole\?\.role!=='admin'\)/);
   assert.ok(copyScript.includes('"views/central.html"'));
   assert.ok(html.includes("if(role==='central')"));
   assert.ok(html.includes("render('central-template-mounted')"));
