@@ -233,6 +233,8 @@ test("all dynamically imported runtime modules are included in the Capacitor web
     "role-dom-bindings.mjs",
     "driver-home-state.mjs",
     "driver-navigation-state.mjs",
+    "views/auth.html",
+    "roles/auth.mjs",
     "views/passenger.html",
     "views/driver.html",
     "map-runtime-loader.mjs",
@@ -359,4 +361,19 @@ test("admin workspace switching separates identity from the active workspace", a
   assert.match(admin, /openOperatorWorkspace\(\{/);
   assert.match(admin, /openPassengerWorkspace\(\{/);
   assert.ok(admin.includes('context.setWorkspaceRole?.("passenger")'));
+});
+
+test("authentication is a lazy isolated template and startup waits for Firebase auth restoration", () => {
+  assert.match(html, /id="authViewMount"/);
+  assert.doesNotMatch(html, /<section id="acceso">/);
+  assert.match(html, /await auth\.authStateReady\(\)/);
+  assert.match(html, /auth\.state\.stale_initial_callback/);
+  assert.match(roleTemplateLoader, /auth: "\.\/views\/auth\.html"/);
+  assert.match(roleTemplateLoader, /auth: "authViewMount"/);
+  assert.match(html, /ensureAuthView\(\)/);
+});
+
+test("admin workspace hides the floating driver map control", () => {
+  assert.match(html, /admin-workspace-active/);
+  assert.match(html, /driverHomeMapHomeButton.*classList\.add\('hidden'\)/);
 });
