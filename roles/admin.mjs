@@ -1,26 +1,29 @@
 export async function activate(context) {
   if (context.isCurrent && !context.isCurrent()) return { stale: true };
 
-  // La identidad autenticada sigue siendo admin; el primer workspace es chófer.
   const driverMounted = await context.loadRoleView("driver");
   if (driverMounted?.stale || (context.isCurrent && !context.isCurrent())) return { stale: true };
-
+  context.setWorkspaceRole?.("driver");
   context.showView("inicio");
 
   const isCurrent = () => !context.isCurrent || context.isCurrent();
   let workspaceGeneration = 0;
   const isWorkspaceCurrent = generation => isCurrent() && generation === workspaceGeneration;
+  const stopOperator = async () => { await context.stopOperatorPresence?.(); };
+  const stopPassenger = () => { context.suspendPassengerWorkspace?.(); };
+  const suspendDriver = () => { context.suspendDriverWorkspace?.(); };
   const workspaceController = Object.freeze({
     async openAdminPanel() {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
+      await stopOperator();
+      stopPassenger();
+      context.setWorkspaceRole?.("admin");
       const mounted = await context.loadRoleView("central");
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
-
-      // La plantilla nueva ya está lista: liberar la interfaz de chófer,
-      // pero conservar GPS, presencia, push y la bandeja operativa.
-      context.suspendDriverWorkspace?.();
+      suspendDriver();
       context.unloadRoleView("driver");
+      context.unloadRoleView("passenger");
       context.setAdminTripAlertPanel(true);
       context.renderAdminDriverTripSummary?.();
       context.listenDriverInbox?.();
@@ -33,14 +36,52 @@ export async function activate(context) {
     async openDriverWorkspace() {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
+      await stopOperator();
+      stopPassenger();
+      context.setWorkspaceRole?.("driver");
       const mounted = await context.loadRoleView("driver");
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
-
       context.showView("inicio");
       context.unloadRoleView("central");
+      context.unloadRoleView("passenger");
       await context.resumeDriverWorkspace?.();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       return { view: "inicio" };
+    },
+    async openOperatorWorkspace() {
+      const generation = ++workspaceGeneration;
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
+      await stopOperator();
+      stopPassenger();
+      context.setWorkspaceRole?.("operator");
+      const mounted = await context.loadRoleView("central");
+      if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
+      suspendDriver();
+      context.unloadRoleView("driver");
+      context.unloadRoleView("passenger");
+      context.setAdminTripAlertPanel(false);
+      context.listenDriverInbox?.();
+      context.showView("central");
+      context.startOperatorPresence?.();
+      return { view: "central" };
+    },
+    async openPassengerWorkspace() {
+      const generation = ++workspaceGeneration;
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
+      await stopOperator();
+      context.setWorkspaceRole?.("passenger");
+      const mounted = await context.loadRoleView("passenger");
+      if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
+      suspendDriver();
+      stopPassenger();
+      context.unloadRoleView("driver");
+      context.unloadRoleView("central");
+      const photoReady = await context.loadPassengerPhoto();
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
+      if (photoReady === true || photoReady === null) context.showView("pasajero");
+      else context.showPassengerOnboarding();
+      context.resumePassengerWorkspace?.();
+      return { view: photoReady === false ? "passengerOnboarding" : "pasajero", photoReady };
     }
   });
 
