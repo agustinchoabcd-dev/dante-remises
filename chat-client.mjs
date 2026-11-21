@@ -158,11 +158,11 @@ export class ChatApiClient {
   }
 
   listConversations(cursor = null, workspaceRole = "") {
-    const params = new URLSearchParams();
-    if (cursor) params.set("cursor", cursor);
-    if (workspaceRole) params.set("workspaceRole", workspaceRole);
-    const query = params.toString();
-    return this.request(`/v1/chat/conversations${query ? `?${query}` : ""}`);
+    const params = [];
+    if (cursor) params.push(`cursor=${encodeURIComponent(cursor)}`);
+    if (workspaceRole) params.push(`workspaceRole=${encodeURIComponent(workspaceRole)}`);
+    const query = params.length ? `?${params.join("&")}` : "";
+    return this.request(`/v1/chat/conversations${query}`);
   }
 
   listMessages(conversationId, cursor = null) {
