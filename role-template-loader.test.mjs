@@ -132,6 +132,25 @@ test("unload clears only the selected workspace mount", async () => {
   assert.equal(document.mounts.roleViewMount.children.length, 1);
 });
 
+test("admin workspace swap releases the inactive template and remounts it on return", async () => {
+  const document = makeDocument();
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: async url => response('<section id="' + (url.includes("central") ? "central" : url.includes("driver") ? "driver" : "passenger") + '"></section>'),
+    parseTemplate: parseIds
+  });
+  await loader.load("driver");
+  await loader.load("central");
+  loader.unload("driver");
+  assert.equal(document.mounts.roleViewMount.children.length, 0);
+  assert.equal(document.mounts.centralViewMount.children.length, 1);
+  loader.unload("central");
+  await loader.load("driver");
+  assert.equal(document.mounts.centralViewMount.children.length, 0);
+  assert.equal(document.mounts.roleViewMount.dataset.role, "driver");
+  assert.equal(document.mounts.roleViewMount.children.length, 1);
+});
+
 test("unmount clears every role mount and invalidates pending responses", async () => {
   const document = makeDocument();
   const loader = createRoleTemplateLoader({
