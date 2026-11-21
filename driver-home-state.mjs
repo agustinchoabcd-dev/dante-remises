@@ -5,7 +5,7 @@ export function getDriverHomeStatus({ online = false, status = "desconectado" } 
   return Object.freeze({ label: "Conectado", tone: "green", badge: "" });
 }
 export function shouldRegisterDriverPresence(role, wantsOnline, hasActiveTrip = false) {
-  return role === "admin" || (role === "driver" && (wantsOnline === true || hasActiveTrip === true));
+  return (role === "admin" || role === "driver") && (wantsOnline === true || hasActiveTrip === true);
 }
 export function shouldExpandDriverCurtain({ expanded, deltaY, viewportHeight }) {
   const threshold = Math.max(0, Number(viewportHeight) || 0) * 0.45;
