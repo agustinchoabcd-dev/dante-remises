@@ -1,5 +1,5 @@
-const ROLE_TEMPLATE_URLS = Object.freeze({ passenger: "./views/passenger.html", driver: "./views/driver.html", central: "./views/central.html" });
-const ROLE_TEMPLATE_MOUNTS = Object.freeze({ passenger: "roleViewMount", driver: "roleViewMount", central: "centralViewMount" });
+const ROLE_TEMPLATE_URLS = Object.freeze({ auth: "./views/auth.html", passenger: "./views/passenger.html", driver: "./views/driver.html", central: "./views/central.html" });
+const ROLE_TEMPLATE_MOUNTS = Object.freeze({ auth: "authViewMount", passenger: "roleViewMount", driver: "roleViewMount", central: "centralViewMount" });
 
 export function createRoleTemplateLoader({ document: documentRef = globalThis.document, fetch: fetchImpl = globalThis.fetch, mountId = "roleViewMount", parseTemplate, onMounted = () => {} } = {}) {
   if (!documentRef?.getElementById || typeof fetchImpl !== "function") throw new TypeError("A document and fetch implementation are required");
