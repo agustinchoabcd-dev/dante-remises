@@ -12,6 +12,7 @@ const webAssets = [
   "roles/auth.mjs",
   "role-dom-bindings.mjs",
   "driver-home-state.mjs",
+  "driver-inbox-state.mjs",
   "driver-navigation-state.mjs",
   "views/auth.html",
   "views/passenger.html",
