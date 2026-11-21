@@ -82,6 +82,7 @@ test("admin starts in driver workspace and swaps mutually exclusive templates wi
     role: { role: "admin", carId: "144" },
     loadRoleView: async role => calls.push("mount:" + role),
     unloadRoleView: role => calls.push("unmount:" + role),
+    unloadRoleMount: role => calls.push("unmount-mount:" + role),
     showView: view => calls.push("view:" + view),
     suspendDriverWorkspace: () => calls.push("suspend-driver-ui"),
     resumeDriverWorkspace: async () => calls.push("resume-driver-ui"),
@@ -102,17 +103,18 @@ test("admin starts in driver workspace and swaps mutually exclusive templates wi
   await result.workspaceController.openAdminPanel();
   assert.ok(calls.includes("mount:central"));
   assert.ok(calls.includes("suspend-driver-ui"));
-  assert.ok(calls.includes("unmount:driver"));
+  assert.ok(calls.includes("unmount-mount:driver"));
   assert.ok(calls.includes("admin-alerts:true"));
   assert.ok(calls.includes("admin-trip-summary"));
   assert.ok(calls.includes("view:central"));
   await Promise.resolve();
 
   await result.workspaceController.openDriverWorkspace();
-  const returnSteps = ["mount:driver", "view:inicio", "unmount:central", "unmount:passenger", "resume-driver-ui"].map(item => calls.lastIndexOf(item));
+  const returnSteps = ["mount:driver", "view:inicio", "unmount:central", "resume-driver-ui"].map(item => calls.lastIndexOf(item));
   assert.ok(returnSteps.every((position, index) => position >= 0 && (index === 0 || position > returnSteps[index - 1])));
   assert.ok(calls.includes("resume-driver-ui"));
   assert.ok(calls.includes("unmount:central"));
+  assert.equal(calls.filter(call => call === "unmount:driver").length, 0, "A mounted Passenger view must not be cleared by unloading its sibling role");
   await result.background;
   for (const operation of ["cars", "push", "inbox", "restore", "gps", "pending"]) {
     assert.ok(calls.includes(operation), "Missing admin driver operation: " + operation);
@@ -166,6 +168,7 @@ test("admin can enter operator and passenger workspaces while retaining the admi
     user: { uid: "admin-1" }, role: { role: "admin", carId: "144" },
     loadRoleView: async role => { calls.push("mount:" + role); return {}; },
     unloadRoleView: role => calls.push("unmount:" + role),
+    unloadRoleMount: role => calls.push("unmount-mount:" + role),
     showView: view => calls.push("view:" + view),
     setWorkspaceRole: role => calls.push("workspace:" + role),
     stopOperatorPresence: async () => calls.push("stop-operator"),
@@ -187,7 +190,7 @@ test("admin can enter operator and passenger workspaces while retaining the admi
   assert.ok(calls.includes("workspace:operator"));
   assert.ok(calls.includes("start-operator"));
   assert.ok(calls.includes("view:central"));
-  assert.ok(calls.includes("unmount:driver"));
+  assert.ok(calls.includes("unmount-mount:driver"));
   await result.workspaceController.openPassengerWorkspace();
   assert.ok(calls.includes("workspace:passenger"));
   assert.ok(calls.includes("mount:passenger"));
@@ -195,6 +198,7 @@ test("admin can enter operator and passenger workspaces while retaining the admi
   assert.ok(calls.includes("view:pasajero"));
   assert.ok(calls.includes("resume-passenger"));
   assert.ok(calls.includes("unmount:central"));
+  assert.equal(calls.filter(call => call === "unmount:driver").length, 0, "A mounted Passenger view must not be cleared by unloading its sibling role");
   await result.background;
 });
 
@@ -207,6 +211,7 @@ test("a stale Central load cannot override a newer driver workspace selection", 
       ? new Promise(resolve => { finishCentral = resolve; })
       : Promise.resolve({}),
     unloadRoleView: role => calls.push("unmount:" + role),
+    unloadRoleMount: role => calls.push("unmount-mount:" + role),
     showView: view => calls.push("view:" + view),
     setWorkspaceRole: role => calls.push("workspace:" + role),
     initializeAdminCars: async () => {},
@@ -236,6 +241,7 @@ test("all-roles workspace is one shell that navigates existing modules on demand
     user: { uid: "admin-1" }, role: { role: "admin", carId: "144" },
     loadRoleView: async role => { calls.push("mount:" + role); return {}; },
     unloadRoleView: role => calls.push("unmount:" + role),
+    unloadRoleMount: role => calls.push("unmount-mount:" + role),
     showView: view => calls.push("view:" + view),
     setWorkspaceRole: role => calls.push("workspace:" + role),
     setAllRolesMode: enabled => calls.push("all-roles:" + enabled),

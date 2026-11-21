@@ -3672,6 +3672,7 @@ onAuthStateChanged(auth,async user=>{
     user,
     role:currentRole,
     unloadRoleView:role=>roleTemplateLoader.unload(role),
+    unloadRoleMount:role=>roleTemplateLoader.unloadMount(role),
     loadRoleView:async role=>{
       const result=await roleTemplateLoader.load(role);
       if(authGeneration!==authStateGeneration)return {stale:true};

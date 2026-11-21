@@ -132,6 +132,43 @@ test("unload clears only the selected workspace mount", async () => {
   assert.equal(document.mounts.roleViewMount.children.length, 1);
 });
 
+test("unloading an inactive sibling role never clears the active shared template", async () => {
+  const document = makeDocument();
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: async url => response('<section id="' + (url.includes("passenger") ? "pasajero" : "driver") + '"></section>'),
+    parseTemplate: parseIds
+  });
+  await loader.load("driver");
+  assert.equal(loader.unload("passenger"), false);
+  assert.equal(document.mounts.roleViewMount.dataset.role, "driver");
+  assert.equal(document.mounts.roleViewMount.children.length, 1);
+  await loader.load("passenger");
+  assert.equal(loader.unload("driver"), false);
+  assert.equal(document.mounts.roleViewMount.dataset.role, "passenger");
+  assert.equal(document.mounts.roleViewMount.children.length, 1);
+});
+
+test("unloading a shared mount invalidates every pending role request without touching Central", async () => {
+  const document = makeDocument();
+  let resolvePassenger;
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: url => url.includes("passenger")
+      ? new Promise(resolve => { resolvePassenger = resolve; })
+      : Promise.resolve(response('<section id="central"></section>')),
+    parseTemplate: parseIds
+  });
+  const passengerLoad = loader.load("passenger");
+  await loader.load("central");
+  loader.unloadMount("driver");
+  resolvePassenger(response('<section id="pasajero"></section>'));
+  assert.deepEqual(await passengerLoad, { stale: true, role: "passenger" });
+  assert.equal(document.mounts.roleViewMount.children.length, 0);
+  assert.equal(document.mounts.centralViewMount.dataset.role, "central");
+  assert.equal(document.mounts.centralViewMount.children.length, 1);
+});
+
 test("admin workspace swap releases the inactive template and remounts it on return", async () => {
   const document = makeDocument();
   const loader = createRoleTemplateLoader({
@@ -141,7 +178,7 @@ test("admin workspace swap releases the inactive template and remounts it on ret
   });
   await loader.load("driver");
   await loader.load("central");
-  loader.unload("driver");
+  loader.unloadMount("driver");
   assert.equal(document.mounts.roleViewMount.children.length, 0);
   assert.equal(document.mounts.centralViewMount.children.length, 1);
   loader.unload("central");

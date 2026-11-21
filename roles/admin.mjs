@@ -33,8 +33,7 @@ export async function activate(context) {
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
 
       suspendDriver();
-      context.unloadRoleView("driver");
-      context.unloadRoleView("passenger");
+      context.unloadRoleMount?.("driver");
       context.setAdminTripAlertPanel(true);
       context.renderAdminDriverTripSummary?.();
       context.listenDriverInbox?.();
@@ -59,7 +58,6 @@ export async function activate(context) {
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
 
       context.unloadRoleView("central");
-      context.unloadRoleView("passenger");
       await context.resumeDriverWorkspace?.();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       return { view: "inicio" };
@@ -79,8 +77,7 @@ export async function activate(context) {
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
 
       suspendDriver();
-      context.unloadRoleView("driver");
-      context.unloadRoleView("passenger");
+      context.unloadRoleMount?.("driver");
       context.setAdminTripAlertPanel(false);
       context.listenDriverInbox?.();
       context.startOperatorPresence?.();
@@ -101,7 +98,6 @@ export async function activate(context) {
       const mounted = await passengerModule.mount(workspaceContext(generation));
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
 
-      context.unloadRoleView("driver");
       context.unloadRoleView("central");
       await context.resumePassengerWorkspace?.();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
