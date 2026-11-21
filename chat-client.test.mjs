@@ -150,6 +150,18 @@ test("admin operator workspace sends explicit presence mode", async () => {
   ]);
 });
 
+test("conversation listing preserves cursors and includes explicit workspace filters", async () => {
+  const requests = [];
+  const client = makeClient(async (url, options) => {
+    requests.push({ url, options });
+    return jsonResponse({ conversations: [] });
+  });
+  await client.listConversations(null, "operator");
+  await client.listConversations("cursor-1", "passenger");
+  assert.equal(requests[0].url, "https://chat.example.test/v1/chat/conversations?workspaceRole=operator");
+  assert.equal(requests[1].url, "https://chat.example.test/v1/chat/conversations?cursor=cursor-1&workspaceRole=passenger");
+});
+
 test("operator presence uses authenticated POST and DELETE requests", async () => {
   const requests = [];
   const client = makeClient(async (url, options) => {
