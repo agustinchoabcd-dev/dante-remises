@@ -135,8 +135,8 @@ export function validateDriverLocationFix(position, {
       lat,
       lon,
       accuracy: Math.round(accuracy),
-      heading: Number.isFinite(Number(coords.heading)) ? Number(coords.heading) : null,
-      speed: Number.isFinite(Number(coords.speed)) ? Number(coords.speed) : null,
+      heading: coords.heading !== null && coords.heading !== undefined && Number.isFinite(Number(coords.heading)) ? Number(coords.heading) : null,
+      speed: coords.speed !== null && coords.speed !== undefined && Number.isFinite(Number(coords.speed)) ? Number(coords.speed) : null,
       updatedAt
     },
     ageMs
