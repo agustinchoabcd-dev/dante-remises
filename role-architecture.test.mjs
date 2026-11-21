@@ -46,7 +46,7 @@ test("Central HTML is physically extracted and mounted for operators and adminis
   assert.doesNotMatch(html, /Central \/ Operadores/);
   assert.match(html, /if\(byId\('driverGpsStatus'\)\)/);
   assert.match(centralTemplate, /class="secondary hidden" id="adminReturnToDriverButton"/);
-  assert.match(html, /adminReturnToDriverButton'\)\?\.classList\.toggle\('hidden',currentRole\?\.role!=='admin'\)/);
+  assert.match(html, /adminReturnToDriverButton'\)\?\.classList\.toggle\('hidden',!isAdminWorkspaceActive\(\)\)/);
   assert.ok(copyScript.includes('"views/central.html"'));
   assert.ok(html.includes("if(role==='central')"));
   assert.ok(html.includes("render('central-template-mounted')"));
@@ -220,7 +220,7 @@ test("role view controller is the only path that activates a workspace", () => {
   const callbackEnd = html.indexOf("\n});", callbackStart);
   const callback = html.slice(callbackStart, callbackEnd);
   assert.match(callback, /hideRoleViews\(document\)/);
-  assert.match(html, /applyRoleView\(document,currentRole\?\.role,v\)/);
+  assert.match(html, /applyRoleView\(document,currentWorkspaceRole\(\),v\)/);
   assert.doesNotMatch(callback, /byId\(['"](?:pasajero|chofer|central|chat|configuracion)['"]\)\.classList\.toggle\(['"]hidden['"]/);
   assert.doesNotMatch(callback, /byId\(['"]central['"]\)\.classList\.remove\(['"]hidden['"]/);
   for (const view of ["pasajero", "inicio", "chofer", "central", "chat", "configuracion"]) {
@@ -278,13 +278,14 @@ test("stopping the selected passenger driver also detaches its Firebase location
 
 test("admin workspace switching separates identity from the active workspace", async () => {
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  const central = await readFile(new URL("./views/central.html", import.meta.url), "utf8");
   const admin = await readFile(new URL("./roles/admin.mjs", import.meta.url), "utf8");
   assert.ok(html.includes("let activeWorkspaceRole = null;"));
   assert.ok(html.includes("function currentWorkspaceRole()"));
   assert.ok(html.includes("function isPassengerWorkspaceActive()"));
   assert.ok(html.includes("function isOperatorWorkspaceActive()"));
   assert.ok(html.includes("passengerActiveTripId=null,passengerActiveTripData=null"));
-  assert.ok(html.includes('id="adminWorkspaceSelector"'));
+  assert.ok(central.includes('id="adminWorkspaceSelector"'));
   assert.ok(html.includes('id="adminWorkspaceReturnButton"'));
   assert.ok(html.includes('id="allRolesWorkspace"'));
   assert.ok(html.includes('id="allRoleAdminButton"'));
