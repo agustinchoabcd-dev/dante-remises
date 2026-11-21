@@ -58,10 +58,12 @@ test("startup recovery never reveals the login shell while an authenticated call
   const end = html.indexOf("\nlet authStateGeneration=0;", start);
   assert.ok(start >= 0 && end > start);
   const timer = html.slice(start, end);
-  assert.ok(timer.includes("if(auth.currentUser||authStateGeneration>0){"));
+  assert.ok(timer.includes("if(startupAuthReady)return;"));
   assert.ok(timer.includes("byId('startupCaption')"));
-  assert.ok(timer.includes("Estamos recuperando tu sesión"));
-  assert.ok(timer.includes("return;"));
+  assert.ok(timer.includes("Estamos verificando tu sesión y preparando el acceso"));
+  assert.ok(timer.includes("auth.startup.recovery_pending"));
+  assert.equal(timer.includes("byId('acceso')"), false);
+  assert.equal(timer.includes("finishStartupScreen()"), false);
   assert.equal(timer.includes("roleTransition.finish"), false);
   assert.ok(html.includes('id="startupCaption"'));
 });
