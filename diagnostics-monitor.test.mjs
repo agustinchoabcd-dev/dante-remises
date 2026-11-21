@@ -144,5 +144,7 @@ test("diagnostics upload backs off after server rejection",async()=>{
  runtime.navigator.onLine=true;
  await monitor.flush();
  assert.equal(monitor.pendingCount,1);
+ assert.equal(monitor.syncStatus,"http_503");
+ assert.equal(monitor.syncError,"HTTP 503");
  assert.ok(delays.includes(3000));
 });
