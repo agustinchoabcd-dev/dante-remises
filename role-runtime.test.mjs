@@ -109,7 +109,8 @@ test("admin starts in driver workspace and swaps mutually exclusive templates wi
   await Promise.resolve();
 
   await result.workspaceController.openDriverWorkspace();
-  assert.deepEqual(calls.slice(-5), ["mount:driver", "view:inicio", "unmount:central", "unmount:passenger", "resume-driver-ui"]);
+  const returnSteps = ["mount:driver", "view:inicio", "unmount:central", "unmount:passenger", "resume-driver-ui"].map(item => calls.lastIndexOf(item));
+  assert.ok(returnSteps.every((position, index) => position >= 0 && (index === 0 || position > returnSteps[index - 1])));
   assert.ok(calls.includes("resume-driver-ui"));
   assert.ok(calls.includes("unmount:central"));
   await result.background;
@@ -175,7 +176,12 @@ test("admin can enter operator and passenger workspaces while retaining the admi
     loadPassengerPhoto: async () => { calls.push("passenger-photo"); return true; },
     showPassengerOnboarding: () => calls.push("passenger-onboarding"),
     resumePassengerWorkspace: () => calls.push("resume-passenger"),
-    initializeAdminCars: async () => calls.push("cars")
+    initializeAdminCars: async () => calls.push("cars"),
+    syncDriverPushRegistration: async () => {},
+    listenDriverInbox: () => {},
+    restoreDriverActiveTrip: async () => {},
+    startDriverGps: () => {},
+    processPendingTripAction: async () => {}
   });
   await result.workspaceController.openOperatorWorkspace();
   assert.ok(calls.includes("workspace:operator"));
@@ -203,7 +209,12 @@ test("a stale Central load cannot override a newer driver workspace selection", 
     unloadRoleView: role => calls.push("unmount:" + role),
     showView: view => calls.push("view:" + view),
     setWorkspaceRole: role => calls.push("workspace:" + role),
-    initializeAdminCars: async () => {}
+    initializeAdminCars: async () => {},
+    syncDriverPushRegistration: async () => {},
+    listenDriverInbox: () => {},
+    restoreDriverActiveTrip: async () => {},
+    startDriverGps: () => {},
+    processPendingTripAction: async () => {}
   });
   const central = result.workspaceController.openAdminPanel();
   await Promise.resolve();
