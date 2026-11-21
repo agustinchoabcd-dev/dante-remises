@@ -74,7 +74,8 @@ test("returning to the driver workspace preserves the three-tab home instead of 
   const end = html.indexOf("\n    }\n   }),roleTemplatePreload", start);
   assert.ok(start >= 0 && end > start);
   const resume = html.slice(start, end);
-  assert.ok(resume.includes("await initDriverHomeMap()"));
+  assert.ok(resume.includes("scheduleDriverHomeMapInit()"));
+  assert.equal(resume.includes("await initDriverHomeMap()"), false);
   assert.equal(resume.includes("setDriverHomeFullscreen(true)"), false);
   const showStart = html.indexOf("function showView(v){");
   const showEnd = html.indexOf("\nfunction renderDriverHomeStatus", showStart);
