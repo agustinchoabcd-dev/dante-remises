@@ -217,7 +217,10 @@ test("a stale Central load cannot override a newer driver workspace selection", 
     processPendingTripAction: async () => {}
   });
   const central = result.workspaceController.openAdminPanel();
-  await Promise.resolve();
+  for (let attempt = 0; attempt < 10 && !finishCentral; attempt++) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  assert.equal(typeof finishCentral, "function", "Central mount should begin before a newer workspace is selected");
   const driver = await result.workspaceController.openDriverWorkspace();
   finishCentral({});
   const staleCentral = await central;

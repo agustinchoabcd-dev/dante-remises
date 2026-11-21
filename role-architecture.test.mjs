@@ -24,13 +24,15 @@ test("Central HTML is physically extracted and mounted for operators and adminis
   assert.ok(html.includes('<section id="central" class="hidden"><div id="centralViewMount"></div></section>'));
   assert.equal(html.includes('<h2>Central de Dante Remises</h2>'), false);
   assert.ok(centralTemplate.includes('<h2>Central de Dante Remises</h2>'));
+  assert.ok(centralTemplate.includes('id="adminOperationalHealthPanel"'));
   for (const id of ["centralDescription","centralAuthStatus","adminTripAlertPanel","adminDriverTripInbox","adminDriverActiveTrip","centralCars","passengerAdmin","passengerList"]) {
     assert.ok(centralTemplate.includes('id="' + id + '"'), "Missing Central control: " + id);
   }
   assert.ok(roleTemplateLoader.includes('central: "./views/central.html"'));
   assert.ok(operatorModule.includes('loadRoleView("central")'));
-  assert.ok(adminModule.indexOf('loadRoleView("driver")') < adminModule.indexOf('loadRoleView("central")'));
-  assert.match(adminModule, /context\.showView\("inicio"\)/);
+  assert.match(adminModule, /driverModule\.mount\(context\)/);
+  assert.match(adminModule, /centralModule\.mount\(workspaceContext\(generation\)\)/);
+  assert.match(driverModule, /context\.showView\("inicio"\)/);
   assert.match(html, /id="adminWorkspaceSettingsCard"/);
   assert.match(html, /id="openAdminWorkspaceButton"/);
   assert.match(html, /bindRoleDom\('openAdminWorkspaceButton','click',async\(\)=>/);
@@ -49,7 +51,7 @@ test("Central HTML is physically extracted and mounted for operators and adminis
   assert.match(html, /adminReturnToDriverButton'\)\?\.classList\.toggle\('hidden',!isAdminWorkspaceActive\(\)\)/);
   assert.ok(copyScript.includes('"views/central.html"'));
   assert.ok(html.includes("if(role==='central')"));
-  assert.ok(html.includes("render('central-template-mounted')"));
+  assert.ok(html.includes("render('role-template-mounted:'+role)"));
 });
 
 test("driver HTML is physically extracted and mounted for driver and admin roles", () => {
@@ -59,14 +61,14 @@ test("driver HTML is physically extracted and mounted for driver and admin roles
   assert.ok(driverModule.includes('context.showView("inicio")'));
   assert.match(roleTemplateLoader, /driver: "\.\/views\/driver\.html"/);
   assert.match(driverModule, /loadRoleView\("driver"\)/);
-  assert.match(adminModule, /loadRoleView\("driver"\)/);
+  assert.match(adminModule, /driverModule\.mount\(workspaceContext\(generation\)\)/);
   assert.ok(html.includes("byId('driverControls')?.classList.toggle"));
   assert.ok(html.includes("if(byId('roleSummary'))byId('roleSummary').textContent=roleText"));
   assert.ok(html.includes("loadRoleView:async role=>{"));
   assert.ok(html.includes("const result=await roleTemplateLoader.load(role);"));
   assert.ok(html.includes("if(role==='driver')"));
   assert.ok(html.includes("if(role==='central')"));
-  assert.ok(html.includes("render('central-template-mounted')"));
+  assert.ok(html.includes("render('role-template-mounted:'+role)"));
 });
 
 test("admin can operate the car-144 driver workspace without changing its admin role", () => {
@@ -220,7 +222,7 @@ test("role view controller is the only path that activates a workspace", () => {
   const callbackEnd = html.indexOf("\n});", callbackStart);
   const callback = html.slice(callbackStart, callbackEnd);
   assert.match(callback, /hideRoleViews\(document\)/);
-  assert.match(html, /applyRoleView\(document,currentWorkspaceRole\(\),v\)/);
+  assert.match(html, /applyRoleView\(document,workspaceRole,v\)/);
   assert.doesNotMatch(callback, /byId\(['"](?:pasajero|chofer|central|chat|configuracion)['"]\)\.classList\.toggle\(['"]hidden['"]/);
   assert.doesNotMatch(callback, /byId\(['"]central['"]\)\.classList\.remove\(['"]hidden['"]/);
   for (const view of ["pasajero", "inicio", "chofer", "central", "chat", "configuracion"]) {
