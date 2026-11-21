@@ -496,40 +496,7 @@ body.driver-home-map-active #driverHomeMap .leaflet-bottom{bottom:96px}
 </div>
 <div class="post-login-greeting hidden" id="postLoginGreeting"></div>
 
-<section id="acceso">
-<h2 class="login-welcome">Bienvenido a la app oficial de Dante Remises</h2>
-<p class="login-location">Santa Rosa de Calamuchita</p>
-<div class="card panel" id="authPanel">
-<h3>Iniciar sesión</h3>
-<div class="field"><label for="authIdentity">DNI</label><input id="authIdentity" inputmode="numeric" autocomplete="username" placeholder="Tu número de DNI"></div>
-<div class="field"><label for="authPassword">Contraseña</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Tu contraseña"></div>
-<div class="actions"><button class="primary" id="loginButton">Iniciar sesión</button></div>
-<p class="hint" id="authStatus">Ingresá con tu DNI y contraseña.</p>
-<div class="divider"></div>
-<button class="secondary" id="showRegisterButton" type="button">Crear cuenta de pasajero</button>
-<div id="registerPanel" class="hidden">
-<p class="muted">Registrate como pasajero. El teléfono es opcional.</p>
-<div class="field"><label for="regName">Nombre</label><input id="regName" autocomplete="given-name" placeholder="Tu nombre"></div>
-<div class="field"><label for="regLastName">Apellido</label><input id="regLastName" autocomplete="family-name" placeholder="Tu apellido"></div>
-<div class="field"><label for="regDni">DNI</label><input id="regDni" inputmode="numeric" autocomplete="off" placeholder="Tu número de DNI"></div>
-<div class="field"><label for="regPhone">Teléfono (opcional)</label><input id="regPhone" type="tel" autocomplete="tel" placeholder="Tu número de teléfono"></div>
-<div class="field"><label for="regPassword">Crear contraseña</label><input id="regPassword" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres"></div>
-<button class="primary" id="registerButton">Crear cuenta de pasajero</button>
-</div>
-</div>
-<button class="whatsapp-entry" id="whatsappEntryButton" type="button" aria-label="WhatsApp, enlace pendiente" title="WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-4.6A8.5 8.5 0 1 1 20.5 11.5Z"/><path d="M8.8 8.2c.3-.5.6-.5.9-.5h.4c.2 0 .4.1.5.4l.7 1.7c.1.2.1.4-.1.6l-.5.6c-.2.2-.2.4 0 .6.5.9 1.2 1.6 2.1 2.1.2.1.4.1.6-.1l.7-.8c.2-.2.4-.2.6-.1l1.6.8c.3.1.4.3.4.5 0 .3-.2 1.1-.7 1.5-.5.5-1.2.7-1.9.6-1.1-.2-2.4-.9-3.7-2.1-1.3-1.2-2.1-2.6-2.3-3.6-.2-.8.1-1.6.7-2.2Z"/></svg></button>
-</section>
-<section id="staffAccess" class="hidden">
-<button class="secondary auth-back" id="backToPassengerLogin" type="button">← Volver</button>
-<h2>Acceso de personal</h2><p class="muted">Ingresá con el correo electrónico o el DNI asociado a tu cuenta de personal.</p>
-<div class="card panel">
-<div class="field"><label for="staffIdentity">Correo electrónico o DNI</label><input id="staffIdentity" autocomplete="username" placeholder="Correo electrónico o número de DNI"></div>
-<div class="field"><label for="staffPassword">Contraseña</label><input id="staffPassword" type="password" autocomplete="current-password" placeholder="Tu contraseña"></div>
-<button class="primary" id="staffLoginButton" type="button">Ingresar al espacio de personal</button>
-<p class="hint">Por ahora, todas las cuentas de personal pueden ingresar con su correo actual. El acceso por DNI queda disponible para las cuentas que ya tengan ese DNI vinculado.</p>
-<p class="hint" id="staffAuthStatus"></p>
-</div>
-</section>
+<div id="authViewMount"></div>
 <div id="roleViewMount"></div>
 
 <section id="central" class="hidden"><div id="centralViewMount"></div></section>
@@ -696,7 +663,7 @@ let allRolesMode = false;
 let adminWorkspaceController = null;
 function currentWorkspaceRole(){return currentRole?.role==='admin'?(activeWorkspaceRole||'driver'):(currentRole?.role||null)}
 function setAllRolesMode(enabled){if(currentRole?.role!=='admin')return false;allRolesMode=Boolean(enabled);byId('allRolesWorkspace')?.classList.toggle('hidden',!allRolesMode);byId('adminWorkspaceReturnWrap')?.classList.toggle('hidden',!(allRolesMode||['operator','passenger'].includes(activeWorkspaceRole)));return true}
-function setWorkspaceRole(role){if(currentRole?.role!=='admin'||!['driver','operator','passenger','admin'].includes(role))return false;activeWorkspaceRole=role;byId('adminWorkspaceReturnWrap')?.classList.toggle('hidden',!(allRolesMode||['operator','passenger'].includes(role)));const status=byId('allRolesWorkspaceStatus');if(status)status.textContent='Espacio activo: '+({admin:'Administración',driver:'Chófer',operator:'Operador',passenger:'Pasajero'}[role]||role);return true}
+function setWorkspaceRole(role){if(currentRole?.role!=='admin'||!['driver','operator','passenger','admin'].includes(role))return false;activeWorkspaceRole=role;document.body.classList.toggle('admin-workspace-active',role==='admin');byId('adminWorkspaceReturnWrap')?.classList.toggle('hidden',!(allRolesMode||['operator','passenger'].includes(role)));const status=byId('allRolesWorkspaceStatus');if(status)status.textContent='Espacio activo: '+({admin:'Administración',driver:'Chófer',operator:'Operador',passenger:'Pasajero'}[role]||role);return true}
 function isDriverWorkspaceActive(){return currentWorkspaceRole()==='driver'}
 function isOperatorWorkspaceActive(){return currentWorkspaceRole()==='operator'}
 function isPassengerWorkspaceActive(){return currentWorkspaceRole()==='passenger'}
@@ -785,6 +752,18 @@ const roleDomBindings=createRoleDomBindings(document);
 const bindRoleDom=roleDomBindings.bind;
 const flushRoleDomBindings=roleDomBindings.flush;
 const roleTemplateLoader=createRoleTemplateLoader({document,onMounted:()=>flushRoleDomBindings()});
+let authViewLoadPromise=null;
+async function ensureAuthView(){
+ if(byId("acceso"))return {mounted:true};
+ if(!authViewLoadPromise){
+  authViewLoadPromise=import("./roles/auth.mjs").then(module=>module.mount({
+   loadAuthView:()=>roleTemplateLoader.load("auth"),
+   showAuthPage:page=>showAuthPage(page),
+   isCurrent:()=>true
+  })).catch(error=>{authViewLoadPromise=null;throw error});
+ }
+ return authViewLoadPromise;
+}
 const fmtRemaining=ms=>{if(ms<=0)return 'vencido';let total=Math.ceil(ms/60000),h=Math.floor(total/60),m=total%60;return h?`${h} h ${m?m+' min':''}`.trim():`${m} min`};
 function refreshExpired(){const now=Date.now();Object.values(cars).forEach(c=>{if(c.until&&c.until<=now){c.status='libre';c.until=null;c.indefinite=false}})}
 function statusText(c){if(!remoteReady)return 'Consultando disponibilidad…';if(!c.online||c.status==='desconectado')return 'Desconectado';if(c.status==='libre')return 'Libre';if(c.status==='ocupado')return 'Ocupado'+(c.until?' · '+fmtRemaining(c.until-Date.now()):'');return 'Fuera de servicio'+(c.indefinite?' · sin vencimiento':c.until?' · '+fmtRemaining(c.until-Date.now()):'')}
@@ -3463,10 +3442,10 @@ bindRoleDom('driverTripInbox','click',event=>{
 });
 
 function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function showAuthPage(page){const staff=page==='staff';byId('acceso').classList.toggle('hidden',staff);byId('staffAccess').classList.toggle('hidden',!staff);byId('pasajero').classList.add('hidden');byId('chofer').classList.add('hidden');byId('central').classList.add('hidden');byId('chat').classList.add('hidden');byId('configuracion').classList.add('hidden');document.querySelectorAll('.tabs').forEach(el=>el.classList.add('hidden'));byId('logoutButton').classList.add('hidden')}
+function showAuthPage(page){const staff=page==='staff';byId('acceso')?.classList.toggle('hidden',staff);byId('staffAccess')?.classList.toggle('hidden',!staff);['pasajero','chofer','central','chat','configuracion'].forEach(id=>byId(id)?.classList.add('hidden'));document.querySelectorAll('.tabs').forEach(el=>el.classList.add('hidden'));byId('logoutButton')?.classList.add('hidden')}
 async function welcomeUser(user){let name=currentRole?.name||USER_ROLES[user.uid]?.name||'';if(!name){try{const snap=await get(ref(db,'profiles/'+user.uid));const profile=snap.val()||{};name=[profile.name,profile.lastName].filter(Boolean).join(' ')}catch(e){console.error('No se pudo leer el nombre del perfil',e)}}if(!name)name=user.email||'usuario';const role=currentWorkspaceRole()||'passenger';byId('postLoginGreeting').innerHTML=role==='passenger'?`Hola ${esc(name)}, es un gusto verte por acá! <span>¿Cómo podemos ayudarte?</span>`:`Hola ${esc(name)}, que bueno verte acá de nuevo! <span>¡Hoy va a ser un excelente día!</span>`;byId('postLoginGreeting').classList.remove('hidden')}
 bindRoleDom('staffEntryButton','click',()=>showAuthPage('staff'));
-bindRoleDom('backToPassengerLogin','click',()=>{byId('staffAccess').classList.add('hidden');byId('acceso').classList.remove('hidden');byId('pasajero').classList.add('hidden')});
+bindRoleDom('backToPassengerLogin','click',()=>{byId('staffAccess')?.classList.add('hidden');byId('acceso')?.classList.remove('hidden');byId('pasajero').classList.add('hidden')});
 bindRoleDom('showRegisterButton','click',()=>{byId('registerPanel').classList.toggle('hidden');byId('showRegisterButton').textContent=byId('registerPanel').classList.contains('hidden')?'Crear cuenta de pasajero':'Ocultar registro'});
 async function performLogin(identity,password,statusEl,source){if(!identity||!password){notify('Completá el usuario y la contraseña.');return}const isEmail=identity.includes('@');const dni=cleanDni(identity);if(!isEmail&&dni.length<7){notify('Ingresá un correo válido o un DNI de al menos 7 números.');return}const loginEmail=isEmail?identity:dniEmail(dni);try{const credential=await signInWithEmailAndPassword(auth,loginEmail,password);if(statusEl)statusEl.textContent='Sesión iniciada.';await welcomeUser(credential.user)}catch(err){console.error('Error de inicio de sesión',source,err);if(statusEl)statusEl.textContent='No se pudo iniciar sesión. Revisá el correo o DNI y la contraseña.';notify('No se pudo iniciar sesión. Revisá tus datos.')}}
 bindRoleDom('loginButton','click',()=>performLogin(byId('authIdentity').value.trim(),byId('authPassword').value,byId('authStatus'),'pasajero'));
@@ -3577,6 +3556,11 @@ const startupSafetyTimer=window.setTimeout(()=>{
 },12000);
 let authStateGeneration=0;
 onAuthStateChanged(auth,async user=>{
+ await auth.authStateReady();
+ if((user?.uid||null)!==(auth.currentUser?.uid||null)){
+  diagnostics.mark("auth.state.stale_initial_callback",{callbackAuthenticated:!!user,currentAuthenticated:!!auth.currentUser});
+  return;
+ }
  const previousMediaUid=currentUser?.uid||'';
  const shouldCleanPreviousSession=Boolean(previousMediaUid&&previousMediaUid!==(user?.uid||''));
  if(previousMediaUid&&!user){
@@ -3620,9 +3604,10 @@ onAuthStateChanged(auth,async user=>{
  if(shouldCleanPreviousSession){try{await clearDriverPresence()}catch(error){console.warn('No se pudo limpiar la presencia anterior; se continúa con la autenticación:',error)}}
  if(authGeneration!==authStateGeneration)return;perf.mark('auth.presence-cleanup.done');if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
  currentUser=user;currentRole=null;activeWorkspaceRole=null;allRolesMode=false;firebaseConnectedState=null;adminWorkspaceController=null;activeTripRestoreVersion++;if(!user||shouldCleanPreviousSession){activeTripId=null;activeTripData=null;passengerActiveTripId=null;passengerActiveTripData=null;byId('driverActiveTrip')?.classList.add('hidden')}
- if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;activeWorkspaceRole=currentRole?.role==='admin'?'driver':currentRole?.role||null;perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';try{await signOut(auth)}catch(signOutError){console.error('No se pudo cerrar la sesión no verificable:',signOutError);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id)?.classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
- byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
+ if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;activeWorkspaceRole=currentRole?.role==='admin'?'driver':currentRole?.role||null;document.body.classList.remove('admin-workspace-active');perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';try{await signOut(auth)}catch(signOutError){console.error('No se pudo cerrar la sesión no verificable:',signOutError);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id)?.classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
+ byId('loginButton')?.classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress){
+  await ensureAuthView();if(authGeneration!==authStateGeneration)return;
   ['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));
   byId('acceso').classList.remove('hidden');
   roleTransition.finish(transitionToken);
@@ -3630,7 +3615,7 @@ onAuthStateChanged(auth,async user=>{
   if(startupBrandingReady){window.clearTimeout(startupSafetyTimer);finishStartupScreen()}
   return;
  }
- if(user&&!currentRole){byId('authStatus').textContent='Cuenta sin rol asignado. Contactá a Agustín.';try{await signOut(auth)}catch(error){console.error('No se pudo cerrar la sesión de una cuenta sin rol:',error);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify('Esta cuenta no está habilitada en Dante Remises.');return}
+ if(user&&!currentRole){await ensureAuthView();if(authGeneration!==authStateGeneration)return;byId('authStatus').textContent='Cuenta sin rol asignado. Contactá a Agustín.';try{await signOut(auth)}catch(error){console.error('No se pudo cerrar la sesión de una cuenta sin rol:',error);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify('Esta cuenta no está habilitada en Dante Remises.');return}
  if(user){diagnostics.mark("firebase.presence.listener.attached");driverPresenceUnsub=onValue(ref(db,'driverPresence'),snap=>{latestDriverPresence=snap.val()||{};refreshCarPresenceFromSnapshot();diagnostics.mark("firebase.presence.snapshot",{summary:initial.map(x=>x.id+":"+(cars[x.id].online?"1":"0")).join("|")});if(selectedPassengerDriver&&!cars[selectedPassengerDriver]?.online){stopPassengerLocationWatch();if(byId('driverLocationNote'))byId('driverLocationNote').textContent='El chofer se desconectó; su ubicación y disponibilidad ya no están disponibles.'}render('driver-presence')},error=>{diagnostics.mark("firebase.presence.error",{code:error?.code||"",name:error?.name||"Error"});console.error('No se pudo consultar la presencia de los choferes:',error);latestDriverPresence={};refreshCarPresenceFromSnapshot();render('driver-presence-error')});if(['driver','admin'].includes(currentRole.role)){const connectedRef=ref(db,'.info/connected');driverConnectionUnsub=onValue(connectedRef,snapshot=>{
  firebaseConnectedState=snapshot.val()===true;
  renderAdminOperationalHealth();
@@ -3644,7 +3629,7 @@ onAuthStateChanged(auth,async user=>{
 })}}else{latestDriverPresence={};refreshCarPresenceFromSnapshot();render('unspecified')}
  const roleText=!user?'Sesión cerrada.':currentRole.role==='admin'?'Administrador total y chofer · '+currentRole.name:currentRole.role==='driver'?'Chofer · Coche '+currentRole.carId+' · '+currentRole.name:currentRole.role==='operator'?'Operador · '+currentRole.name:'Pasajero · '+currentRole.name;
  if(user){const pendingWelcome=sessionStorage.getItem('danteWelcomeName');if(pendingWelcome){sessionStorage.removeItem('danteWelcomeName')}}
- byId('staffAccess').classList.toggle('hidden',!!user);byId('staffEntryButton').classList.toggle('hidden',!!user);byId('settingsGearButton').classList.toggle('hidden',!user);
+ byId('staffAccess')?.classList.toggle('hidden',!!user);byId('staffEntryButton').classList.toggle('hidden',!!user);byId('settingsGearButton').classList.toggle('hidden',!user);
  byId('authStatus').textContent=roleText;const centralAuthStatus=byId('centralAuthStatus');if(centralAuthStatus)centralAuthStatus.textContent=roleText;byId('versionNote').classList.toggle('hidden',!user);byId('appFooter').classList.toggle('hidden',!user);if(user)await welcomeUser(user);else byId('postLoginGreeting').classList.add('hidden');if(authGeneration!==authStateGeneration)return;perf.mark('auth.welcome.done');
  byId('driverControls')?.classList.toggle('hidden',!user||!['driver','admin'].includes(currentRole.role));
  if(byId('roleSummary'))byId('roleSummary').textContent=roleText;
@@ -3654,7 +3639,7 @@ onAuthStateChanged(auth,async user=>{
  if(user&&currentRole.role==='driver')activeDriver=currentRole.carId;
  if(user&&currentRole.role==='admin')activeDriver='144';
  byId('startupRecoveryNotice')?.remove();byId('authPanel')?.classList.remove('hidden');
- byId('acceso').classList.toggle('hidden',!!user);
+ byId('acceso')?.classList.toggle('hidden',!!user);
   if(!user){
    byId('staffAccess').classList.add('hidden');
    byId('staffEntryButton').classList.remove('hidden');
@@ -3668,6 +3653,7 @@ onAuthStateChanged(auth,async user=>{
  let roleActivation=null;
  if(user){
   try{
+   byId('acceso')?.classList.add('hidden');
    roleActivation=await activateRole(currentRole.role,{
     user,
     role:currentRole,
@@ -3749,6 +3735,9 @@ onAuthStateChanged(auth,async user=>{
     suspendDriverWorkspace:()=>{
      stopDriverHomeMessageCycle();
      setDriverHomeFullscreen(false);
+     byId('driverHomeMapHomeButton')?.classList.add('hidden');
+     byId('driverHomeCurtain')?.classList.add('hidden');
+     document.body.classList.remove('driver-home-map-active');
      setDriverCurtainExpanded(false);
      destroyDriverHomeMap();
     },
@@ -3771,7 +3760,7 @@ onAuthStateChanged(auth,async user=>{
    });
   }catch(error){
    console.error('No se pudo activar el módulo del rol:',error);
-   byId('authStatus').textContent='No se pudo cargar tu espacio de trabajo. Intentá nuevamente.';
+   await ensureAuthView();if(authGeneration!==authStateGeneration)return;byId('authStatus').textContent='No se pudo cargar tu espacio de trabajo. Intentá nuevamente.';
    ['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));
    byId('acceso').classList.remove('hidden');
    roleTransition.finish(transitionToken);
