@@ -84,7 +84,8 @@ export async function activate(context) {
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       if (photoReady === true || photoReady === null) context.showView("pasajero");
       else context.showPassengerOnboarding();
-      context.resumePassengerWorkspace?.();
+      await context.resumePassengerWorkspace?.();
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
       return { view: photoReady === false ? "passengerOnboarding" : "pasajero", photoReady };
     },
     async openAllRolesWorkspace() {
