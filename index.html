@@ -845,7 +845,6 @@ bindRoleDom('openAdminWorkspaceButton','click',async()=>{
  try{await adminWorkspaceController?.openAdminPanel()}catch(error){console.error('No se pudo abrir el panel administrativo:',error);notify('No se pudo abrir el panel administrativo. Intentá nuevamente.')}
 });
 bindRoleDom('adminReturnToDriverButton','click',()=>adminWorkspaceController?.openDriverWorkspace());
-bindRoleDom('openAdminWorkspaceButton','click',()=>showView('central'));
 let tripAlertPermissionFlowStarted=false;
 let tripAlertPermissionFlowRunning=false;
 async function refreshTripAlertPermissionStatus(){
