@@ -6,8 +6,33 @@ export function createRoleTemplateLoader({ document: documentRef = globalThis.do
   const defaultMount = documentRef.getElementById(mountId);
   if (!defaultMount?.replaceChildren) throw new TypeError("Role view mount point is missing");
   const parse = parseTemplate || (html => { const template = documentRef.createElement("template"); template.innerHTML = html; return template.content.cloneNode(true); });
-  const generations = new Map(), pendingRoles = new Map(), sourceCache = new Map();
+  const generations = new Map(), pendingRoles = new Map(), sourceCache = new Map(), sourceLoads = new Map();
 
+  function getSource(role) {
+    if (sourceCache.has(role)) return Promise.resolve(sourceCache.get(role));
+    let pending = sourceLoads.get(role);
+    if (!pending) {
+      const url = ROLE_TEMPLATE_URLS[role];
+      pending = (async () => {
+        const response = await fetchImpl(url, { method: "GET", credentials: "same-origin" });
+        if (!response?.ok) throw new Error("Could not load role template (" + role + "): HTTP " + (response?.status ?? "unknown"));
+        const source = await response.text();
+        sourceCache.set(role, source);
+        return source;
+      })();
+      sourceLoads.set(role, pending);
+      pending.then(
+        () => { if (sourceLoads.get(role) === pending) sourceLoads.delete(role); },
+        () => { if (sourceLoads.get(role) === pending) sourceLoads.delete(role); }
+      );
+    }
+    return pending;
+  }
+  async function preload(role) {
+    if (!ROLE_TEMPLATE_URLS[role]) throw new Error("No HTML template registered for role: " + String(role));
+    await getSource(role);
+    return { role, preloaded: true };
+  }
   function getMount(role) {
     const targetId = ROLE_TEMPLATE_MOUNTS[role] || mountId;
     const mount = documentRef.getElementById(targetId);
@@ -35,12 +60,7 @@ export function createRoleTemplateLoader({ document: documentRef = globalThis.do
     generations.set(targetId, requestGeneration); pendingRoles.set(targetId, role);
     if (mount.dataset) mount.dataset.pendingRole = role;
     try {
-      let source = sourceCache.get(role);
-      if (source === undefined) {
-        const response = await fetchImpl(url, { method: "GET", credentials: "same-origin" });
-        if (!response?.ok) throw new Error("Could not load role template (" + role + "): HTTP " + (response?.status ?? "unknown"));
-        source = await response.text(); sourceCache.set(role, source);
-      }
+      const source = await getSource(role);
       const fragment = parse(source, documentRef);
       assertNoDuplicateIds(fragment, mount);
       if (requestGeneration !== generations.get(targetId)) { clearPendingRole(mount, targetId, role); return { stale: true, role }; }
@@ -79,6 +99,6 @@ export function createRoleTemplateLoader({ document: documentRef = globalThis.do
       if (mount.dataset) { delete mount.dataset.role; delete mount.dataset.pendingRole; }
     }
   }
-  return Object.freeze({ load, unload, unloadMount, unmount });
+  return Object.freeze({ load, preload, unload, unloadMount, unmount });
 }
 export const roleTemplateUrls = ROLE_TEMPLATE_URLS;
