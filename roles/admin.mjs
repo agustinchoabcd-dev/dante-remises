@@ -69,11 +69,11 @@ export async function activate(context) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
+      stopPassenger();
+      suspendDriver();
       context.setWorkspaceRole?.("passenger");
       const mounted = await context.loadRoleView("passenger");
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
-      suspendDriver();
-      stopPassenger();
       context.unloadRoleView("driver");
       context.unloadRoleView("central");
       const photoReady = await context.loadPassengerPhoto();
