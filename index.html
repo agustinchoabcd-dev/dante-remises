@@ -820,7 +820,7 @@ function renderAdminOperationalHealth(){
   '<div class="choice-card"><strong>Coche 144</strong><div class="hint">'+esc(carStatus)+'</div></div>'+
   '<div class="choice-card"><strong>GPS y viajes</strong><div class="hint">GPS: '+gpsStatus+'</div><div class="hint">'+tripStatus+'</div></div>'+
   '<div class="choice-card"><strong>Alertas push</strong><div class="hint">'+esc(pushStatus)+'</div></div>'+
-  '<div class="choice-card"><strong>Diagnóstico</strong><div class="hint">Errores registrados: '+errors.length+'</div><div class="hint">Eventos de diagnóstico pendientes de sincronizar: '+diagnostics.pendingCount+'</div></div>'+
+  '<div class="choice-card"><strong>Diagnóstico</strong><div class="hint">Errores registrados: '+errors.length+'</div><div class="hint">Eventos de diagnóstico pendientes de sincronizar: '+diagnostics.pendingCount+'</div><div class="hint">Sincronización: '+esc(diagnostics.syncStatus)+(diagnostics.syncError?' · '+esc(diagnostics.syncError):'')+(diagnostics.lastUploadAt?' · último envío '+new Date(diagnostics.lastUploadAt).toLocaleTimeString('es-AR'):'')+'</div></div>'+
   '<div class="choice-card"><strong>Último error registrado</strong><div class="hint">'+esc(lastError)+'</div></div>'+
   '<div class="choice-card"><strong>Operaciones más lentas</strong>'+perfRows+'</div>'+
  '</div>';
