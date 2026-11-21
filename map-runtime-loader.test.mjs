@@ -41,8 +41,12 @@ test("map styles and scripts load once, in dependency order", async () => {
 
   assert.equal(first, browser.window.DanteMap);
   assert.equal(second, browser.window.DanteMap);
-  assert.deepEqual(browser.appended.slice(0, 2), mapRuntimeResources.styles.map(item => item.href));
-  assert.deepEqual(browser.appended.slice(2), mapRuntimeResources.scripts.map(item => item.src));
+  assert.deepEqual(browser.appended.slice(0, 2), [
+    "https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.css",
+    "https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js"
+  ]);
+  assert.deepEqual(browser.appended.slice(2), mapRuntimeResources.scripts.slice(2).map(item => item.src));
+  assert.equal(browser.appended.some(url => url.includes("leaflet")), false);
 });
 
 test("failed map loading rejects and permits a later retry", async () => {
@@ -76,15 +80,13 @@ test("Mapbox CDN failure falls back to the Leaflet engine", async () => {
   assert.equal(browser.window.mapboxgl, undefined);
 });
 
-test("Leaflet CDN failure falls back to the Mapbox engine", async () => {
-  const browser = fakeBrowser({ failAt: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" });
+test("Mapbox success avoids downloading the unused Leaflet fallback", async () => {
+  const browser = fakeBrowser();
   const ensureMapRuntime = createMapRuntimeLoader(browser);
-
-  const map = await ensureMapRuntime();
-
-  assert.equal(map, browser.window.DanteMap);
-  assert.equal(browser.window.L, undefined);
+  await ensureMapRuntime();
   assert.ok(browser.window.mapboxgl);
+  assert.equal(browser.window.L, undefined);
+  assert.equal(browser.appended.some(url => url.includes("leaflet")), false);
 });
 
 test("loading fails only when neither rendering engine is available", async () => {
