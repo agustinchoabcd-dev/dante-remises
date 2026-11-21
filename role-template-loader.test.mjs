@@ -234,3 +234,22 @@ test("authentication template mounts separately from passenger, driver and Centr
   assert.equal(document.mounts.authViewMount.dataset.role, "auth");
   assert.deepEqual(requests, ["./views/driver.html", "./views/auth.html"]);
 });
+
+test("preloads only the selected role template and shares its request with mount", async()=>{
+ const document=makeDocument();const requests=[];
+ let release;
+ const loader=createRoleTemplateLoader({
+  document,
+  fetch:async url=>{requests.push(url);await new Promise(resolve=>{release=resolve});return response('<section id="driver"></section>')},
+  parseTemplate:parseIds
+ });
+ const preload=loader.preload("driver");
+ const mount=loader.load("driver");
+ await Promise.resolve();
+ assert.deepEqual(requests,["./views/driver.html"]);
+ release();
+ assert.deepEqual(await preload,{role:"driver",preloaded:true});
+ assert.deepEqual(await mount,{stale:false,role:"driver",mounted:true});
+ assert.equal(document.mount.dataset.role,"driver");
+ assert.equal(requests.length,1);
+});
