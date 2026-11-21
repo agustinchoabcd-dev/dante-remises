@@ -421,3 +421,9 @@ test("driver location fixes are validated and published without re-registering o
  assert.match(html,/driverLocationDisconnectPaths\.clear\(\)/);
  assert.match(html,/maximumAge:5000,timeout:20000,interval:2000,minimumUpdateInterval:1500/);
 });
+
+test("location permission is requested only when a location feature is used",()=>{
+ assert.doesNotMatch(html,/requestStartupPermissions\(\)/);
+ assert.match(html,/requestPreciseLocationPermission\(\)/);
+ assert.match(html,/requestLocationPermission\(\)/);
+});
