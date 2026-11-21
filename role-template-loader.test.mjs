@@ -45,7 +45,7 @@ test("loads passenger and driver templates into the shared role mount", async ()
   assert.equal(requests[1].url, "./views/driver.html");
 });
 
-test("loads Central into its own mount so Admin can retain both workspaces", async () => {
+test("loads Central into its own mount independently from the driver workspace", async () => {
   const document = makeDocument();
   const requests = [];
   const loader = createRoleTemplateLoader({
@@ -114,6 +114,22 @@ test("rejects IDs already mounted in a different role workspace", async () => {
     parseTemplate: parseIds
   });
   await assert.rejects(loader.load("passenger"), /already exists outside its mount/);
+});
+
+test("unload clears only the selected workspace mount", async () => {
+  const document = makeDocument();
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: async url => response('<section id="' + (url.includes("central") ? "central" : "driver") + '"></section>'),
+    parseTemplate: parseIds
+  });
+  await loader.load("driver");
+  await loader.load("central");
+  assert.equal(loader.unload("central"), true);
+  assert.equal(document.mounts.centralViewMount.children.length, 0);
+  assert.equal(document.mounts.centralViewMount.dataset.role, undefined);
+  assert.equal(document.mounts.roleViewMount.dataset.role, "driver");
+  assert.equal(document.mounts.roleViewMount.children.length, 1);
 });
 
 test("unmount clears every role mount and invalidates pending responses", async () => {
