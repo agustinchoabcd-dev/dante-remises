@@ -944,7 +944,7 @@ async function ensureDriverTripAlertPermissions(){
  }
 }
 
-let selectedPassengerDriver=null,realMap=null,originPoint=null,destinationPoint=null,mapPickMode=null,routeLayer=null,selectedCarMarker=null,liveLocationUnsub=null,passengerTripUnsub=null,passengerActiveTripId=null,passengerActiveTripData=null,driverInboxUnsub=null,driverPresenceUnsub=null,driverConnectionUnsub=null,driverPresenceRef=null,driverWatchId=null,driverLocationWriteAt=0,activeTripId=null,activeTripData=null;
+let selectedPassengerDriver=null,realMap=null,originPoint=null,destinationPoint=null,mapPickMode=null,routeLayer=null,selectedCarMarker=null,liveLocationUnsub=null,passengerTripUnsub=null,passengerActiveTripId=null,passengerActiveTripData=null,driverInboxUnsub=null,driverPresenceUnsub=null,driverConnectionUnsub=null,driverPresenceRef=null,driverWatchId=null,driverLocationWriteAt=0,driverLocationWriteInFlight=false,driverGpsRetryTimer=null,driverGpsRetryAttempts=0,driverGpsGeneration=0,driverLocationDisconnectPaths=new Set(),activeTripId=null,activeTripData=null;
 let passengerViewGeneration=0;
 let driverTripMapInstance=null,driverTripMapTripId=null,processingNativeTripAction=false;
 let driverPresenceGeneration=0;
@@ -2054,7 +2054,7 @@ async function startDriverGps(){
  if(isDriverCapableRole()&&!driverWantsOnline&&!activeTripId)return;
  if(!isGeolocationAvailable()||driverWatchId!==null||driverGpsStarting)return;
  if(driverGpsRetryTimer!==null){window.clearTimeout(driverGpsRetryTimer);driverGpsRetryTimer=null}
- const gpsUid=currentUser?.uid,gpsRole=currentRole?.role;
+ const gpsUid=currentUser?.uid,gpsRole=currentRole?.role,gpsGeneration=++driverGpsGeneration;
  driverGpsStarting=true;
  if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='Buscando señal GPS precisa…';
  try{
@@ -2068,7 +2068,7 @@ async function startDriverGps(){
   const watchOptions={enableHighAccuracy:true,maximumAge:5000,timeout:20000,interval:2500,minimumUpdateInterval:1500,enableLocationFallback:true};
   let watchId=null;
   const onPosition=async pos=>{
-   if(watchId===null||driverWatchId!==watchId||currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;
+   if(watchId===null||driverWatchId!==watchId||gpsGeneration!==driverGpsGeneration||currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;
    const now=Date.now();
    const validated=validateDriverLocationFix(pos,{previous:latestDriverLocation,now,maxAccuracyMeters:100,maxAgeMs:30_000,maxSpeedMetersPerSecond:70});
    if(!validated.accepted){
@@ -2109,17 +2109,19 @@ async function startDriverGps(){
       console.warn('No se pudo preparar la limpieza automática de ubicación:',disconnectError?.name||'Error');
      }
     }
+    if(gpsGeneration!==driverGpsGeneration||currentUser?.uid!==gpsUid||(!driverWantsOnline&&!activeTripId))return;
     await set(locationRef,loc);
+    if(gpsGeneration!==driverGpsGeneration)return;
     perf.record('gps.location.write',writeStartedAt,performance.now(),{accuracyMeters:loc.accuracy});
     if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='GPS activo · precisión ±'+loc.accuracy+' m · '+new Date(loc.updatedAt).toLocaleTimeString('es-AR');
    }catch(err){
     console.error('No se pudo compartir la ubicación del chófer:',err);
     perf.mark('gps.location.write.error');
     if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='GPS activo, pero no se pudo sincronizar la ubicación. Reintentando…';
-   }finally{driverLocationWriteInFlight=false}
+   }finally{if(gpsGeneration===driverGpsGeneration)driverLocationWriteInFlight=false}
   };
   const onWatchError=error=>{
-   if(watchId===null||driverWatchId!==watchId)return;
+   if(watchId===null||driverWatchId!==watchId||gpsGeneration!==driverGpsGeneration)return;
    driverWatchId=null;
    clearWatch(watchId);
    perf.mark('gps.watch.error',{code:Number(error?.code)||0});
@@ -2152,6 +2154,7 @@ async function startDriverGps(){
  }finally{driverGpsStarting=false}
 }
 function stopDriverGps(){
+ driverGpsGeneration++;
  if(driverGpsRetryTimer!==null){window.clearTimeout(driverGpsRetryTimer);driverGpsRetryTimer=null}
  if(driverWatchId!==null){clearWatch(driverWatchId);driverWatchId=null}
  driverGpsRetryAttempts=0;
