@@ -49,7 +49,7 @@ function makeClientInfo(runtime) {
       : ua ? "web" : "unknown";
   const browser = ua.match(/(?:Chrome|CriOS|Firefox|Edg|OPR)\/(\d+)/i);
   return {
-    appVersion: "0.6.0",
+    appVersion: "0.6.1",
     build: String(runtime.__DANTE_BUILD__ || "unreported").slice(0, 24),
     platform,
     browserMajor: browser ? Number(browser[1]) : 0,
