@@ -3557,16 +3557,16 @@ onAuthStateChanged(auth,async user=>{
     startDriverGps,
     processPendingTripAction:()=>processPendingTripAction(()=>authGeneration===authStateGeneration),
     loadAdminProfiles:async()=>{
-     byId('passengerList')?.textContent='Cargando pasajeros…';
+     if(byId('passengerList'))byId('passengerList').textContent='Cargando pasajeros…';
      try{
       const profSnap=await get(ref(db,'profiles'));
       if(authGeneration!==authStateGeneration)return;
       const profiles=profSnap.val()||{};
       const entries=Object.values(profiles);
-      byId('passengerList')?.innerHTML=entries.length?entries.map(p=>'<div class="choice-card"><strong>'+esc((p.name||'')+' '+(p.lastName||''))+'</strong><div class="muted">DNI: '+esc(p.dni||'—')+' · Teléfono: '+esc(p.phone||'No informado')+'</div></div>').join(''):'Todavía no hay pasajeros registrados.';
+      if(byId('passengerList'))byId('passengerList').innerHTML=entries.length?entries.map(p=>'<div class="choice-card"><strong>'+esc((p.name||'')+' '+(p.lastName||''))+'</strong><div class="muted">DNI: '+esc(p.dni||'—')+' · Teléfono: '+esc(p.phone||'No informado')+'</div></div>').join(''):'Todavía no hay pasajeros registrados.';
      }catch(error){
       if(authGeneration!==authStateGeneration)return;
-      byId('passengerList').textContent='No se pudieron consultar los perfiles. Revisá las reglas de Firebase.';
+      if(byId('passengerList'))byId('passengerList').textContent='No se pudieron consultar los perfiles. Revisá las reglas de Firebase.';
       console.error('No se pudieron cargar los perfiles para administración:',error);
      }
      perf.mark('auth.admin-profiles-stage.done');
