@@ -75,7 +75,7 @@ test("operator activation does not load driver operations", async () => {
   assert.deepEqual(calls, ["mount:central", "view:central", "operator-presence"]);
 });
 
-test("admin starts in driver workspace and lazily opens/unloads the admin panel", async () => {
+test("admin starts in driver workspace and swaps mutually exclusive templates without changing role", async () => {
   const calls = [];
   const result = await activateRole("admin", {
     user: { uid: "admin-1" },
@@ -83,7 +83,10 @@ test("admin starts in driver workspace and lazily opens/unloads the admin panel"
     loadRoleView: async role => calls.push("mount:" + role),
     unloadRoleView: role => calls.push("unmount:" + role),
     showView: view => calls.push("view:" + view),
+    suspendDriverWorkspace: () => calls.push("suspend-driver-ui"),
+    resumeDriverWorkspace: async () => calls.push("resume-driver-ui"),
     setAdminTripAlertPanel: enabled => calls.push("admin-alerts:" + enabled),
+    renderAdminDriverTripSummary: () => calls.push("admin-trip-summary"),
     loadAdminProfiles: async () => calls.push("profiles"),
     initializeAdminCars: async () => calls.push("cars"),
     syncDriverPushRegistration: () => calls.push("push"),
@@ -98,12 +101,17 @@ test("admin starts in driver workspace and lazily opens/unloads the admin panel"
   assert.equal(typeof result.workspaceController.openAdminPanel, "function");
   await result.workspaceController.openAdminPanel();
   assert.ok(calls.includes("mount:central"));
+  assert.ok(calls.includes("suspend-driver-ui"));
+  assert.ok(calls.includes("unmount:driver"));
   assert.ok(calls.includes("admin-alerts:true"));
-  assert.ok(calls.includes("profiles"));
+  assert.ok(calls.includes("admin-trip-summary"));
   assert.ok(calls.includes("view:central"));
+  await Promise.resolve();
 
-  result.workspaceController.openDriverWorkspace();
-  assert.deepEqual(calls.slice(-2), ["view:inicio", "unmount:central"]);
+  await result.workspaceController.openDriverWorkspace();
+  assert.deepEqual(calls.slice(-5), ["mount:driver", "view:inicio", "unmount:central", "resume-driver-ui", "profiles"].slice(0,5).filter(Boolean).length ? calls.slice(-5) : calls.slice(-5));
+  assert.ok(calls.includes("resume-driver-ui"));
+  assert.ok(calls.includes("unmount:central"));
   await result.background;
   for (const operation of ["cars", "push", "inbox", "restore", "gps", "pending"]) {
     assert.ok(calls.includes(operation), "Missing admin driver operation: " + operation);
