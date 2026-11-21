@@ -3606,7 +3606,8 @@ onAuthStateChanged(auth,async user=>{
       if(authGeneration!==authStateGeneration)return {stale:true};
       if(role==='driver'){byId('driverControls')?.classList.toggle('hidden',!['driver','admin'].includes(currentRole?.role));if(byId('roleSummary'))byId('roleSummary').textContent=roleText}
       if(role==='central'){
-       byId('adminReturnToDriverButton')?.classList.toggle('hidden',!isAdminWorkspaceActive());
+       byId('adminWorkspaceSelector')?.classList.toggle('hidden',!isAdminWorkspaceActive());
+        byId('adminReturnToDriverButton')?.classList.toggle('hidden',!isAdminWorkspaceActive());
        const centralAuthStatus=byId('centralAuthStatus');if(centralAuthStatus)centralAuthStatus.textContent=roleText;
        const centralDescription=byId('centralDescription');if(centralDescription)centralDescription.textContent=isOperatorWorkspaceActive()?'Panel de operador: consulta de disponibilidad. No podés modificar estados.':'Panel de administración total.';
        byId('passengerAdmin')?.classList.toggle('hidden',!isAdminWorkspaceActive());
