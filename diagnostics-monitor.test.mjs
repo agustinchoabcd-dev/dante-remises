@@ -135,3 +135,13 @@ test("diagnostics monitor accepts availability reconnect events", () => {
   const monitor = createDiagnosticsMonitor({ runtime, now: () => 1_800_000_000_000 });
   assert.equal(monitor.mark("firebase.availability.connect", { connected: true }), true);
 });
+
+test("diagnostics upload backs off after server rejection",async()=>{
+ const delays=[];const runtime=fakeRuntime();runtime.setTimeout=(_callback,delay)=>{delays.push(delay);return delays.length};
+ const monitor=createDiagnosticsMonitor({runtime,fetchImpl:async()=>({ok:false,status:503})});
+ monitor.configure({endpoint:"https://worker.example.test/v1/chat/diagnostics",getToken:async()=>"token"});
+ monitor.mark("app.start");
+ await monitor.flush();
+ assert.equal(monitor.pendingCount,1);
+ assert.ok(delays.includes(3000));
+});
