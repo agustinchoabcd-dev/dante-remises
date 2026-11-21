@@ -457,3 +457,15 @@ test("driver GPS reacquires a fresh watch when the app returns to foreground",()
  assert.match(html,/clearWatch\(driverWatchId\);driverWatchId=null/);
  assert.match(html,/perf\.mark\('gps\.watch\.foreground_resume'\)/);
 });
+
+test("admin health exposes live GPS accuracy and diagnostic upload state",()=>{
+ assert.match(html,/gpsAgeSeconds/);
+ assert.match(html,/latestDriverLocation\.accuracy/);
+ assert.match(html,/diagnostics\.syncStatus/);
+ assert.match(html,/diagnostics\.syncError/);
+ assert.match(html,/diagnostics\.lastUploadAt/);
+});
+test("deferred active-trip map focus handles promise failures",()=>{
+ assert.match(html,/focusDriverHomeMap\(\)\.catch\(error=>/);
+ assert.match(html,/ensureDriverHomeNavigationRoute\(\)\.catch\(error=>/);
+});
