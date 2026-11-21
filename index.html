@@ -3686,7 +3686,15 @@ async function resolveAuthenticatedRole(user){
  catch(error){console.error('No se pudo leer el perfil dinámico:',error);throw new Error('No se pudo verificar tu perfil. Intentá nuevamente.')}
  return resolveRoleFromProfile({uid:user.uid,profile,legacyStaff,adminUid:ADMIN_UID,userEmail:user.email});
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&isOperatorWorkspaceActive())void sendOperatorPresence()});
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState!=='visible')return;
+ if(isOperatorWorkspaceActive())void sendOperatorPresence();
+ if(isDriverCapableRole()&&(driverWantsOnline||activeTripId)){
+  if(driverWatchId!==null){clearWatch(driverWatchId);driverWatchId=null}
+  perf.mark('gps.watch.foreground_resume');
+  void startDriverGps();
+ }
+});
 function renderBuildInfo(){const info=window.DANTE_BUILD_INFO||{};byId("infoHtmlVersion").textContent=info.htmlVersion||"0.6.1";byId("infoApkVersion").textContent=info.apkVersionName||"No disponible en versión web";byId("infoApkVersionCode").textContent=info.apkVersionCode??"—";byId("infoBuildNumber").textContent=info.buildNumber??"—";byId("infoBuildRun").textContent=info.runId||"—";byId("infoBuildBranch").textContent=info.branch||"—";byId("infoBuildCommit").textContent=info.commit||"—";byId("infoBuildDate").textContent=info.buildDateUtc||"—";byId("infoAndroidPackage").textContent=info.androidPackage||"com.danteremises.test";byId("infoBuildType").textContent=info.buildType||"Web / no informado"}
 renderBuildInfo();
 let startupScreenFinished=false;
