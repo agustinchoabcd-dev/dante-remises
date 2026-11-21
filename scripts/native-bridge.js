@@ -101,11 +101,6 @@ export async function requestPreciseLocationPermission() {
   }
 }
 
-export async function requestStartupPermissions() {
-  if (!native) return;
-  await requestLocationPermission();
-}
-
 export async function requestTripNotificationPermission() {
   if (!native) return { granted: false };
   try {
