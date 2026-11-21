@@ -7,8 +7,10 @@ test("driver home status maps the requested states",()=>{
  assert.deepEqual(getDriverHomeStatus({online:true,status:"ocupado"}),{label:"Conectado",tone:"orange",badge:"Ocupado"});
  assert.deepEqual(getDriverHomeStatus({online:true,status:"fuera"}),{label:"Conectado",tone:"red",badge:"Fuera de servicio"});
 });
-test("driver presence is opt-in; Admin keeps automatic presence",()=>{
- assert.equal(shouldRegisterDriverPresence("admin",false,false),true);
+test("driver presence is manual for drivers and admin, except while a trip is active",()=>{
+ assert.equal(shouldRegisterDriverPresence("admin",false,false),false);
+ assert.equal(shouldRegisterDriverPresence("admin",true,false),true);
+ assert.equal(shouldRegisterDriverPresence("admin",false,true),true);
  assert.equal(shouldRegisterDriverPresence("driver",false,false),false);
  assert.equal(shouldRegisterDriverPresence("driver",true,false),true);
  assert.equal(shouldRegisterDriverPresence("driver",false,true),true);
