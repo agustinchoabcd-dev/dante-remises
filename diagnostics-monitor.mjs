@@ -78,6 +78,7 @@ export function createDiagnosticsMonitor({
   let client = makeClientInfo(runtime);
   let timer = null;
   let inFlight = null;
+  let retryDelayMs = 1500;
 
   const setTimer = runtime.setTimeout?.bind(runtime) || setTimeout;
   const clearTimer = runtime.clearTimeout?.bind(runtime) || clearTimeout;
@@ -145,14 +146,19 @@ export function createDiagnosticsMonitor({
           credentials: "omit",
           keepalive: true
         });
-        if (!response?.ok) return false;
+        if (!response?.ok) {
+          retryDelayMs = Math.min(60_000, Math.max(1500, retryDelayMs * 2));
+          return false;
+        }
         uploadedRevision = payload.events[payload.events.length - 1].seq;
+        retryDelayMs = 1500;
         return true;
       } catch {
+        retryDelayMs = Math.min(60_000, Math.max(1500, retryDelayMs * 2));
         return false;
       } finally {
         inFlight = null;
-        if (authenticated && revision > uploadedRevision) schedule(1500);
+        if (authenticated && revision > uploadedRevision) schedule(retryDelayMs);
       }
     })();
     return inFlight;
@@ -160,7 +166,7 @@ export function createDiagnosticsMonitor({
 
   function errorLocation(error, fallbackSource = "") {
     const stack = String(error?.stack || "");
-    const match = stack.match(/(?:^|\\s)([^/\\s?#]+\\.(?:m?js|html)):(\\d+):(\\d+)/m);
+    const match = stack.match(/([^/\\s?#]+\\.(?:m?js|html)):(\\d+):(\\d+)/m);
     const source = (match?.[1] || fallbackSource || "unknown").slice(0, 64);
     return {
       source: /^[A-Za-z0-9_.-]+$/.test(source) ? source : "unknown",
