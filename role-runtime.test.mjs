@@ -109,7 +109,7 @@ test("admin starts in driver workspace and swaps mutually exclusive templates wi
   await Promise.resolve();
 
   await result.workspaceController.openDriverWorkspace();
-  assert.deepEqual(calls.slice(-5), ["mount:driver", "view:inicio", "unmount:central", "resume-driver-ui", "profiles"].slice(0,5).filter(Boolean).length ? calls.slice(-5) : calls.slice(-5));
+  assert.deepEqual(calls.slice(-4), ["mount:driver", "view:inicio", "unmount:central", "resume-driver-ui"]);
   assert.ok(calls.includes("resume-driver-ui"));
   assert.ok(calls.includes("unmount:central"));
   await result.background;
