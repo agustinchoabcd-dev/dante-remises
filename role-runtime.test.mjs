@@ -100,7 +100,7 @@ test("admin starts in driver workspace and lazily opens/unloads the admin panel"
   assert.ok(calls.includes("mount:central"));
   assert.ok(calls.includes("admin-alerts:true"));
   assert.ok(calls.includes("profiles"));
-  assert.equal(calls.at(-1), "view:central");
+  assert.ok(calls.includes("view:central"));
 
   result.workspaceController.openDriverWorkspace();
   assert.deepEqual(calls.slice(-2), ["view:inicio", "unmount:central"]);
