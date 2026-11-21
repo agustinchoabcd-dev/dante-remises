@@ -11,7 +11,7 @@ const ROLE_TEMPLATE_MOUNTS = Object.freeze({
 
 /**
  * Passenger and driver share the main role mount. Central has a separate
- * mount so Admin can keep Central and the car-144 driver workspace together.
+ * mount so the active workspace can be swapped without retaining the previous DOM.
  */
 export function createRoleTemplateLoader({
   document: documentRef = globalThis.document,
