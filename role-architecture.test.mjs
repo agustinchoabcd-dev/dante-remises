@@ -71,7 +71,7 @@ test("startup recovery never reveals the login shell while an authenticated call
 
 test("returning to the driver workspace preserves the three-tab home instead of forcing map fullscreen", () => {
   const start = html.indexOf("resumeDriverWorkspace:async()=>{");
-  const end = html.indexOf("\n    }\n   });", start);
+  const end = html.indexOf("\n    }\n   }),roleTemplatePreload", start);
   assert.ok(start >= 0 && end > start);
   const resume = html.slice(start, end);
   assert.ok(resume.includes("await initDriverHomeMap()"));
@@ -206,7 +206,7 @@ test("auth transition lock is applied before asynchronous account cleanup", () =
   assert.notEqual(callbackEnd, -1);
   const callback = html.slice(callbackStart, callbackEnd);
   assert.ok(callback.indexOf("roleTransition.begin()") < callback.indexOf("await stopOperatorPresence()"));
-  assert.ok(callback.includes("await activateRole(currentRole.role"));
+  assert.ok(callback.includes("await Promise.all([activateRole(currentRole.role"));
 });
 
 test("passenger authentication never reveals configuration as a temporary screen", () => {
@@ -267,7 +267,7 @@ test("auth callback hides role views before asynchronous cleanup and activation"
   const authStart = html.indexOf("onAuthStateChanged(auth,async user=>{");
   const hideIndex = html.indexOf("hideRoleViews(document)", authStart);
   const asyncCleanup = html.indexOf("await stopOperatorPresence()", authStart);
-  const roleActivation = html.indexOf("roleActivation=await activateRole(currentRole.role", authStart);
+  const roleActivation = html.indexOf("roleActivation=await Promise.all([activateRole(currentRole.role", authStart);
 
   assert.notEqual(authStart, -1);
   assert.notEqual(hideIndex, -1);
@@ -419,7 +419,7 @@ test("driver location fixes are validated and published without re-registering o
  assert.match(html,/validateDriverLocationFix\(pos/);
  assert.match(html,/driverLocationDisconnectPaths\.has\(locationPath\)/);
  assert.match(html,/driverLocationDisconnectPaths\.clear\(\)/);
- assert.match(html,/maximumAge:5000,timeout:20000,interval:2000,minimumUpdateInterval:1500/);
+ assert.match(html,/maximumAge:5000,timeout:20000,interval:2500,minimumUpdateInterval:1500/);
 });
 
 test("location permission is requested only when a location feature is used",()=>{
