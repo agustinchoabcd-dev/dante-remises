@@ -1074,7 +1074,9 @@ bindRoleDom('requestSelectedDriver','click',async()=>{
 function listenPassengerTrip(id){
  if(passengerTripUnsub)passengerTripUnsub();
  passengerActiveTripId=id;
+ const generation=passengerViewGeneration;
  passengerTripUnsub=onValue(ref(db,'trips/'+id),snap=>{
+  if(generation!==passengerViewGeneration)return;
   const trip=snap.val();if(!trip)return;passengerActiveTripData=trip;
   const box=byId('requestResult');if(!box||!isPassengerWorkspaceActive())return;
   box.classList.remove('hidden');
@@ -1106,7 +1108,7 @@ function watchTripLocation(id){
 }
 function stopTripLocationWatch(){if(tripLocationUnsub){tripLocationUnsub();tripLocationUnsub=null}stopPassengerLocationWatch()}
 function suspendPassengerWorkspace(){
- passengerViewGeneration++;passengerRouteRequestVersion++;
+ passengerViewGeneration++;passengerRouteRequestVersion++;passengerPhotoLoadVersion++;
  autocompleteRequestIds.origin++;autocompleteRequestIds.destination++;
  Object.values(searchTimers).forEach(timer=>clearTimeout(timer));
  mapPickMode=null;stopTripLocationWatch();
@@ -1116,7 +1118,10 @@ function suspendPassengerWorkspace(){
 }
 async function resumePassengerWorkspace(){
  if(passengerActiveTripId)listenPassengerTrip(passengerActiveTripId);
- if(!passengerPhotoReady||!selectedPassengerDriver)return;
+ if(!passengerPhotoReady)return;
+ if(passengerActiveTripId&&['requested','accepted','in_progress'].includes(passengerActiveTripData?.status)){
+  byId('passengerDriverScreen')?.classList.add('hidden');byId('passengerTripScreen')?.classList.remove('hidden');
+ }else if(!selectedPassengerDriver)return;
  const car=cars[selectedPassengerDriver];
  const driverScreen=byId('passengerDriverScreen'),tripScreen=byId('passengerTripScreen');
  if(driverScreen&&tripScreen){driverScreen.classList.add('hidden');tripScreen.classList.remove('hidden')}
@@ -3550,7 +3555,7 @@ onAuthStateChanged(auth,async user=>{
  if(shouldCleanPreviousSession&&driverConnectionUnsub){driverConnectionUnsub();driverConnectionUnsub=null}
  if(shouldCleanPreviousSession){try{await clearDriverPresence()}catch(error){console.warn('No se pudo limpiar la presencia anterior; se continúa con la autenticación:',error)}}
  if(authGeneration!==authStateGeneration)return;perf.mark('auth.presence-cleanup.done');if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
- currentUser=user;currentRole=null;activeWorkspaceRole=null;adminWorkspaceController=null;activeTripRestoreVersion++;if(!user){activeTripId=null;activeTripData=null;passengerActiveTripId=null;passengerActiveTripData=null;byId('driverActiveTrip').classList.add('hidden')}
+ currentUser=user;currentRole=null;activeWorkspaceRole=null;adminWorkspaceController=null;activeTripRestoreVersion++;if(!user||shouldCleanPreviousSession){activeTripId=null;activeTripData=null;passengerActiveTripId=null;passengerActiveTripData=null;byId('driverActiveTrip')?.classList.add('hidden')}
  if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;activeWorkspaceRole=currentRole?.role==='admin'?'driver':currentRole?.role||null;perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';try{await signOut(auth)}catch(signOutError){console.error('No se pudo cerrar la sesión no verificable:',signOutError);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id)?.classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
  byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress){
@@ -3567,7 +3572,7 @@ onAuthStateChanged(auth,async user=>{
  if(!shouldRegisterDriverPresence(currentRole.role,driverWantsOnline,!!activeTripId))return;
  void registerDriverPresence(user,currentRole).then(()=>{
   perf.mark('auth.driver-presence.done');diagnostics.mark('firebase.presence.registered',{carId:currentRole?.carId||(currentRole?.role==='admin'?'144':'')});
-  if(isDriverWorkspaceActive()){const car=cars[String(currentRole.carId)];if(car)car.online=true;render('driver-presence-restored');void startDriverGps()}
+  {const car=cars[currentDriverCarId()];if(car)car.online=true;render('driver-presence-restored');void startDriverGps()}
   void diagnostics.flush();
  }).catch(error=>{diagnostics.mark('firebase.presence.error',{code:error?.code||'',name:error?.name||'Error'});console.error('No se pudo registrar la presencia del chofer:',error);notify('No se pudo confirmar tu conexión como chofer. No recibirás solicitudes hasta reconectar.')})
 })}}else{latestDriverPresence={};refreshCarPresenceFromSnapshot();render('unspecified')}
