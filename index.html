@@ -2346,7 +2346,7 @@ async function sendOperatorPresence(){
   await ensureChatModules();
   if(!isOperatorWorkspaceActive())return;
   const api=getChatApiClient();if(!api)return;
-  await api.setOperatorPresence();
+  await api.setOperatorPresence('operator');
  }catch(error){
   if(error?.status===404||error?.status===501){
    operatorPresenceUnavailable=true;
@@ -2374,7 +2374,7 @@ async function stopOperatorPresence(){
   try{
    await ensureChatModules();
    const api=getChatApiClient();
-   if(api)await api.clearOperatorPresence();
+   if(api)await api.clearOperatorPresence('operator');
   }catch(error){console.warn('No se pudo cerrar la presencia del operador:',error)}
  }
 }
@@ -2517,7 +2517,7 @@ async function refreshChatOperators(){
  if(!isPassengerWorkspaceActive()||chatOperatorServiceUnavailable)return;
  const api=getChatApiClient();if(!api)return;
  try{
-  const result=await api.listOperators();
+  const result=await api.listOperators('passenger');
   chatOperators=Array.isArray(result?.operators)?result.operators:[];
   if(!chatOperators.some(item=>item.uid===chatSelectedOperatorUid))chatSelectedOperatorUid=chatOperators[0]?.uid||'';
   renderChatOperatorMenu();renderChatConversationList();updatePassengerOperatorSelector(activeChatConversation);
@@ -3261,7 +3261,8 @@ async function openChatConversation(payload){
  if(!api){showView('chat');setChatStatus('Modo demostración: el servicio de chat todavía no está configurado.');return}
  if(chatBusy)return;chatBusy=true;byId('chatStartButton').disabled=true;
  try{
-  const result=await api.openConversation(payload);
+  const requestPayload=currentRole?.role==='admin'?{...payload,workspaceRole:currentWorkspaceRole()}:payload;
+   const result=await api.openConversation(requestPayload);
   if(!result.conversation?.conversationId)throw new Error('El servicio no devolvió una conversación válida.');
   activeChatConversation=result.conversation;
   await refreshChatConversations(true);
@@ -3273,7 +3274,7 @@ async function openChatConversation(payload){
 async function startChatFromSelection(){
  try{await ensureChatModules()}catch(error){setChatStatus('No se pudo cargar el módulo de chat. Revisá tu conexión e intentá nuevamente.');return}
  if(!getChatApiClient()){setChatStatus('Modo demostración: el servicio de chat todavía no está configurado.');return}
- const role=currentRole?.role,value=byId('contactChoice').value;let payload={};
+ const role=currentWorkspaceRole(),value=byId('contactChoice').value;let payload={};
  if(role==='passenger'){
   if(value==='operators')payload={target:'operators'};
   else if(value.startsWith('operator:'))payload={target:'operator',targetUid:value.slice(9)};
@@ -3656,6 +3657,10 @@ onAuthStateChanged(auth,async user=>{
      perf.mark('auth.admin-cars-stage.done');
     },
     setAdminTripAlertPanel:enabled=>byId('adminTripAlertPanel')?.classList.toggle('hidden',!enabled),
+    setWorkspaceRole,
+    stopOperatorPresence,
+    suspendPassengerWorkspace,
+    resumePassengerWorkspace,
     renderAdminDriverTripSummary:()=>{
      const box=byId('adminDriverActiveTrip');
      if(!box)return;
