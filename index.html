@@ -1382,7 +1382,7 @@ function scheduleDriverHomeMapInit(){
   driverHomeMapInitScheduled=false;
   if(!currentUser||!isDriverCapableRole()||byId('inicio')?.classList.contains('hidden'))return;
   void initDriverHomeMap().then(ready=>{
-   if(ready&&activeTripId&&activeTripData){renderDriverHomeActiveTrip(activeTripData,activeTripId);void ensureDriverHomeNavigationRoute();void focusDriverHomeMap()}
+   if(ready&&activeTripId&&activeTripData){renderDriverHomeActiveTrip(activeTripData,activeTripId);void ensureDriverHomeNavigationRoute().catch(error=>{perf.mark('driver.home.navigation.resume.error');console.warn('No se pudo restaurar la ruta del viaje:',error)});void focusDriverHomeMap().catch(error=>{perf.mark('driver.home.focus.error');console.warn('No se pudo enfocar el viaje en el mapa:',error)})}
   }).catch(error=>{
    perf.mark('map.driver-home.init.error');
    console.warn('No se pudo preparar el mapa del chófer:',error);
