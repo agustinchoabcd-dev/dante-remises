@@ -823,9 +823,9 @@ function renderAdminOperationalHealth(){
  const firebaseLabel=firebaseConnectedState===true?'Conectado':firebaseConnectedState===false?'Desconectado':'Pendiente de comprobar';
  const events=diagnostics.snapshot();
  const errors=events.filter(event=>['js.error','js.unhandled_rejection','network.fetch.error','firebase.cars.error','firebase.presence.error','console.error'].includes(event.type));
- const latest=errors.at(-1);
+ const latest=errors.length?errors[errors.length-1]:null;
  const perfSummary=perf.summary().slice(0,3);
- const lastError=latest?latest.type.replaceAll('.',' · ')+' · '+new Date(latest.at).toLocaleTimeString('es-AR'):'No se registran errores en esta sesión.';
+ const lastError=latest?latest.type.replace(/\./g,' · ')+' · '+new Date(latest.at).toLocaleTimeString('es-AR'):'No se registran errores en esta sesión.';
  const perfRows=perfSummary.length?perfSummary.map(item=>'<div class="hint">'+esc(item.name)+' · p95 '+Math.round(item.p95Ms)+' ms · '+item.count+' mediciones</div>').join(''):'Todavía no hay suficientes mediciones.';
  root.innerHTML='<div class="grid">'+
   '<div class="choice-card"><strong>Conectividad</strong><div class="hint">Internet: '+(online?'Disponible':'Sin conexión')+'</div><div class="hint">Firebase RTDB: '+firebaseLabel+'</div></div>'+
@@ -3604,7 +3604,7 @@ onAuthStateChanged(auth,async user=>{
  if(shouldCleanPreviousSession&&driverConnectionUnsub){driverConnectionUnsub();driverConnectionUnsub=null}
  if(shouldCleanPreviousSession){try{await clearDriverPresence()}catch(error){console.warn('No se pudo limpiar la presencia anterior; se continúa con la autenticación:',error)}}
  if(authGeneration!==authStateGeneration)return;perf.mark('auth.presence-cleanup.done');if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
- currentUser=user;currentRole=null;activeWorkspaceRole=null;adminWorkspaceController=null;activeTripRestoreVersion++;if(!user||shouldCleanPreviousSession){activeTripId=null;activeTripData=null;passengerActiveTripId=null;passengerActiveTripData=null;byId('driverActiveTrip')?.classList.add('hidden')}
+ currentUser=user;currentRole=null;activeWorkspaceRole=null;allRolesMode=false;firebaseConnectedState=null;adminWorkspaceController=null;activeTripRestoreVersion++;if(!user||shouldCleanPreviousSession){activeTripId=null;activeTripData=null;passengerActiveTripId=null;passengerActiveTripData=null;byId('driverActiveTrip')?.classList.add('hidden')}
  if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;activeWorkspaceRole=currentRole?.role==='admin'?'driver':currentRole?.role||null;perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';try{await signOut(auth)}catch(signOutError){console.error('No se pudo cerrar la sesión no verificable:',signOutError);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id)?.classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
  byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress){
@@ -3686,6 +3686,7 @@ onAuthStateChanged(auth,async user=>{
     restoreDriverActiveTrip,
     startDriverGps,
     processPendingTripAction:()=>processPendingTripAction(()=>authGeneration===authStateGeneration),
+    renderAdminOperationalHealth,
     loadAdminProfiles:async()=>{
      if(byId('passengerList'))byId('passengerList').textContent='Cargando pasajeros…';
      try{

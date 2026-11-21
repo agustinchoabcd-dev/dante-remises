@@ -22,6 +22,7 @@ export async function activate(context) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
       stopPassenger();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("admin");
@@ -48,6 +49,7 @@ export async function activate(context) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
       stopPassenger();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("driver");
@@ -67,6 +69,7 @@ export async function activate(context) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
       stopPassenger();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("operator");
@@ -88,6 +91,7 @@ export async function activate(context) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
       stopPassenger();
       suspendDriver();
       context.setAllRolesMode?.(keepAllRoles);
