@@ -2059,7 +2059,7 @@ async function startDriverGps(){
  if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='Buscando señal GPS precisa…';
  try{
   const permitted=await requestPreciseLocationPermission();
-  if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;
+  if(gpsGeneration!==driverGpsGeneration||currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;
   if(!permitted){
    if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='Se necesita permiso de ubicación precisa y el servicio de ubicación activado en Android.';
    perf.mark('gps.permission.unavailable');
@@ -2151,7 +2151,10 @@ async function startDriverGps(){
   if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='No se pudo iniciar GPS. Comprobá permisos y ubicación del dispositivo.';
   console.warn('No se pudo iniciar el seguimiento GPS:',error);
   scheduleDriverGpsRetry(gpsUid,gpsRole);
- }finally{driverGpsStarting=false}
+ }finally{
+  driverGpsStarting=false;
+  if(gpsGeneration!==driverGpsGeneration&&driverWatchId===null&&currentUser?.uid===gpsUid&&(driverWantsOnline||activeTripId))scheduleDriverGpsRetry(gpsUid,gpsRole);
+ }
 }
 function stopDriverGps(){
  driverGpsGeneration++;
