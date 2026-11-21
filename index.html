@@ -2065,7 +2065,7 @@ async function startDriverGps(){
    perf.mark('gps.permission.unavailable');
    return;
   }
-  const watchOptions={enableHighAccuracy:true,maximumAge:5000,timeout:20000,interval:2000,minimumUpdateInterval:1500,enableLocationFallback:true};
+  const watchOptions={enableHighAccuracy:true,maximumAge:5000,timeout:20000,interval:2500,minimumUpdateInterval:1500,enableLocationFallback:true};
   let watchId=null;
   const onPosition=async pos=>{
    if(watchId===null||driverWatchId!==watchId||currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;
@@ -2084,6 +2084,7 @@ async function startDriverGps(){
    driverGpsRetryAttempts=0;
    if(driverGpsRetryTimer!==null){window.clearTimeout(driverGpsRetryTimer);driverGpsRetryTimer=null}
    perf.mark('gps.fix.accepted',{accuracyMeters:loc.accuracy,ageMs:validated.ageMs});
+   if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='GPS activo · precisión ±'+loc.accuracy+' m';
    const carId=currentDriverCarId(),car=cars[carId];
    updateDriverHomeLocation(loc);
    void updateDriverHomeNavigationPosition(loc);
@@ -2130,7 +2131,7 @@ async function startDriverGps(){
       ?'Activá la ubicación del dispositivo y volvé a intentar.'
       :'Se perdió la señal GPS. Reintentando automáticamente…';
    }
-   scheduleDriverGpsRetry(gpsUid,gpsRole);
+   if(!(error?.code===1||/permission|denied/i.test(message)))scheduleDriverGpsRetry(gpsUid,gpsRole);
   };
   watchId=watchPosition(onPosition,onWatchError,watchOptions);
   driverWatchId=watchId;
