@@ -53,7 +53,7 @@ test("failed map loading rejects and permits a later retry", async () => {
   const browser = fakeBrowser({ failAt: "js/dante-map.js" });
   const ensureMapRuntime = createMapRuntimeLoader(browser);
 
-  await assert.rejects(ensureMapRuntime(), /No se pudo cargar un componente del mapa/);
+  await assert.rejects(ensureMapRuntime(), /No se pudieron cargar los componentes del mapa/);
   const firstAttemptCount = browser.appended.length;
   browser.document.head.appendChild = element => {
     browser.appended.push(element.href || element.src);
