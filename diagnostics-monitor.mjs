@@ -176,7 +176,7 @@ export function createDiagnosticsMonitor({
 
   function errorLocation(error, fallbackSource = "") {
     const stack = String(error?.stack || "");
-    const match = stack.match(/([^/\\s?#]+\\.(?:m?js|html)):(\\d+):(\\d+)/m);
+    const match = stack.match(/([^/\s?#]+\.(?:m?js|html)):(\d+):(\d+)/m);
     const source = (match?.[1] || fallbackSource || "unknown").slice(0, 64);
     return {
       source: /^[A-Za-z0-9_.-]+$/.test(source) ? source : "unknown",
