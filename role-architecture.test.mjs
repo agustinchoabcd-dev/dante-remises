@@ -62,6 +62,14 @@ test("driver HTML is physically extracted and mounted for driver and admin roles
   assert.ok(html.includes("render('central-template-mounted')"));
 });
 
+test("admin can operate the car-144 driver workspace without changing its admin role", () => {
+  assert.match(html, /if\(driverHomeConnectBusy\|\|!isDriverCapableRole\(\)\|\|!currentUser\)return/);
+  assert.match(html, /if\(driverHomeDisconnectBusy\|\|!isDriverCapableRole\(\)\)return/);
+  assert.match(html, /if\(isDriverCapableRole\(\)&&!driverWantsOnline&&!activeTripId\)return/);
+  assert.match(html, /const carId=currentDriverCarId\(\)/);
+  assert.doesNotMatch(html, /driverHomeConnectButton'\)\?\.classList\.toggle\('hidden',!!car\?\.online\|\|currentRole\?\.role==='admin'\)/);
+});
+
 test("driver view controls are registered through deferred role DOM bindings", () => {
   for (const id of ["driverHomeStatus","driverHomeStatusText","driverHomeMap","driverHomeMapShell","driverHomeRecenterButton","driverHomeNavigation","driverHomeNavigationStage","driverHomeNavigationInstruction","driverHomeNavigationMeta","driverHomeActiveTrip","driverHomeRequests","driverHomeTripInbox","driverHomeConnectButton","driverHomeMapHomeButton","driverHomeCurtain","driverHomeCurtainGrip","driverHomeConnectedMessage","driverHomeDisconnectButton","driverStatus","driverTripInbox","driverActiveTrip","driverGpsStatus","busyDuration","setBusy","outDuration","setOut","setFree"]) {
     assert.ok(driverTemplate.includes('id="' + id + '"'), "Missing driver control: " + id);
