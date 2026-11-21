@@ -38,7 +38,6 @@ test("Central HTML is physically extracted and mounted for operators and adminis
   assert.match(html, /id="openAdminWorkspaceButton"/);
   assert.match(html, /bindRoleDom\('openAdminWorkspaceButton','click',async\(\)=>/);
   assert.match(html, /adminWorkspaceController\?\.openAdminPanel\(\)/);
-  assert.match(html, /bindRoleDom\('adminReturnToDriverButton','click',\(\)=>adminWorkspaceController\?\.openDriverWorkspace\(\)\)/);
   assert.match(html, /adminWorkspaceSettingsCard'\)\?\.classList\.toggle\('hidden',!isAdmin\)/);
   assert.match(adminModule, /context\.suspendDriverWorkspace\?\.\(\)/);
   assert.match(adminModule, /context\.unloadRoleMount\?\.\("driver"\)/);
@@ -48,11 +47,44 @@ test("Central HTML is physically extracted and mounted for operators and adminis
   assert.match(html, /data-view="central">Central<\/button>/);
   assert.doesNotMatch(html, /Central \/ Operadores/);
   assert.match(html, /if\(byId\('driverGpsStatus'\)\)/);
-  assert.match(centralTemplate, /class="secondary hidden" id="adminReturnToDriverButton"/);
-  assert.match(html, /adminReturnToDriverButton'\)\?\.classList\.toggle\('hidden',!isAdminWorkspaceActive\(\)\)/);
   assert.ok(copyScript.includes('"views/central.html"'));
   assert.ok(html.includes("if(role==='central')"));
   assert.ok(html.includes("render('role-template-mounted:'+role)"));
+});
+
+
+test("startup recovery never reveals the login shell while an authenticated callback is pending", () => {
+  const start = html.indexOf("const startupSafetyTimer=window.setTimeout(()=>{");
+  const end = html.indexOf("\nlet authStateGeneration=0;", start);
+  assert.ok(start >= 0 && end > start);
+  const timer = html.slice(start, end);
+  assert.ok(timer.includes("if(auth.currentUser||authStateGeneration>0){"));
+  assert.ok(timer.includes("byId('startupCaption')"));
+  assert.ok(timer.includes("Estamos recuperando tu sesión"));
+  assert.ok(timer.includes("return;"));
+  assert.equal(timer.includes("roleTransition.finish"), false);
+  assert.ok(html.includes('id="startupCaption"'));
+});
+
+test("returning to the driver workspace preserves the three-tab home instead of forcing map fullscreen", () => {
+  const start = html.indexOf("resumeDriverWorkspace:async()=>{");
+  const end = html.indexOf("\n    }\n   });", start);
+  assert.ok(start >= 0 && end > start);
+  const resume = html.slice(start, end);
+  assert.ok(resume.includes("await initDriverHomeMap()"));
+  assert.equal(resume.includes("setDriverHomeFullscreen(true)"), false);
+  const showStart = html.indexOf("function showView(v){");
+  const showEnd = html.indexOf("\nfunction renderDriverHomeStatus", showStart);
+  const showView = html.slice(showStart, showEnd);
+  assert.ok(showView.includes("setDriverHomeFullscreen(false)"));
+});
+
+test("Central has no redundant return-to-driver control; the workspace selector remains", () => {
+  assert.equal(centralTemplate.includes("adminReturnToDriverButton"), false);
+  assert.equal(centralTemplate.includes("Volver al espacio de chófer"), false);
+  assert.equal(html.includes("adminReturnToDriverButton"), false);
+  assert.ok(centralTemplate.includes('id="adminWorkspaceDriverButton"'));
+  assert.ok(html.includes("bindRoleDom('adminWorkspaceDriverButton'"));
 });
 
 test("driver HTML is physically extracted and mounted for driver and admin roles", () => {

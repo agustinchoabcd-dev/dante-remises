@@ -470,7 +470,7 @@ body.driver-home-map-active #driverHomeMap .leaflet-bottom{bottom:96px}
  <div class="brand-logo startup-emblem" id="startupLogoFrame" aria-label="Logo de Dante Remises"><span>D</span></div>
  <div class="startup-brand">DANTE <strong>REMISES</strong></div>
  <div class="startup-location">SANTA ROSA DE CALAMUCHITA</div>
- <div class="startup-loader"><span></span></div><div class="startup-caption">Preparando tu experiencia</div>
+ <div class="startup-loader"><span></span></div><div class="startup-caption" id="startupCaption">Preparando tu experiencia</div>
 </div>
 <header><div class="brand-wrap"><div class="brand-logo" id="brandLogoBubble" aria-label="Espacio para el logo de Dante Remises">LOGO</div><div class="brand">Dante Remises</div><small>Santa Rosa de Calamuchita</small></div><button class="staff-entry" id="staffEntryButton" type="button" aria-label="Acceso de personal" title="Acceso de personal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></button><button class="settings-gear hidden" id="settingsGearButton" type="button" aria-label="Configuración" title="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M 9.95 3.13 L 10.70 1.38 L 13.30 1.38 L 14.05 3.13 L 16.82 4.28 L 18.59 3.57 L 20.43 5.41 L 19.72 7.18 L 20.87 9.95 L 22.62 10.70 L 22.62 13.30 L 20.87 14.05 L 19.72 16.82 L 20.43 18.59 L 18.59 20.43 L 16.82 19.72 L 14.05 20.87 L 13.30 22.62 L 10.70 22.62 L 9.95 20.87 L 7.18 19.72 L 5.41 20.43 L 3.57 18.59 L 4.28 16.82 L 3.13 14.05 L 1.38 13.30 L 1.38 10.70 L 3.13 9.95 L 4.28 7.18 L 3.57 5.41 L 5.41 3.57 L 7.18 4.28 Z" fill="currentColor"/><circle cx="12" cy="12" r="3.15" fill="#147342"/></svg></button></header>
 <main>
@@ -911,7 +911,6 @@ bindRoleDom('allRolePassengerButton','click',async()=>{await adminWorkspaceContr
  if(currentUser?.uid!==ADMIN_UID||currentRole?.role!=='admin')return;
  try{await adminWorkspaceController?.openAdminPanel()}catch(error){console.error('No se pudo abrir el panel administrativo:',error);notify('No se pudo abrir el panel administrativo. Intentá nuevamente.')}
 });
-bindRoleDom('adminReturnToDriverButton','click',()=>adminWorkspaceController?.openDriverWorkspace());
 bindRoleDom('adminHealthRefreshButton','click',()=>renderAdminOperationalHealth());
 let tripAlertPermissionFlowStarted=false;
 let tripAlertPermissionFlowRunning=false;
@@ -1402,7 +1401,8 @@ function showView(v){
  }
  if(v!=='chat')closeChatScreen();
  if(v!=='inicio'&&isDriverCapableRole()){
-  if(document.body.classList.contains('driver-home-map-active'))setDriverHomeFullscreen(false);
+  // Full-screen map is an explicit driver action, never a side effect of navigation.
+  setDriverHomeFullscreen(false);
   if(driverHomeMap)destroyDriverHomeMap();
  }
  const passengerPhotoCard=byId('passengerPhotoCard');
@@ -3560,18 +3560,18 @@ function finishStartupScreen(){if(startupScreenFinished)return;startupScreenFini
 let activeRoleTransitionToken=null;
 const startupSafetyTimer=window.setTimeout(()=>{
  if(!startupAuthReady){
+  // A callback already in progress owns the screen transition. Never expose the login
+  // shell beside a partially mounted authenticated workspace.
+  if(auth.currentUser||authStateGeneration>0){
+   const caption=byId('startupCaption');
+   if(caption)caption.textContent='Estamos recuperando tu sesión. No necesitás volver a iniciar sesión.';
+   diagnostics.mark('auth.startup.recovery_pending',{authCallbackStarted:authStateGeneration>0,hasCurrentUser:!!auth.currentUser});
+   return;
+  }
   ['pasajero','chofer','central','chat','configuracion','passengerOnboarding','staffAccess'].forEach(id=>byId(id)?.classList.add('hidden'));
   byId('acceso').classList.remove('hidden');
-  if(auth.currentUser||authStateGeneration>0){
-   byId('authPanel')?.classList.add('hidden');
-   let notice=byId('startupRecoveryNotice');
-   if(!notice){notice=document.createElement('p');notice.id='startupRecoveryNotice';notice.className='hint';notice.setAttribute('role','status');byId('acceso').appendChild(notice)}
-   notice.textContent='Estamos recuperando tu sesión. No necesitás volver a iniciar sesión.';
-  }else{
-   byId('authPanel')?.classList.remove('hidden');
-   byId('authStatus').textContent='La sesión está tardando más de lo esperado. Comprobá tu conexión y recargá la app.';
-  }
-  if(activeRoleTransitionToken!==null)roleTransition.finish(activeRoleTransitionToken);
+  byId('authPanel')?.classList.remove('hidden');
+  byId('authStatus').textContent='La sesión está tardando más de lo esperado. Comprobá tu conexión y recargá la app.';
  }
  finishStartupScreen();
 },12000);
@@ -3679,8 +3679,7 @@ onAuthStateChanged(auth,async user=>{
       if(role==='driver'){byId('driverControls')?.classList.toggle('hidden',!['driver','admin'].includes(currentRole?.role));if(byId('roleSummary'))byId('roleSummary').textContent=roleText}
       if(role==='central'){
        byId('adminWorkspaceSelector')?.classList.toggle('hidden',!isAdminWorkspaceActive());
-        byId('adminReturnToDriverButton')?.classList.toggle('hidden',!isAdminWorkspaceActive());
-       const centralAuthStatus=byId('centralAuthStatus');if(centralAuthStatus)centralAuthStatus.textContent=roleText;
+        const centralAuthStatus=byId('centralAuthStatus');if(centralAuthStatus)centralAuthStatus.textContent=roleText;
        const centralDescription=byId('centralDescription');if(centralDescription)centralDescription.textContent=isOperatorWorkspaceActive()?'Panel de operador: consulta de disponibilidad. No podés modificar estados.':'Panel de administración total.';
        byId('passengerAdmin')?.classList.toggle('hidden',!isAdminWorkspaceActive());
        byId('adminTripAlertPanel')?.classList.toggle('hidden',!isAdminWorkspaceActive());
@@ -3763,7 +3762,8 @@ onAuthStateChanged(auth,async user=>{
      if(car?.online||activeTripId){
       const ready=await initDriverHomeMap();
       if(!ready||authGeneration!==authStateGeneration)return;
-      setDriverHomeFullscreen(true);
+      // Keep the normal three-tab driver workspace visible when returning from Central.
+      // A connected car or active trip must not force the map into full-screen mode.
       if(activeTripId)await focusDriverHomeMap();
       if(car?.online)startDriverHomeMessageCycle();
      }
