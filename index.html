@@ -2087,7 +2087,11 @@ async function processPendingTripAction(isCurrent){
  try{
   const pending=await getPendingTripAction();
   if(!sessionIsCurrent()||!pending?.tripId||!['accept','view','reject'].includes(pending.action))return;
-  let processed=false;
+  if(currentRole?.role==='admin'&&!byId('driverActiveTrip')){
+    const switched=await adminWorkspaceController?.openDriverWorkspace();
+    if(!sessionIsCurrent()||switched?.stale||!byId('driverActiveTrip'))return;
+   }
+   let processed=false;
   if(pending.action==='view'){
    const snapshot=await get(ref(db,'trips/'+pending.tripId)),trip=snapshot.val();
    if(!sessionIsCurrent())return;
@@ -2108,7 +2112,11 @@ window.addEventListener('pageshow',processNativeTripActionWhenVisible);
 document.addEventListener('resume',processNativeTripActionWhenVisible);
 document.addEventListener('visibilitychange',processNativeTripActionWhenVisible);
 async function handleDriverTripDecision(id,decision){
- const carId=currentRole?.role==='admin'?'144':String(currentRole?.carId||'');
+ if(currentRole?.role==='admin'&&!byId('driverActiveTrip')){
+   const switched=await adminWorkspaceController?.openDriverWorkspace();
+   if(switched?.stale||!byId('driverActiveTrip'))return false;
+  }
+  const carId=currentRole?.role==='admin'?'144':String(currentRole?.carId||'');
  if(!carId)return false;
  const tripSnapshot=await get(ref(db,'trips/'+id)),trip=tripSnapshot.val();
  if(!trip){await dismissNativeTripAlert();notify('La solicitud ya no existe.');return true}
@@ -3549,13 +3557,13 @@ onAuthStateChanged(auth,async user=>{
     startDriverGps,
     processPendingTripAction:()=>processPendingTripAction(()=>authGeneration===authStateGeneration),
     loadAdminProfiles:async()=>{
-     byId('passengerList').textContent='Cargando pasajeros…';
+     byId('passengerList')?.textContent='Cargando pasajeros…';
      try{
       const profSnap=await get(ref(db,'profiles'));
       if(authGeneration!==authStateGeneration)return;
       const profiles=profSnap.val()||{};
       const entries=Object.values(profiles);
-      byId('passengerList').innerHTML=entries.length?entries.map(p=>'<div class="choice-card"><strong>'+esc((p.name||'')+' '+(p.lastName||''))+'</strong><div class="muted">DNI: '+esc(p.dni||'—')+' · Teléfono: '+esc(p.phone||'No informado')+'</div></div>').join(''):'Todavía no hay pasajeros registrados.';
+      byId('passengerList')?.innerHTML=entries.length?entries.map(p=>'<div class="choice-card"><strong>'+esc((p.name||'')+' '+(p.lastName||''))+'</strong><div class="muted">DNI: '+esc(p.dni||'—')+' · Teléfono: '+esc(p.phone||'No informado')+'</div></div>').join(''):'Todavía no hay pasajeros registrados.';
      }catch(error){
       if(authGeneration!==authStateGeneration)return;
       byId('passengerList').textContent='No se pudieron consultar los perfiles. Revisá las reglas de Firebase.';
