@@ -8,21 +8,38 @@ export async function activate(context) {
   context.showView("inicio");
 
   const isCurrent = () => !context.isCurrent || context.isCurrent();
+  let workspaceGeneration = 0;
+  const isWorkspaceCurrent = generation => isCurrent() && generation === workspaceGeneration;
   const workspaceController = Object.freeze({
     async openAdminPanel() {
-      if (!isCurrent()) return { stale: true };
+      const generation = ++workspaceGeneration;
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
       const mounted = await context.loadRoleView("central");
-      if (mounted?.stale || !isCurrent()) return { stale: true };
+      if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
+
+      // La plantilla nueva ya está lista: liberar la interfaz de chófer,
+      // pero conservar GPS, presencia, push y la bandeja operativa.
+      context.suspendDriverWorkspace?.();
+      context.unloadRoleView("driver");
       context.setAdminTripAlertPanel(true);
-      await context.loadAdminProfiles();
-      if (!isCurrent()) return { stale: true };
+      context.renderAdminDriverTripSummary?.();
+      context.listenDriverInbox?.();
       context.showView("central");
+      void Promise.resolve(context.loadAdminProfiles?.()).catch(error => {
+        console.error("No se pudieron cargar los perfiles administrativos:", error);
+      });
       return { view: "central" };
     },
-    openDriverWorkspace() {
-      if (!isCurrent()) return { stale: true };
+    async openDriverWorkspace() {
+      const generation = ++workspaceGeneration;
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
+      const mounted = await context.loadRoleView("driver");
+      if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
+
       context.showView("inicio");
       context.unloadRoleView("central");
+      await context.resumeDriverWorkspace?.();
+      if (!isWorkspaceCurrent(generation)) return { stale: true };
       return { view: "inicio" };
     }
   });
