@@ -3539,21 +3539,14 @@ let startupScreenFinished=false;
 function finishStartupScreen(){if(startupScreenFinished)return;startupScreenFinished=true;const screen=byId('startupScreen');if(screen){screen.classList.add('is-leaving');window.setTimeout(()=>screen.remove(),550)}}
 let activeRoleTransitionToken=null;
 const startupSafetyTimer=window.setTimeout(()=>{
- if(!startupAuthReady){
-  // A callback already in progress owns the screen transition. Never expose the login
-  // shell beside a partially mounted authenticated workspace.
-  if(auth.currentUser||authStateGeneration>0){
-   const caption=byId('startupCaption');
-   if(caption)caption.textContent='Estamos recuperando tu sesión. No necesitás volver a iniciar sesión.';
-   diagnostics.mark('auth.startup.recovery_pending',{authCallbackStarted:authStateGeneration>0,hasCurrentUser:!!auth.currentUser});
-   return;
-  }
-  ['pasajero','chofer','central','chat','configuracion','passengerOnboarding','staffAccess'].forEach(id=>byId(id)?.classList.add('hidden'));
-  byId('acceso').classList.remove('hidden');
-  byId('authPanel')?.classList.remove('hidden');
-  byId('authStatus').textContent='La sesión está tardando más de lo esperado. Comprobá tu conexión y recargá la app.';
- }
- finishStartupScreen();
+ if(startupAuthReady)return;
+ // The splash is a strict bootstrap barrier: never replace it with a login shell
+ // until Firebase has settled and the required auth/role module has mounted.
+ const caption=byId('startupCaption');
+ if(caption)caption.textContent=auth.currentUser||authStateGeneration>0
+  ?'Estamos recuperando tu sesión. No necesitás volver a iniciar sesión.'
+  :'Estamos verificando tu sesión y preparando el acceso…';
+ diagnostics.mark('auth.startup.recovery_pending',{authCallbackStarted:authStateGeneration>0,hasCurrentUser:!!auth.currentUser});
 },12000);
 let authStateGeneration=0;
 onAuthStateChanged(auth,async user=>{
@@ -3583,7 +3576,7 @@ onAuthStateChanged(auth,async user=>{
 
  const passengerPhotoCard=byId('passengerPhotoCard'),passengerPhotoHome=byId('passengerPhotoCardHome');
  if(passengerPhotoHome&&passengerPhotoCard)passengerPhotoHome.appendChild(passengerPhotoCard);
- roleTemplateLoader.unmount();
+ roleTemplateLoader.unmount();authViewLoadPromise=null;
  stopTripLocationWatch();
  if(realMap){try{realMap.remove()}catch(error){console.warn('No se pudo desmontar el mapa del pasajero:',error)}realMap=null}
  routeLayer=null;selectedCarMarker=null;window.originMarker=null;window.destinationMarker=null;
@@ -3605,7 +3598,7 @@ onAuthStateChanged(auth,async user=>{
  if(shouldCleanPreviousSession){try{await clearDriverPresence()}catch(error){console.warn('No se pudo limpiar la presencia anterior; se continúa con la autenticación:',error)}}
  if(authGeneration!==authStateGeneration)return;perf.mark('auth.presence-cleanup.done');if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
  currentUser=user;currentRole=null;activeWorkspaceRole=null;allRolesMode=false;firebaseConnectedState=null;adminWorkspaceController=null;activeTripRestoreVersion++;if(!user||shouldCleanPreviousSession){activeTripId=null;activeTripData=null;passengerActiveTripId=null;passengerActiveTripData=null;byId('driverActiveTrip')?.classList.add('hidden')}
- if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;activeWorkspaceRole=currentRole?.role==='admin'?'driver':currentRole?.role||null;document.body.classList.remove('admin-workspace-active');perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';try{await signOut(auth)}catch(signOutError){console.error('No se pudo cerrar la sesión no verificable:',signOutError);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id)?.classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
+ if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;activeWorkspaceRole=currentRole?.role==='admin'?'driver':currentRole?.role||null;document.body.classList.remove('admin-workspace-active');perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);await ensureAuthView();if(authGeneration!==authStateGeneration)return;byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';try{await signOut(auth)}catch(signOutError){console.error('No se pudo cerrar la sesión no verificable:',signOutError);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id)?.classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
  byId('loginButton')?.classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress){
   await ensureAuthView();if(authGeneration!==authStateGeneration)return;
