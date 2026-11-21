@@ -157,9 +157,12 @@ export class ChatApiClient {
     }
   }
 
-  listConversations(cursor = null) {
-    const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
-    return this.request(`/v1/chat/conversations${query}`);
+  listConversations(cursor = null, workspaceRole = "") {
+    const params = new URLSearchParams();
+    if (cursor) params.set("cursor", cursor);
+    if (workspaceRole) params.set("workspaceRole", workspaceRole);
+    const query = params.toString();
+    return this.request(`/v1/chat/conversations${query ? `?${query}` : ""}`);
   }
 
   listMessages(conversationId, cursor = null) {
