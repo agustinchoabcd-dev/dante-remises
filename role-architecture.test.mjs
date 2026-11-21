@@ -293,7 +293,7 @@ test("admin workspace switching separates identity from the active workspace", a
   assert.ok(html.includes('id="allRoleOperatorButton"'));
   assert.ok(html.includes('id="allRolePassengerButton"'));
   assert.ok(html.includes('function setAllRolesMode(enabled)'));
-  assert.ok(admin.includes("openOperatorWorkspace()"));
-  assert.ok(admin.includes("openPassengerWorkspace()"));
+  assert.match(admin, /openOperatorWorkspace\(\{/);
+  assert.match(admin, /openPassengerWorkspace\(\{/);
   assert.ok(admin.includes('context.setWorkspaceRole?.("passenger")'));
 });
