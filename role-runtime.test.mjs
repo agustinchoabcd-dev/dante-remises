@@ -215,3 +215,44 @@ test("a stale Central load cannot override a newer driver workspace selection", 
   assert.equal(calls.includes("view:central"), false);
   await result.background;
 });
+
+test("all-roles workspace is one shell that navigates existing modules on demand", async () => {
+  const calls = [];
+  const result = await activateRole("admin", {
+    user: { uid: "admin-1" }, role: { role: "admin", carId: "144" },
+    loadRoleView: async role => { calls.push("mount:" + role); return {}; },
+    unloadRoleView: role => calls.push("unmount:" + role),
+    showView: view => calls.push("view:" + view),
+    setWorkspaceRole: role => calls.push("workspace:" + role),
+    setAllRolesMode: enabled => calls.push("all-roles:" + enabled),
+    stopOperatorPresence: async () => calls.push("stop-operator"),
+    startOperatorPresence: () => calls.push("start-operator"),
+    suspendDriverWorkspace: () => calls.push("suspend-driver"),
+    suspendPassengerWorkspace: () => calls.push("suspend-passenger"),
+    setAdminTripAlertPanel: enabled => calls.push("admin-alerts:" + enabled),
+    loadPassengerPhoto: async () => true,
+    showPassengerOnboarding: () => calls.push("passenger-onboarding"),
+    resumePassengerWorkspace: () => calls.push("resume-passenger"),
+    initializeAdminCars: async () => {},
+    syncDriverPushRegistration: async () => {},
+    listenDriverInbox: () => {},
+    restoreDriverActiveTrip: async () => {},
+    startDriverGps: () => {},
+    processPendingTripAction: async () => {}
+  });
+  const opened = await result.workspaceController.openAllRolesWorkspace();
+  assert.deepEqual(opened, { view: "inicio" });
+  assert.ok(calls.includes("all-roles:true"));
+  assert.ok(calls.includes("workspace:driver"));
+  await result.workspaceController.selectAllRole("operator");
+  assert.ok(calls.includes("workspace:operator"));
+  assert.ok(calls.includes("start-operator"));
+  assert.ok(calls.includes("all-roles:true"));
+  await result.workspaceController.selectAllRole("passenger");
+  assert.ok(calls.includes("workspace:passenger"));
+  assert.ok(calls.includes("resume-passenger"));
+  await result.workspaceController.selectAllRole("admin");
+  assert.ok(calls.includes("workspace:admin"));
+  assert.ok(calls.includes("view:central"));
+  await result.background;
+});
