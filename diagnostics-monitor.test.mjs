@@ -148,3 +148,16 @@ test("diagnostics upload backs off after server rejection",async()=>{
  assert.equal(monitor.syncError,"HTTP 503");
  assert.ok(delays.includes(3000));
 });
+
+test("unhandled rejection diagnostics capture the actual source file and line",()=>{
+ const runtime=fakeRuntime();
+ const monitor=createDiagnosticsMonitor({runtime});
+ const error=new TypeError("cannot read property");
+ error.stack="TypeError: cannot read property\\n    at renderInbox (https://app.example.test/assets/index.html:123:45)";
+ runtime.listeners.unhandledrejection({reason:error});
+ const event=monitor.snapshot().find(item=>item.type==="js.unhandled_rejection");
+ assert.ok(event);
+ assert.equal(event.details.source,"index.html");
+ assert.equal(event.details.line,123);
+ assert.equal(event.details.column,45);
+});
