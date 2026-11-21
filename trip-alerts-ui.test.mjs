@@ -33,10 +33,12 @@ test("staff entry starts the one-time Android notification and overlay permissio
   assert.match(nativeBridge, /export async function requestTripNotificationPermission/);
 });
 
-test("startup permissions no longer ask passengers for trip notifications", () => {
-  const startup = nativeBridge.match(/export async function requestStartupPermissions\(\)\s*\{[\s\S]*?\n\}/)?.[0] || "";
-  assert.match(startup, /requestLocationPermission/);
-  assert.doesNotMatch(startup, /LocalNotifications/);
+test("location permissions are feature-triggered, never requested during application startup", () => {
+  assert.doesNotMatch(html, /requestStartupPermissions/);
+  assert.doesNotMatch(nativeBridge, /export async function requestStartupPermissions/);
+  assert.doesNotMatch(webBridge, /export async function requestStartupPermissions/);
+  assert.match(html, /requestLocationPermission\(\)/);
+  assert.match(html, /requestPreciseLocationPermission\(\)/);
 });
 
 test("browser bridge keeps every imported trip-alert API available without native behavior", () => {
@@ -70,7 +72,8 @@ test("pending native actions are processed after the app becomes visible and are
 
 test("Personal keeps pending requests map-free and opens the complete trip in Inicio", () => {
   const preview = html.match(/function renderDriverTripPreview\(trip,id\)\s*\{[\s\S]*?\n\}/)?.[0] || "";
-  const personalCard = html.match(/personalCard\.innerHTML=([\s\S]*?);\n\s*el\.innerHTML/)?.[1] || "";
+  const inbox = html.match(/function listenDriverInbox\(\)\s*\{[\s\S]*?\n\}/)?.[0] || "";
+  const personalCard = inbox.slice(inbox.indexOf("if(kind==='driver')"), inbox.indexOf("}else{"));
   const activeCard = html.match(/function renderDriverActiveTrip\(trip,id\)\s*\{[\s\S]*?\n\}/)?.[0] || "";
   assert.match(preview, /showDriverTripOnHome\(trip,id\)/);
   assert.doesNotMatch(preview, /driverTripMap|data-preview-accept|data-preview-reject/);
@@ -143,7 +146,7 @@ test("passenger sends road distances from fresh driver GPS to the alert Worker",
 });
 
 test("local GPS updates are not throttled by Firebase writes", () => {
-  const callback=html.match(/driverWatchId=watchPosition\(async pos=>\{([\s\S]*?)\},err=>/)?.[1]||"";
+  const callback=html.match(/const onPosition=async pos=>\{([\s\S]*?)\n  \};\n  const onWatchError/)?.[1]||"";
   const mapUpdate=callback.indexOf("updateDriverHomeLocation(loc)");
   const navigationUpdate=callback.indexOf("updateDriverHomeNavigationPosition(loc)");
   const writeThrottle=callback.indexOf("const writeInterval=activeNavigation?2000:4000");
@@ -218,10 +221,10 @@ test("preview splits a complete route into ordered legs and replaces provider le
   assert.deepEqual(Array.from(normalized.legs[1].geometry.coordinates.at(-1)),[0.02,0.01]);
 });
 
-test("driver GPS uses a one-second high-accuracy watch and requires precise Android location", () => {
-  assert.match(nativeBridge,/interval:\s*options\.interval\s*\?\?\s*1000/);
-  assert.match(nativeBridge,/minimumUpdateInterval:\s*options\.minimumUpdateInterval\s*\?\?\s*750/);
-  assert.match(nativeBridge,/maximumAge:\s*options\.maximumAge\s*\?\?\s*1000/);
+test("driver GPS uses a bounded high-accuracy watch with native fallback and precise Android location", () => {
+  assert.match(nativeBridge,/interval:\s*options\.interval\s*\?\?\s*2000/);
+  assert.match(nativeBridge,/minimumUpdateInterval:\s*options\.minimumUpdateInterval\s*\?\?\s*1500/);
+  assert.match(nativeBridge,/maximumAge:\s*options\.maximumAge\s*\?\?\s*5000/);
   assert.match(nativeBridge,/current\.location === "granted"/);
   const precisePermission=nativeBridge.match(/export async function requestPreciseLocationPermission\(\)\s*\{[\s\S]*?\n\}/)?.[0]||"";
   assert.match(precisePermission,/Geolocation\.checkPermissions\(\)/);
@@ -229,7 +232,7 @@ test("driver GPS uses a one-second high-accuracy watch and requires precise Andr
   assert.match(precisePermission,/return requested\.location === "granted"/);
   assert.doesNotMatch(precisePermission,/coarseLocation/);
   assert.match(html,/requestPreciseLocationPermission\(\)/);
-  assert.match(html,/maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750/);
+  assert.match(html,/maximumAge:5000,timeout:20000,interval:2500,minimumUpdateInterval:1500,enableLocationFallback:true/);
   assert.match(html,/activeNavigation\?2000:4000/);
 });
 
