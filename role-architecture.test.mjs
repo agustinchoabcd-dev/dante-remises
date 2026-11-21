@@ -427,3 +427,24 @@ test("location permission is requested only when a location feature is used",()=
  assert.match(html,/requestPreciseLocationPermission\(\)/);
  assert.match(html,/requestLocationPermission\(\)/);
 });
+
+test("remote branding synchronization never gates the first authenticated screen",()=>{
+ const ready=something=>html.indexOf(something);
+ const branding=ready("function finishBrandingStartup()");
+ const release=ready("finishBrandingStartup();\nfunction readLogoSettings()");
+ const remote=ready("onValue(ref(db,'branding/logo/updatedAt')");
+ assert.ok(branding>=0&&release>branding&&remote>release);
+ assert.match(html.slice(remote,remote+500),/if\(startupAuthReady\)void syncLogoFromMetadata/);
+ const auth=ready("startupAuthReady=true;");
+ assert.ok(auth>remote);
+ assert.match(html.slice(auth,auth+450),/void syncLogoFromMetadata\(logoRemoteUpdatedAt\)/);
+});
+
+test("GPS retries and in-flight writes are declared and invalidated on stop",()=>{
+ assert.match(html,/driverLocationWriteInFlight=false/);
+ assert.match(html,/driverGpsRetryTimer=null/);
+ assert.match(html,/driverGpsRetryAttempts=0/);
+ assert.match(html,/driverGpsGeneration=0/);
+ assert.match(html,/driverLocationDisconnectPaths=new Set\(\)/);
+ assert.match(html,/driverGpsGeneration\+\+/);
+});
