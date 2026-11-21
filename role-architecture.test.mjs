@@ -435,7 +435,7 @@ test("remote branding synchronization never gates the first authenticated screen
  const remote=ready("onValue(ref(db,'branding/logo/updatedAt')");
  assert.ok(branding>=0&&release>branding&&remote>release);
  assert.match(html.slice(remote,remote+500),/if\(startupAuthReady\)void syncLogoFromMetadata/);
- const auth=ready("startupAuthReady=true;");
+ const auth=html.lastIndexOf("startupAuthReady=true;");
  assert.ok(auth>remote);
  assert.match(html.slice(auth,auth+450),/void syncLogoFromMetadata\(logoRemoteUpdatedAt\)/);
 });
