@@ -809,7 +809,8 @@ function renderAdminOperationalHealth(){
  const pushStatus=latestPush?(latestPush.type.endsWith('.error')?'Error al registrar el dispositivo':'Dispositivo registrado para alertas'):(byId('tripAlertRegistrationStatus')?.textContent||'Sin comprobación reportada');
  const car144=cars['144'];
  const carStatus=car144?(car144.online?'Conectado':'Desconectado')+' · '+statusText(car144):'Sin datos';
- const gpsStatus=driverWatchId!==null?'Activo':driverWantsOnline?'Esperando señal GPS':'Inactivo';
+ const gpsAgeSeconds=latestDriverLocation?Math.max(0,Math.round((Date.now()-latestDriverLocation.updatedAt)/1000)):null;
+ const gpsStatus=driverWatchId!==null?(latestDriverLocation?(gpsAgeSeconds>30?'Sin actualización · última ±'+latestDriverLocation.accuracy+' m hace '+gpsAgeSeconds+' s':'Activo · ±'+latestDriverLocation.accuracy+' m · hace '+gpsAgeSeconds+' s'):'Buscando primera posición'):driverWantsOnline?'Esperando señal GPS':'Inactivo';
  const tripStatus=activeTripId?'Viaje activo':'Sin viaje activo';
  const perfSummary=perf.summary().slice(0,3);
  const errorSource=latest?.details?.source?(latest.details.source+(latest.details.line?':'+latest.details.line+':'+(latest.details.column||0):'')):'';
