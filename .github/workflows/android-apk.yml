@@ -62,6 +62,8 @@ on:
       - 'role-template-loader.mjs'
       - 'role-dom-bindings.mjs'
       - 'driver-home-state.mjs'
+      - 'driver-inbox-state.mjs'
+      - 'driver-inbox-state.test.mjs'
       - 'driver-home-state.test.mjs'
       - 'driver-navigation-state.mjs'
       - 'driver-navigation-state.test.mjs'
