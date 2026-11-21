@@ -1,0 +1,34 @@
+<section id="acceso">
+<h2 class="login-welcome">Bienvenido a la app oficial de Dante Remises</h2>
+<p class="login-location">Santa Rosa de Calamuchita</p>
+<div class="card panel" id="authPanel">
+<h3>Iniciar sesión</h3>
+<div class="field"><label for="authIdentity">DNI</label><input id="authIdentity" inputmode="numeric" autocomplete="username" placeholder="Tu número de DNI"></div>
+<div class="field"><label for="authPassword">Contraseña</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Tu contraseña"></div>
+<div class="actions"><button class="primary" id="loginButton">Iniciar sesión</button></div>
+<p class="hint" id="authStatus">Ingresá con tu DNI y contraseña.</p>
+<div class="divider"></div>
+<button class="secondary" id="showRegisterButton" type="button">Crear cuenta de pasajero</button>
+<div id="registerPanel" class="hidden">
+<p class="muted">Registrate como pasajero. El teléfono es opcional.</p>
+<div class="field"><label for="regName">Nombre</label><input id="regName" autocomplete="given-name" placeholder="Tu nombre"></div>
+<div class="field"><label for="regLastName">Apellido</label><input id="regLastName" autocomplete="family-name" placeholder="Tu apellido"></div>
+<div class="field"><label for="regDni">DNI</label><input id="regDni" inputmode="numeric" autocomplete="off" placeholder="Tu número de DNI"></div>
+<div class="field"><label for="regPhone">Teléfono (opcional)</label><input id="regPhone" type="tel" autocomplete="tel" placeholder="Tu número de teléfono"></div>
+<div class="field"><label for="regPassword">Crear contraseña</label><input id="regPassword" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres"></div>
+<button class="primary" id="registerButton">Crear cuenta de pasajero</button>
+</div>
+</div>
+<button class="whatsapp-entry" id="whatsappEntryButton" type="button" aria-label="WhatsApp, enlace pendiente" title="WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-4.6A8.5 8.5 0 1 1 20.5 11.5Z"/><path d="M8.8 8.2c.3-.5.6-.5.9-.5h.4c.2 0 .4.1.5.4l.7 1.7c.1.2.1.4-.1.6l-.5.6c-.2.2-.2.4 0 .6.5.9 1.2 1.6 2.1 2.1.2.1.4.1.6-.1l.7-.8c.2-.2.4-.2.6-.1l1.6.8c.3.1.4.3.4.5 0 .3-.2 1.1-.7 1.5-.5.5-1.2.7-1.9.6-1.1-.2-2.4-.9-3.7-2.1-1.3-1.2-2.1-2.6-2.3-3.6-.2-.8.1-1.6.7-2.2Z"/></svg></button>
+</section>
+<section id="staffAccess" class="hidden">
+<button class="secondary auth-back" id="backToPassengerLogin" type="button">← Volver</button>
+<h2>Acceso de personal</h2><p class="muted">Ingresá con el correo electrónico o el DNI asociado a tu cuenta de personal.</p>
+<div class="card panel">
+<div class="field"><label for="staffIdentity">Correo electrónico o DNI</label><input id="staffIdentity" autocomplete="username" placeholder="Correo electrónico o número de DNI"></div>
+<div class="field"><label for="staffPassword">Contraseña</label><input id="staffPassword" type="password" autocomplete="current-password" placeholder="Tu contraseña"></div>
+<button class="primary" id="staffLoginButton" type="button">Ingresar al espacio de personal</button>
+<p class="hint">Por ahora, todas las cuentas de personal pueden ingresar con su correo actual. El acceso por DNI queda disponible para las cuentas que ya tengan ese DNI vinculado.</p>
+<p class="hint" id="staffAuthStatus"></p>
+</div>
+</section>
