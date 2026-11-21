@@ -678,6 +678,7 @@ function onValue(query, callback, cancelCallback, options){
 }
 let currentUser = null;
 let currentRole = null;
+let adminWorkspaceController = null;
 const tripPushStatusById = new Map();
 let registrationInProgress = false;
 let remoteReady = false;
@@ -839,6 +840,11 @@ async function setStatus(id,status,minutes=null,indefinite=false){
 window.quickSet=(id,status)=>{if(!currentUser||currentRole?.role!=='admin'){notify('Solo Agustín, administrador, puede gestionar todos los coches.');return}if(status==='libre')setStatus(id,'libre');else if(status==='ocupado')setStatus(id,'ocupado',30);else setStatus(id,'fuera',null,true)}
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 bindRoleDom('settingsGearButton','click',()=>showView('configuracion'));
+bindRoleDom('openAdminWorkspaceButton','click',async()=>{
+ if(currentUser?.uid!==ADMIN_UID||currentRole?.role!=='admin')return;
+ try{await adminWorkspaceController?.openAdminPanel()}catch(error){console.error('No se pudo abrir el panel administrativo:',error);notify('No se pudo abrir el panel administrativo. Intentá nuevamente.')}
+});
+bindRoleDom('adminReturnToDriverButton','click',()=>adminWorkspaceController?.openDriverWorkspace());
 bindRoleDom('openAdminWorkspaceButton','click',()=>showView('central'));
 let tripAlertPermissionFlowStarted=false;
 let tripAlertPermissionFlowRunning=false;
@@ -3433,6 +3439,7 @@ onAuthStateChanged(auth,async user=>{
   void mediaCache.clearPrivate(previousMediaUid).catch(error=>console.warn('No se pudo limpiar la caché privada de la cuenta anterior:',error?.name||'Error'));
  }
  const authGeneration=++authStateGeneration;
+ adminWorkspaceController=null;
  driverWantsOnline=false;stopDriverHomeMessageCycle();setDriverHomeFullscreen(false);setDriverCurtainExpanded(false);destroyDriverHomeMap();
  const transitionToken=roleTransition.begin();
  activeRoleTransitionToken=transitionToken;
@@ -3516,6 +3523,7 @@ onAuthStateChanged(auth,async user=>{
    roleActivation=await activateRole(currentRole.role,{
     user,
     role:currentRole,
+    unloadRoleView:role=>roleTemplateLoader.unload(role),
     loadRoleView:async role=>{
       const result=await roleTemplateLoader.load(role);
       if(authGeneration!==authStateGeneration)return {stale:true};
@@ -3586,6 +3594,7 @@ onAuthStateChanged(auth,async user=>{
   stopDriverGps();
   if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}
  }
+ adminWorkspaceController=roleActivation?.workspaceController||null;
 
  if(authGeneration!==authStateGeneration)return;
  render('auth-complete');
