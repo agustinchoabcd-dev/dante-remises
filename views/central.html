@@ -12,6 +12,12 @@
 </div>
 <div class="card panel"><div class="actions"><button class="secondary hidden" id="adminReturnToDriverButton" type="button">← Volver al espacio de chófer</button></div></div>
 <div class="card panel"><strong>Sesión</strong><div id="centralAuthStatus" class="hint">Sesión cerrada.</div></div>
+<div class="card panel hidden" id="adminOperationalHealthPanel" style="margin-top:12px">
+ <div class="actions" style="justify-content:space-between"><h3>Salud operativa</h3><button class="secondary" id="adminHealthRefreshButton" type="button">Actualizar</button></div>
+ <p class="muted">Estado de conectividad, Firebase, diagnóstico y rendimiento de esta sesión.</p>
+ <div id="adminOperationalHealthContent" class="muted">Recopilando estado operativo…</div>
+ <p class="hint" id="adminOperationalHealthUpdatedAt">Aún no actualizado.</p>
+</div>
 <div class="card panel hidden" id="adminTripAlertPanel" style="margin-top:12px"><h3>Solicitudes de viaje · coche 144</h3><div id="adminDriverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="adminDriverActiveTrip" class="request hidden"></div></div>
 <div class="grid" id="centralCars"></div>
 <div class="card panel hidden" id="passengerAdmin" style="margin-top:16px"><h3>Pasajeros registrados</h3><p class="muted">Información visible únicamente para Agustín, administrador total.</p><div id="passengerList" class="muted">Cargando registros…</div></div>

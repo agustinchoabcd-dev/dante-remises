@@ -1,3 +1,11 @@
+export async function mount(context) {
+  if (context.isCurrent && !context.isCurrent()) return { stale: true };
+  const mounted = await context.loadRoleView("driver");
+  if (mounted?.stale || (context.isCurrent && !context.isCurrent())) return { stale: true };
+  context.showView("inicio");
+  return { view: "inicio" };
+}
+
 export async function activateDriverOperations(context) {
   const isCurrent = () => !context.isCurrent || context.isCurrent();
   if (!isCurrent()) return;
@@ -13,13 +21,10 @@ export async function activateDriverOperations(context) {
 }
 
 export async function activate(context) {
-  if (context.isCurrent && !context.isCurrent()) return { stale: true };
-  const mounted = await context.loadRoleView("driver");
-  if (mounted?.stale || (context.isCurrent && !context.isCurrent())) return { stale: true };
-  context.showView("inicio");
-
+  const mounted = await mount(context);
+  if (mounted?.stale) return mounted;
   return {
-    view: "inicio",
+    ...mounted,
     background: activateDriverOperations(context)
   };
 }

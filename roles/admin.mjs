@@ -1,17 +1,22 @@
 export async function activate(context) {
   if (context.isCurrent && !context.isCurrent()) return { stale: true };
 
-  const driverMounted = await context.loadRoleView("driver");
-  if (driverMounted?.stale || (context.isCurrent && !context.isCurrent())) return { stale: true };
+  const driverModule = await import("./driver.mjs");
   context.setWorkspaceRole?.("driver");
-  context.showView("inicio");
+  const initialMount = await driverModule.mount(context);
+  if (initialMount?.stale || (context.isCurrent && !context.isCurrent())) return { stale: true };
 
   const isCurrent = () => !context.isCurrent || context.isCurrent();
   let workspaceGeneration = 0;
   const isWorkspaceCurrent = generation => isCurrent() && generation === workspaceGeneration;
+  const workspaceContext = generation => Object.freeze({
+    ...context,
+    isCurrent: () => isWorkspaceCurrent(generation)
+  });
   const stopOperator = async () => { await context.stopOperatorPresence?.(); };
   const stopPassenger = () => { context.suspendPassengerWorkspace?.(); };
   const suspendDriver = () => { context.suspendDriverWorkspace?.(); };
+
   const workspaceController = Object.freeze({
     async openAdminPanel({ keepAllRoles = false } = {}) {
       const generation = ++workspaceGeneration;
@@ -20,20 +25,25 @@ export async function activate(context) {
       stopPassenger();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("admin");
-      const mounted = await context.loadRoleView("central");
+
+      // Reuse the existing Central module for its view/template lifecycle.
+      const centralModule = await import("./operator.mjs");
+      const mounted = await centralModule.mount(workspaceContext(generation));
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
+
       suspendDriver();
       context.unloadRoleView("driver");
       context.unloadRoleView("passenger");
       context.setAdminTripAlertPanel(true);
       context.renderAdminDriverTripSummary?.();
       context.listenDriverInbox?.();
-      context.showView("central");
+      context.renderAdminOperationalHealth?.();
       void Promise.resolve(context.loadAdminProfiles?.()).catch(error => {
         console.error("No se pudieron cargar los perfiles administrativos:", error);
       });
       return { view: "central" };
     },
+
     async openDriverWorkspace({ keepAllRoles = false } = {}) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
@@ -41,15 +51,18 @@ export async function activate(context) {
       stopPassenger();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("driver");
-      const mounted = await context.loadRoleView("driver");
+
+      const driverModule = await import("./driver.mjs");
+      const mounted = await driverModule.mount(workspaceContext(generation));
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
-      context.showView("inicio");
+
       context.unloadRoleView("central");
       context.unloadRoleView("passenger");
       await context.resumeDriverWorkspace?.();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       return { view: "inicio" };
     },
+
     async openOperatorWorkspace({ keepAllRoles = false } = {}) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
@@ -57,17 +70,20 @@ export async function activate(context) {
       stopPassenger();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("operator");
-      const mounted = await context.loadRoleView("central");
+
+      const operatorModule = await import("./operator.mjs");
+      const mounted = await operatorModule.mount(workspaceContext(generation));
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
+
       suspendDriver();
       context.unloadRoleView("driver");
       context.unloadRoleView("passenger");
       context.setAdminTripAlertPanel(false);
       context.listenDriverInbox?.();
-      context.showView("central");
       context.startOperatorPresence?.();
       return { view: "central" };
     },
+
     async openPassengerWorkspace({ keepAllRoles = false } = {}) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
@@ -76,21 +92,22 @@ export async function activate(context) {
       suspendDriver();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("passenger");
-      const mounted = await context.loadRoleView("passenger");
+
+      const passengerModule = await import("./passenger.mjs");
+      const mounted = await passengerModule.mount(workspaceContext(generation));
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
+
       context.unloadRoleView("driver");
       context.unloadRoleView("central");
-      const photoReady = await context.loadPassengerPhoto();
-      if (!isWorkspaceCurrent(generation)) return { stale: true };
-      if (photoReady === true || photoReady === null) context.showView("pasajero");
-      else context.showPassengerOnboarding();
       await context.resumePassengerWorkspace?.();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
-      return { view: photoReady === false ? "passengerOnboarding" : "pasajero", photoReady };
+      return mounted;
     },
+
     async openAllRolesWorkspace() {
       return workspaceController.openDriverWorkspace({ keepAllRoles: true });
     },
+
     async selectAllRole(role) {
       if (role === "admin") return workspaceController.openAdminPanel({ keepAllRoles: true });
       if (role === "driver") return workspaceController.openDriverWorkspace({ keepAllRoles: true });
@@ -101,8 +118,6 @@ export async function activate(context) {
   });
 
   const background = (async () => {
-    const driverModule = await import("./driver.mjs");
-    if (!isCurrent()) return;
     const results = await Promise.allSettled([
       context.initializeAdminCars(),
       driverModule.activateDriverOperations(context)
@@ -112,5 +127,5 @@ export async function activate(context) {
     }
   })();
 
-  return { view: "inicio", background, workspaceController };
+  return { view: initialMount.view, background, workspaceController };
 }
