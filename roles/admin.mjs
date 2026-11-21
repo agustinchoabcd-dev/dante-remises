@@ -13,11 +13,12 @@ export async function activate(context) {
   const stopPassenger = () => { context.suspendPassengerWorkspace?.(); };
   const suspendDriver = () => { context.suspendDriverWorkspace?.(); };
   const workspaceController = Object.freeze({
-    async openAdminPanel() {
+    async openAdminPanel({ keepAllRoles = false } = {}) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
       stopPassenger();
+      context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("admin");
       const mounted = await context.loadRoleView("central");
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
@@ -33,11 +34,12 @@ export async function activate(context) {
       });
       return { view: "central" };
     },
-    async openDriverWorkspace() {
+    async openDriverWorkspace({ keepAllRoles = false } = {}) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
       stopPassenger();
+      context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("driver");
       const mounted = await context.loadRoleView("driver");
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
@@ -48,11 +50,12 @@ export async function activate(context) {
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       return { view: "inicio" };
     },
-    async openOperatorWorkspace() {
+    async openOperatorWorkspace({ keepAllRoles = false } = {}) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
       stopPassenger();
+      context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("operator");
       const mounted = await context.loadRoleView("central");
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
@@ -65,12 +68,13 @@ export async function activate(context) {
       context.startOperatorPresence?.();
       return { view: "central" };
     },
-    async openPassengerWorkspace() {
+    async openPassengerWorkspace({ keepAllRoles = false } = {}) {
       const generation = ++workspaceGeneration;
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
       stopPassenger();
       suspendDriver();
+      context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("passenger");
       const mounted = await context.loadRoleView("passenger");
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
@@ -82,6 +86,16 @@ export async function activate(context) {
       else context.showPassengerOnboarding();
       context.resumePassengerWorkspace?.();
       return { view: photoReady === false ? "passengerOnboarding" : "pasajero", photoReady };
+    },
+    async openAllRolesWorkspace() {
+      return workspaceController.openDriverWorkspace({ keepAllRoles: true });
+    },
+    async selectAllRole(role) {
+      if (role === "admin") return workspaceController.openAdminPanel({ keepAllRoles: true });
+      if (role === "driver") return workspaceController.openDriverWorkspace({ keepAllRoles: true });
+      if (role === "operator") return workspaceController.openOperatorWorkspace({ keepAllRoles: true });
+      if (role === "passenger") return workspaceController.openPassengerWorkspace({ keepAllRoles: true });
+      return { unsupported: true };
     }
   });
 
