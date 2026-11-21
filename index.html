@@ -3178,13 +3178,14 @@ async function selectChatConversation(conversation){
  if(activeChatConversation?.conversationId===conversation.conversationId){byId('chatTitle').textContent=title;updatePassengerOperatorSelector(conversation);renderChatConversationList();void renderChatPeerAvatar(conversation);startChatEvents(conversation.conversationId)}
 }
 async function listAllChatConversations(api){
- const first=await api.listConversations();
+ const workspaceRole=currentRole?.role==='admin'?currentWorkspaceRole():'';
+ const first=await api.listConversations(null,workspaceRole);
  const byId=new Map();
  (Array.isArray(first?.conversations)?first.conversations:[]).forEach(item=>{if(item?.conversationId)byId.set(item.conversationId,item)});
  let cursor=first?.nextCursor||null,hasMore=Boolean(first?.hasMore),lastCursor='';
  while(hasMore&&cursor&&cursor!==lastCursor){
   lastCursor=cursor;
-  const page=await api.listConversations(cursor);
+  const page=await api.listConversations(cursor,currentRole?.role==='admin'?currentWorkspaceRole():'');
   (Array.isArray(page?.conversations)?page.conversations:[]).forEach(item=>{if(item?.conversationId)byId.set(item.conversationId,item)});
   cursor=page?.nextCursor||null;hasMore=Boolean(page?.hasMore);
  }
