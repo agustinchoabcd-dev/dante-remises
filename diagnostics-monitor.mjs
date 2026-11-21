@@ -11,6 +11,9 @@ const ALLOWED_TYPES = new Set([
   "firebase.presence.listener.attached", "firebase.presence.snapshot",
   "firebase.presence.error", "firebase.presence.registered", "firebase.cars.initial_get.success", "firebase.cars.initial_get.error", "firebase.staffPhotos.initial_get.success", "firebase.staffPhotos.initial_get.error", "firebase.status.write.start",
   "firebase.status.write.success", "firebase.status.write.error",
+  "firebase.status.location_cleanup.error", "firebase.status.rollback_read.error", "firebase.presence.registration.stale", "firebase.staffPhotos.updated_error",
+  "trip.push.registration", "trip.push.registration.error", "trip.push.road-distances", "trip.push.road-distances.error",
+  "trip.push.requested", "trip.push.request.error",
   "js.error", "js.unhandled_rejection",
   "ui.click", "ui.change", "ui.submit", "ui.view", "ui.render", "ui.action",
   "network.fetch.start", "network.fetch.end", "network.fetch.error", "network.online", "network.offline",
@@ -20,7 +23,8 @@ const ALLOWED_DETAILS = new Set([
   "phase", "code", "name", "children", "carId", "status", "online",
   "connected", "role", "elapsedMs", "count", "authenticated",
   "summary", "networkOnline", "ready", "durationMs", "line", "column", "source", "bytes", "kind", "profilePresent", "vehiclePresent",
-  "seq", "target", "tag", "view", "action", "service", "method", "statusCode", "ok", "errorType", "component", "event", "state", "result"
+  "seq", "target", "tag", "view", "action", "service", "method", "statusCode", "ok", "errorType", "component", "event", "state", "result",
+  "status", "accepted", "registered", "provider", "originAvailable", "destinationAvailable"
 ]);
 
 function cleanDetails(value) {

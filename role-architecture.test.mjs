@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, centralTemplate, roleDomBindings, passengerModule, driverModule, operatorModule, adminModule, mapAdapter] = await Promise.all([
+const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, centralTemplate, roleDomBindings, passengerModule, driverModule, operatorModule, adminModule, mapAdapter, diagnosticsMonitor] = await Promise.all([
   readFile(new URL("./index.html", import.meta.url), "utf8"),
   readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8"),
   readFile(new URL("./service-worker.js", import.meta.url), "utf8"),
@@ -16,7 +16,8 @@ const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, pass
   readFile(new URL("./roles/driver.mjs", import.meta.url), "utf8"),
   readFile(new URL("./roles/operator.mjs", import.meta.url), "utf8"),
   readFile(new URL("./roles/admin.mjs", import.meta.url), "utf8"),
-  readFile(new URL("./js/dante-map.js", import.meta.url), "utf8")
+  readFile(new URL("./js/dante-map.js", import.meta.url), "utf8"),
+  readFile(new URL("./diagnostics-monitor.mjs", import.meta.url), "utf8")
 ]);
 
 
@@ -96,6 +97,34 @@ test("passenger HTML is physically extracted and mounted only after role resolut
   assert.match(passengerModule, /loadRoleView\("passenger"\)/);
   assert.ok(passengerTemplate.includes('<section id="pasajero"'));
   assert.ok(passengerTemplate.includes('<section id="passengerOnboarding"'));
+});
+
+test("passenger navigation controls return after photo onboarding completes", () => {
+  assert.match(html, /document\.querySelectorAll\('\.tabs'\)\.forEach\(el=>el\.classList\.toggle\('hidden',!currentUser\|\|v==='passengerOnboarding'\)\)/);
+  assert.match(html, /byId\('appFooter'\)\?\.classList\.toggle\('hidden',!currentUser\)/);
+  assert.match(html, /byId\('versionNote'\)\?\.classList\.toggle\('hidden',!currentUser\)/);
+});
+
+test("operator workspace updates the Central description from its active workspace", () => {
+  assert.match(html, /isOperatorWorkspaceActive\(\)\?'Panel de operador: consulta de disponibilidad/);
+});
+
+test("diagnostics accepts every operational event emitted by presence, status, staff-photo and push flows", () => {
+  for (const type of [
+    "firebase.status.location_cleanup.error",
+    "firebase.status.rollback_read.error",
+    "firebase.presence.registration.stale",
+    "firebase.staffPhotos.updated_error",
+    "trip.push.registration",
+    "trip.push.registration.error",
+    "trip.push.road-distances",
+    "trip.push.road-distances.error",
+    "trip.push.requested",
+    "trip.push.request.error"
+  ]) assert.ok(diagnosticsMonitor.includes('"'+type+'"'), "Diagnostics drops event: "+type);
+  for (const detail of ["status","accepted","registered","provider","originAvailable","destinationAvailable"]) {
+    assert.ok(diagnosticsMonitor.includes('"'+detail+'"'), "Diagnostics drops detail: "+detail);
+  }
 });
 
 test("passenger profile completion clearly preserves the signed-in state", () => {

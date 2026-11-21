@@ -822,13 +822,23 @@ function renderAdminOperationalHealth(){
  const online=typeof navigator==='undefined'||navigator.onLine!==false;
  const firebaseLabel=firebaseConnectedState===true?'Conectado':firebaseConnectedState===false?'Desconectado':'Pendiente de comprobar';
  const events=diagnostics.snapshot();
- const errors=events.filter(event=>['js.error','js.unhandled_rejection','network.fetch.error','firebase.cars.error','firebase.presence.error','console.error'].includes(event.type));
+ const errors=events.filter(event=>event.type==='js.error'||event.type==='js.unhandled_rejection'||event.type==='console.error'||event.type.endsWith('.error')||(event.type==='firebase.operation'&&String(event.details?.action||'').endsWith('.error')));
  const latest=errors.length?errors[errors.length-1]:null;
+ const pushEvents=events.filter(event=>event.type==='trip.push.registration'||event.type==='trip.push.registration.error');
+ const latestPush=pushEvents.length?pushEvents[pushEvents.length-1]:null;
+ const pushStatus=latestPush?(latestPush.type.endsWith('.error')?'Error al registrar el dispositivo':'Dispositivo registrado para alertas'):(byId('tripAlertRegistrationStatus')?.textContent||'Sin comprobación reportada');
+ const car144=cars['144'];
+ const carStatus=car144?(car144.online?'Conectado':'Desconectado')+' · '+statusText(car144):'Sin datos';
+ const gpsStatus=driverWatchId!==null?'Activo':driverWantsOnline?'Esperando señal GPS':'Inactivo';
+ const tripStatus=activeTripId?'Viaje activo':'Sin viaje activo';
  const perfSummary=perf.summary().slice(0,3);
- const lastError=latest?latest.type.replace(/\./g,' · ')+' · '+new Date(latest.at).toLocaleTimeString('es-AR'):'No se registran errores en esta sesión.';
+ const lastError=latest?latest.type.replace(/\./g,' · ')+' · '+(latest.details?.code||latest.details?.name||'')+' · '+new Date(latest.at).toLocaleTimeString('es-AR'):'No se registran errores en esta sesión.';
  const perfRows=perfSummary.length?perfSummary.map(item=>'<div class="hint">'+esc(item.name)+' · p95 '+Math.round(item.p95Ms)+' ms · '+item.count+' mediciones</div>').join(''):'Todavía no hay suficientes mediciones.';
  root.innerHTML='<div class="grid">'+
   '<div class="choice-card"><strong>Conectividad</strong><div class="hint">Internet: '+(online?'Disponible':'Sin conexión')+'</div><div class="hint">Firebase RTDB: '+firebaseLabel+'</div></div>'+
+  '<div class="choice-card"><strong>Coche 144</strong><div class="hint">'+esc(carStatus)+'</div></div>'+
+  '<div class="choice-card"><strong>GPS y viajes</strong><div class="hint">GPS: '+gpsStatus+'</div><div class="hint">'+tripStatus+'</div></div>'+
+  '<div class="choice-card"><strong>Alertas push</strong><div class="hint">'+esc(pushStatus)+'</div></div>'+
   '<div class="choice-card"><strong>Diagnóstico</strong><div class="hint">Errores registrados: '+errors.length+'</div><div class="hint">Eventos pendientes de sincronizar: '+diagnostics.pendingCount+'</div></div>'+
   '<div class="choice-card"><strong>Último error registrado</strong><div class="hint">'+esc(lastError)+'</div></div>'+
   '<div class="choice-card"><strong>Operaciones más lentas</strong>'+perfRows+'</div>'+
@@ -845,6 +855,7 @@ function render(reason="unspecified"){
  renderDriverHomeStatus();
  const measured=perf.records.at(-1);
  diagnostics.mark("ui.render",{action:reason,durationMs:measured?.durationMs||0,result:measured?.details?.failed?"error":"success"});
+ if(isAdminWorkspaceActive())renderAdminOperationalHealth();
  availabilityRefresh.schedule();
  return result;
 }
@@ -1407,8 +1418,12 @@ function showView(v){
  byId('tripAlertPermissionsCard').classList.toggle('hidden',!isNativePlatform()||!['driver','admin'].includes(currentWorkspaceRole()));
  byId('passengerOnboarding')?.classList.add('hidden');
  if(!applyRoleView(document,workspaceRole,v)){diagnostics.mark('ui.action',{action:'role-view-mount-missing',view:v,role:workspaceRole||'unknown',component:'role-access'});notify('No se pudo abrir esta pantalla. Volvé a seleccionar el espacio de trabajo.');return}
-  const greetingView=workspaceRole==='passenger'?v==='pasajero':workspaceRole==='driver'?v==='chofer':workspaceRole==='operator'?v==='central':workspaceRole==='admin'?v==='central':false;
+ document.querySelectorAll('.tabs').forEach(el=>el.classList.toggle('hidden',!currentUser||v==='passengerOnboarding'));
+ byId('versionNote')?.classList.toggle('hidden',!currentUser);
+ byId('appFooter')?.classList.toggle('hidden',!currentUser);
+ const greetingView=workspaceRole==='passenger'?v==='pasajero':workspaceRole==='driver'?v==='chofer':workspaceRole==='operator'?v==='central':workspaceRole==='admin'?v==='central':false;
  byId('postLoginGreeting').classList.toggle('hidden',!greetingView);
+ if(greetingView&&currentUser)void welcomeUser(currentUser);
  if(v==='chat')void loadChatView().catch(error=>{console.error('No se pudo cargar el chat:',error);setChatStatus('No se pudo cargar el módulo de chat. Revisá tu conexión e intentá nuevamente.')});else stopChatPolling();
  if(v==='inicio'&&isDriverCapableRole())void initDriverHomeMap().then(ready=>{
   if(ready&&activeTripId&&activeTripData){renderDriverHomeActiveTrip(activeTripData,activeTripId);void ensureDriverHomeNavigationRoute()}
