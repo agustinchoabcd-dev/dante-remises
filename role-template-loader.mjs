@@ -78,6 +78,16 @@ export function createRoleTemplateLoader({
     return { stale: false, role, mounted: true };
   }
 
+  function unload(role) {
+    const targetId = ROLE_TEMPLATE_MOUNTS[role] || mountId;
+    generations.set(targetId, (generations.get(targetId) || 0) + 1);
+    const mount = documentRef.getElementById(targetId);
+    if (!mount?.replaceChildren) return false;
+    mount.replaceChildren();
+    if (mount.dataset) delete mount.dataset.role;
+    return true;
+  }
+
   function unmount() {
     for (const targetId of new Set([mountId, ...Object.values(ROLE_TEMPLATE_MOUNTS)])) {
       generations.set(targetId, (generations.get(targetId) || 0) + 1);
@@ -87,6 +97,6 @@ export function createRoleTemplateLoader({
       if (mount.dataset) delete mount.dataset.role;
     }
   }
-  return Object.freeze({ load, unmount });
+  return Object.freeze({ load, unload, unmount });
 }
 export const roleTemplateUrls = ROLE_TEMPLATE_URLS;
