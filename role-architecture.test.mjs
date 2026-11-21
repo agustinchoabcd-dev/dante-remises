@@ -29,7 +29,12 @@ test("Central HTML is physically extracted and mounted for operators and adminis
   }
   assert.ok(roleTemplateLoader.includes('central: "./views/central.html"'));
   assert.ok(operatorModule.includes('loadRoleView("central")'));
-  assert.ok(adminModule.indexOf('loadRoleView("central")') < adminModule.indexOf('loadRoleView("driver")'));
+  assert.ok(adminModule.indexOf('loadRoleView("driver")') < adminModule.indexOf('loadRoleView("central")'));
+  assert.match(adminModule, /context\.showView\("inicio"\)/);
+  assert.match(html, /id="adminWorkspaceSettingsCard"/);
+  assert.match(html, /id="openAdminWorkspaceButton"/);
+  assert.match(html, /bindRoleDom\('openAdminWorkspaceButton','click',\(\)=>showView\('central'\)\)/);
+  assert.match(html, /adminWorkspaceSettingsCard'\)\?\.classList\.toggle\('hidden',!isAdmin\)/);
   assert.ok(copyScript.includes('"views/central.html"'));
   assert.ok(html.includes("if(role==='central')"));
   assert.ok(html.includes("render('central-template-mounted')"));
