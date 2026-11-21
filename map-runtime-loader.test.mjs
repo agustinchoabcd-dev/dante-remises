@@ -103,3 +103,13 @@ test("loading fails only when neither rendering engine is available", async () =
 
   await assert.rejects(createMapRuntimeLoader(browser)(), /No se pudo cargar ningún motor cartográfico/);
 });
+
+test("Mapbox failure loads only the Leaflet fallback engine",async()=>{
+ const browser=fakeBrowser({failAt:"https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js"});
+ const ensureMapRuntime=createMapRuntimeLoader(browser);
+ await ensureMapRuntime();
+ assert.equal(browser.appended.some(url=>url==="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"),true);
+ assert.equal(browser.appended.some(url=>url==="https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js"),true);
+ assert.ok(browser.window.L);
+ assert.equal(browser.window.mapboxgl,undefined);
+});
