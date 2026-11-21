@@ -482,6 +482,7 @@ body.driver-home-map-active #driverHomeMap .leaflet-bottom{bottom:96px}
 <button class="tab" data-view="central">Central</button>
 <button class="tab" data-view="chat">Chat</button>
 </nav>
+<div class="actions hidden" id="adminWorkspaceReturnWrap"><button class="secondary" id="adminWorkspaceReturnButton" type="button">← Volver al panel administrativo</button></div>
 <div class="post-login-greeting hidden" id="postLoginGreeting"></div>
 
 <section id="acceso">
@@ -678,7 +679,14 @@ function onValue(query, callback, cancelCallback, options){
 }
 let currentUser = null;
 let currentRole = null;
+let activeWorkspaceRole = null;
 let adminWorkspaceController = null;
+function currentWorkspaceRole(){return currentRole?.role==='admin'?(activeWorkspaceRole||'driver'):(currentRole?.role||null)}
+function setWorkspaceRole(role){if(currentRole?.role!=='admin'||!['driver','operator','passenger','admin','all'].includes(role))return false;activeWorkspaceRole=role;byId('adminWorkspaceReturnWrap')?.classList.toggle('hidden',!['operator','passenger','all'].includes(role));return true}
+function isDriverWorkspaceActive(){return currentWorkspaceRole()==='driver'}
+function isOperatorWorkspaceActive(){return currentWorkspaceRole()==='operator'}
+function isPassengerWorkspaceActive(){return currentWorkspaceRole()==='passenger'}
+function isAdminWorkspaceActive(){return currentRole?.role==='admin'&&currentWorkspaceRole()==='admin'}
 const tripPushStatusById = new Map();
 let registrationInProgress = false;
 let remoteReady = false;
@@ -840,7 +848,8 @@ async function setStatus(id,status,minutes=null,indefinite=false){
 window.quickSet=(id,status)=>{if(!currentUser||currentRole?.role!=='admin'){notify('Solo Agustín, administrador, puede gestionar todos los coches.');return}if(status==='libre')setStatus(id,'libre');else if(status==='ocupado')setStatus(id,'ocupado',30);else setStatus(id,'fuera',null,true)}
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 bindRoleDom('settingsGearButton','click',()=>showView('configuracion'));
-bindRoleDom('openAdminWorkspaceButton','click',async()=>{
+bindRoleDom('adminWorkspaceReturnButton','click',async()=>{await adminWorkspaceController?.openAdminPanel()});
+ bindRoleDom('openAdminWorkspaceButton','click',async()=>{
  if(currentUser?.uid!==ADMIN_UID||currentRole?.role!=='admin')return;
  try{await adminWorkspaceController?.openAdminPanel()}catch(error){console.error('No se pudo abrir el panel administrativo:',error);notify('No se pudo abrir el panel administrativo. Intentá nuevamente.')}
 });
@@ -1267,26 +1276,27 @@ function showPassengerOnboarding(){
 function showView(v){
  diagnostics.mark("ui.view",{view:v});
  if(v!=='chat')closeChatScreen();
- if(v==='pasajero'&&currentRole?.role==='passenger'&&!passengerPhotoReady&&!passengerPhotoCheckUnavailable){showPassengerOnboarding();return}
- if(!canAccessRoleView(currentRole?.role,v)){notify('No tenés permiso para acceder a esta pantalla.');return}
+ if(v==='pasajero'&&isPassengerWorkspaceActive()&&!passengerPhotoReady&&!passengerPhotoCheckUnavailable){showPassengerOnboarding();return}
+ if(!canAccessRoleView(currentWorkspaceRole(),v)){notify('No tenés permiso para acceder a esta pantalla.');return}
  if(v!=='inicio'&&isDriverCapableRole()){
   if(document.body.classList.contains('driver-home-map-active'))setDriverHomeFullscreen(false);
   if(driverHomeMap)destroyDriverHomeMap();
  }
  const passengerPhotoCard=byId('passengerPhotoCard');
- if(currentRole?.role==='passenger'&&v==='configuracion'){
+ if(isPassengerWorkspaceActive()&&v==='configuracion'){
   const target=byId('passengerPhotoSettingsContainer');
   if(target&&passengerPhotoCard)target.appendChild(passengerPhotoCard);
- }else if(currentRole?.role==='passenger'&&v==='pasajero'){
+ }else if(isPassengerWorkspaceActive()&&v==='pasajero'){
   const home=byId('passengerPhotoCardHome');
   if(home&&passengerPhotoCard)home.appendChild(passengerPhotoCard);
  }
  byId('logoutButton').classList.toggle('hidden',!currentUser);
  byId('settingsGearButton').classList.toggle('hidden',!currentUser);
- byId('tripAlertPermissionsCard').classList.toggle('hidden',!isNativePlatform()||!['driver','admin'].includes(currentRole?.role));
+ byId('tripAlertPermissionsCard').classList.toggle('hidden',!isNativePlatform()||!['driver','admin'].includes(currentWorkspaceRole()));
  byId('passengerOnboarding')?.classList.add('hidden');
- if(!applyRoleView(document,currentRole?.role,v)){notify('No tenés permiso para acceder a esta pantalla.');return}
- const greetingView=currentRole?.role==='passenger'?v==='pasajero':currentRole?.role==='driver'?v==='chofer':currentRole?.role==='operator'?v==='central':currentRole?.role==='admin'?(v==='central'||v==='chofer'):false;
+ if(!applyRoleView(document,currentWorkspaceRole(),v)){notify('No tenés permiso para acceder a esta pantalla.');return}
+ const workspaceRole=currentWorkspaceRole();
+  const greetingView=workspaceRole==='passenger'?v==='pasajero':workspaceRole==='driver'?v==='chofer':workspaceRole==='operator'?v==='central':workspaceRole==='admin'?v==='central':false;
  byId('postLoginGreeting').classList.toggle('hidden',!greetingView);
  if(v==='chat')void loadChatView().catch(error=>{console.error('No se pudo cargar el chat:',error);setChatStatus('No se pudo cargar el módulo de chat. Revisá tu conexión e intentá nuevamente.')});else stopChatPolling();
  if(v==='inicio'&&isDriverCapableRole())void initDriverHomeMap().then(ready=>{
@@ -3481,8 +3491,8 @@ onAuthStateChanged(auth,async user=>{
  if(shouldCleanPreviousSession&&driverConnectionUnsub){driverConnectionUnsub();driverConnectionUnsub=null}
  if(shouldCleanPreviousSession){try{await clearDriverPresence()}catch(error){console.warn('No se pudo limpiar la presencia anterior; se continúa con la autenticación:',error)}}
  if(authGeneration!==authStateGeneration)return;perf.mark('auth.presence-cleanup.done');if(driverPresenceUnsub){driverPresenceUnsub();driverPresenceUnsub=null}
- currentUser=user;currentRole=null;activeTripRestoreVersion++;if(!user){activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden')}
- if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';try{await signOut(auth)}catch(signOutError){console.error('No se pudo cerrar la sesión no verificable:',signOutError);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id)?.classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
+ currentUser=user;currentRole=null;activeWorkspaceRole=null;adminWorkspaceController=null;activeTripRestoreVersion++;if(!user){activeTripId=null;activeTripData=null;byId('driverActiveTrip').classList.add('hidden')}
+ if(user){try{currentRole=await resolveAuthenticatedRole(user);if(authGeneration!==authStateGeneration)return;activeWorkspaceRole=currentRole?.role==='admin'?'driver':currentRole?.role||null;perf.mark("auth.role-resolved");diagnostics.mark("auth.state",{authenticated:true,role:currentRole?.role||"unknown",carId:currentRole?.carId||""});void startStaffPhotosSync(user);void diagnostics.flush()}catch(error){if(authGeneration!==authStateGeneration)return;diagnostics.mark("auth.role.error",{name:error?.name||"Error"});console.error(error);byId('authStatus').textContent=error.message||'No se pudo verificar tu cuenta.';try{await signOut(auth)}catch(signOutError){console.error('No se pudo cerrar la sesión no verificable:',signOutError);['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id)?.classList.add('hidden'));byId('acceso').classList.remove('hidden');roleTransition.finish(transitionToken)}notify(error.message||'No se pudo verificar tu cuenta.');return}}else{diagnostics.mark("auth.state",{authenticated:false,role:"anonymous"})}
  byId('loginButton').classList.toggle('hidden',!!user);byId('logoutButton').classList.toggle('hidden',!user);
  if(user&&!currentRole&&registrationInProgress){
   ['pasajero','chofer','central','chat','configuracion','passengerOnboarding'].forEach(id=>byId(id).classList.add('hidden'));
@@ -3510,7 +3520,7 @@ onAuthStateChanged(auth,async user=>{
  if(byId('roleSummary'))byId('roleSummary').textContent=roleText;
  
  byId('logoSettingsCard').classList.toggle('hidden',!user||user.uid!==ADMIN_UID);
- const centralDescription=byId('centralDescription');if(centralDescription)centralDescription.textContent=currentRole?.role==='operator'?'Panel de operador: consulta de disponibilidad. No podés modificar estados.':'Panel de administración total.';
+ const centralDescription=byId('centralDescription');if(centralDescription)centralDescription.textContent=isOperatorWorkspaceActive()?'Panel de operador: consulta de disponibilidad. No podés modificar estados.':'Panel de administración total.';
  if(user&&currentRole.role==='driver')activeDriver=currentRole.carId;
  if(user&&currentRole.role==='admin')activeDriver='144';
  byId('startupRecoveryNotice')?.remove();byId('authPanel')?.classList.remove('hidden');
@@ -3523,7 +3533,7 @@ onAuthStateChanged(auth,async user=>{
   if(user)configurePersonalization();
  perf.mark('auth.photo-stage.done');
  
- byId('passengerAdmin')?.classList.toggle('hidden',!user||currentRole.role!=='admin');
+ byId('passengerAdmin')?.classList.toggle('hidden',!isAdminWorkspaceActive());
 
  let roleActivation=null;
  if(user){
@@ -3537,11 +3547,11 @@ onAuthStateChanged(auth,async user=>{
       if(authGeneration!==authStateGeneration)return {stale:true};
       if(role==='driver'){byId('driverControls')?.classList.toggle('hidden',!['driver','admin'].includes(currentRole?.role));if(byId('roleSummary'))byId('roleSummary').textContent=roleText}
       if(role==='central'){
-       byId('adminReturnToDriverButton')?.classList.toggle('hidden',currentRole?.role!=='admin');
+       byId('adminReturnToDriverButton')?.classList.toggle('hidden',!isAdminWorkspaceActive());
        const centralAuthStatus=byId('centralAuthStatus');if(centralAuthStatus)centralAuthStatus.textContent=roleText;
-       const centralDescription=byId('centralDescription');if(centralDescription)centralDescription.textContent=currentRole?.role==='operator'?'Panel de operador: consulta de disponibilidad. No podés modificar estados.':'Panel de administración total.';
-       byId('passengerAdmin')?.classList.toggle('hidden',currentRole?.role!=='admin');
-       byId('adminTripAlertPanel')?.classList.toggle('hidden',currentRole?.role!=='admin');
+       const centralDescription=byId('centralDescription');if(centralDescription)centralDescription.textContent=isOperatorWorkspaceActive()?'Panel de operador: consulta de disponibilidad. No podés modificar estados.':'Panel de administración total.';
+       byId('passengerAdmin')?.classList.toggle('hidden',!isAdminWorkspaceActive());
+       byId('adminTripAlertPanel')?.classList.toggle('hidden',!isAdminWorkspaceActive());
        render('central-template-mounted');
       }
       return result
