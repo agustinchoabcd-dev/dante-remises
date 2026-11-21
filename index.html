@@ -483,6 +483,17 @@ body.driver-home-map-active #driverHomeMap .leaflet-bottom{bottom:96px}
 <button class="tab" data-view="chat">Chat</button>
 </nav>
 <div class="actions hidden" id="adminWorkspaceReturnWrap"><button class="secondary" id="adminWorkspaceReturnButton" type="button">← Volver al panel administrativo</button></div>
+<div class="card panel hidden" id="allRolesWorkspace">
+ <strong>Todos los roles</strong>
+ <p class="muted">Un espacio integrado que reúne los módulos de administración, chófer, operador y pasajero. Elegí el módulo que querés utilizar; los módulos se cargan bajo demanda.</p>
+ <div class="actions">
+  <button class="secondary" id="allRoleAdminButton" type="button">Administración</button>
+  <button class="secondary" id="allRoleDriverButton" type="button">Chófer</button>
+  <button class="secondary" id="allRoleOperatorButton" type="button">Operador</button>
+  <button class="secondary" id="allRolePassengerButton" type="button">Pasajero</button>
+ </div>
+ <p class="hint" id="allRolesWorkspaceStatus">Espacio activo: Chófer</p>
+</div>
 <div class="post-login-greeting hidden" id="postLoginGreeting"></div>
 
 <section id="acceso">
@@ -680,9 +691,11 @@ function onValue(query, callback, cancelCallback, options){
 let currentUser = null;
 let currentRole = null;
 let activeWorkspaceRole = null;
+let allRolesMode = false;
 let adminWorkspaceController = null;
 function currentWorkspaceRole(){return currentRole?.role==='admin'?(activeWorkspaceRole||'driver'):(currentRole?.role||null)}
-function setWorkspaceRole(role){if(currentRole?.role!=='admin'||!['driver','operator','passenger','admin','all'].includes(role))return false;activeWorkspaceRole=role;byId('adminWorkspaceReturnWrap')?.classList.toggle('hidden',!['operator','passenger','all'].includes(role));return true}
+function setAllRolesMode(enabled){if(currentRole?.role!=='admin')return false;allRolesMode=Boolean(enabled);byId('allRolesWorkspace')?.classList.toggle('hidden',!allRolesMode);byId('adminWorkspaceReturnWrap')?.classList.toggle('hidden',!(allRolesMode||['operator','passenger'].includes(activeWorkspaceRole)));return true}
+function setWorkspaceRole(role){if(currentRole?.role!=='admin'||!['driver','operator','passenger','admin'].includes(role))return false;activeWorkspaceRole=role;byId('adminWorkspaceReturnWrap')?.classList.toggle('hidden',!(allRolesMode||['operator','passenger'].includes(role)));const status=byId('allRolesWorkspaceStatus');if(status)status.textContent='Espacio activo: '+({admin:'Administración',driver:'Chófer',operator:'Operador',passenger:'Pasajero'}[role]||role);return true}
 function isDriverWorkspaceActive(){return currentWorkspaceRole()==='driver'}
 function isOperatorWorkspaceActive(){return currentWorkspaceRole()==='operator'}
 function isPassengerWorkspaceActive(){return currentWorkspaceRole()==='passenger'}
@@ -852,6 +865,11 @@ bindRoleDom('adminWorkspaceReturnButton','click',async()=>{await adminWorkspaceC
 bindRoleDom('adminWorkspaceDriverButton','click',async()=>{await adminWorkspaceController?.openDriverWorkspace()});
 bindRoleDom('adminWorkspaceOperatorButton','click',async()=>{await adminWorkspaceController?.openOperatorWorkspace()});
 bindRoleDom('adminWorkspacePassengerButton','click',async()=>{await adminWorkspaceController?.openPassengerWorkspace()});
+bindRoleDom('adminWorkspaceAllButton','click',async()=>{await adminWorkspaceController?.openAllRolesWorkspace()});
+bindRoleDom('allRoleAdminButton','click',async()=>{await adminWorkspaceController?.selectAllRole('admin')});
+bindRoleDom('allRoleDriverButton','click',async()=>{await adminWorkspaceController?.selectAllRole('driver')});
+bindRoleDom('allRoleOperatorButton','click',async()=>{await adminWorkspaceController?.selectAllRole('operator')});
+bindRoleDom('allRolePassengerButton','click',async()=>{await adminWorkspaceController?.selectAllRole('passenger')});
  bindRoleDom('openAdminWorkspaceButton','click',async()=>{
  if(currentUser?.uid!==ADMIN_UID||currentRole?.role!=='admin')return;
  try{await adminWorkspaceController?.openAdminPanel()}catch(error){console.error('No se pudo abrir el panel administrativo:',error);notify('No se pudo abrir el panel administrativo. Intentá nuevamente.')}
@@ -3521,7 +3539,7 @@ onAuthStateChanged(auth,async user=>{
   void mediaCache.clearPrivate(previousMediaUid).catch(error=>console.warn('No se pudo limpiar la caché privada de la cuenta anterior:',error?.name||'Error'));
  }
  const authGeneration=++authStateGeneration;
- adminWorkspaceController=null;byId('adminWorkspaceReturnWrap')?.classList.add('hidden');
+ adminWorkspaceController=null;allRolesMode=false;byId('adminWorkspaceReturnWrap')?.classList.add('hidden');byId('allRolesWorkspace')?.classList.add('hidden');
  driverWantsOnline=false;stopDriverGps();stopDriverHomeMessageCycle();setDriverHomeFullscreen(false);setDriverCurtainExpanded(false);destroyDriverHomeMap();
  const transitionToken=roleTransition.begin();
  activeRoleTransitionToken=transitionToken;
@@ -3664,6 +3682,7 @@ onAuthStateChanged(auth,async user=>{
     },
     setAdminTripAlertPanel:enabled=>byId('adminTripAlertPanel')?.classList.toggle('hidden',!enabled),
     setWorkspaceRole,
+    setAllRolesMode,
     stopOperatorPresence,
     suspendPassengerWorkspace,
     resumePassengerWorkspace,
