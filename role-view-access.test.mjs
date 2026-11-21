@@ -31,9 +31,11 @@ test("each role can access only its own workspace and shared screens", () => {
   const allViews = ["pasajero", "passengerOnboarding", "inicio", "chofer", "central", "chat", "configuracion"];
   for (const role of Object.keys(allowed)) for (const view of allViews) assert.equal(canAccessRoleView(role, view), allowed[role].includes(view));
 });
-test("admin can access Central but it is not shown as a driver navigation tab", () => {
+test("admin index uses its own workspace selector instead of operational navigation tabs", () => {
   assert.equal(canAccessRoleView("admin", "central"), true);
-  assert.equal(canShowRoleTab("admin", "central"), false);
+  for (const view of ["central", "inicio", "chofer", "chat", "configuracion"]) {
+    assert.equal(canShowRoleTab("admin", view), false, "Admin tab should stay hidden: " + view);
+  }
   assert.equal(canShowRoleTab("operator", "central"), true);
   assert.equal(canShowRoleTab("driver", "central"), false);
 });
