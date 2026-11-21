@@ -573,7 +573,8 @@ import { createRoleTransitionController } from "./role-transition.mjs";
 import { completeLogout } from "./session-logout.mjs";
 import { createMapRuntimeLoader } from "./map-runtime-loader.mjs";
 import { createChatRuntimeLoader } from "./chat-runtime-loader.mjs";
-import { getDriverHomeStatus, shouldRegisterDriverPresence, shouldExpandDriverCurtain, nextDriverHomeMessage, formatDriverTripPlace, formatDriverCardDistance, getDriverRequestRouteDistances } from "./driver-home-state.mjs";
+import { getDriverHomeStatus, shouldRegisterDriverPresence, shouldExpandDriverCurtain, nextDriverHomeMessage, formatDriverTripPlace, formatDriverCardDistance, getDriverRequestRouteDistances, validateDriverLocationFix } from "./driver-home-state.mjs";
+import { loadPendingDriverTrips } from "./driver-inbox-state.mjs";
 import { getDriverNavigationTarget, getDriverNavigationProgress, shouldRerouteDriver } from "./driver-navigation-state.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getDatabase, ref, onValue as firebaseOnValue, get as firebaseGet, set as firebaseSet, update as firebaseUpdate, remove as firebaseRemove, push as firebasePush, runTransaction as firebaseRunTransaction, onDisconnect } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js";
@@ -812,14 +813,15 @@ function renderAdminOperationalHealth(){
  const gpsStatus=driverWatchId!==null?'Activo':driverWantsOnline?'Esperando señal GPS':'Inactivo';
  const tripStatus=activeTripId?'Viaje activo':'Sin viaje activo';
  const perfSummary=perf.summary().slice(0,3);
- const lastError=latest?latest.type.replace(/\./g,' · ')+' · '+(latest.details?.code||latest.details?.name||'')+' · '+new Date(latest.at).toLocaleTimeString('es-AR'):'No se registran errores en esta sesión.';
+ const errorSource=latest?.details?.source?(latest.details.source+(latest.details.line?':'+latest.details.line+':'+(latest.details.column||0):'')):'';
+ const lastError=latest?latest.type.replace(/\./g,' · ')+' · '+(latest.details?.code||latest.details?.name||'')+(errorSource?' · '+errorSource:'')+' · '+new Date(latest.at).toLocaleTimeString('es-AR'):'No se registran errores en esta sesión.';
  const perfRows=perfSummary.length?perfSummary.map(item=>'<div class="hint">'+esc(item.name)+' · p95 '+Math.round(item.p95Ms)+' ms · '+item.count+' mediciones</div>').join(''):'Todavía no hay suficientes mediciones.';
  root.innerHTML='<div class="grid">'+
   '<div class="choice-card"><strong>Conectividad</strong><div class="hint">Internet: '+(online?'Disponible':'Sin conexión')+'</div><div class="hint">Firebase RTDB: '+firebaseLabel+'</div></div>'+
   '<div class="choice-card"><strong>Coche 144</strong><div class="hint">'+esc(carStatus)+'</div></div>'+
   '<div class="choice-card"><strong>GPS y viajes</strong><div class="hint">GPS: '+gpsStatus+'</div><div class="hint">'+tripStatus+'</div></div>'+
   '<div class="choice-card"><strong>Alertas push</strong><div class="hint">'+esc(pushStatus)+'</div></div>'+
-  '<div class="choice-card"><strong>Diagnóstico</strong><div class="hint">Errores registrados: '+errors.length+'</div><div class="hint">Eventos pendientes de sincronizar: '+diagnostics.pendingCount+'</div></div>'+
+  '<div class="choice-card"><strong>Diagnóstico</strong><div class="hint">Errores registrados: '+errors.length+'</div><div class="hint">Eventos de diagnóstico pendientes de sincronizar: '+diagnostics.pendingCount+'</div></div>'+
   '<div class="choice-card"><strong>Último error registrado</strong><div class="hint">'+esc(lastError)+'</div></div>'+
   '<div class="choice-card"><strong>Operaciones más lentas</strong>'+perfRows+'</div>'+
  '</div>';
@@ -947,7 +949,7 @@ let selectedPassengerDriver=null,realMap=null,originPoint=null,destinationPoint=
 let passengerViewGeneration=0;
 let driverTripMapInstance=null,driverTripMapTripId=null,processingNativeTripAction=false;
 let driverPresenceGeneration=0;
-let driverWantsOnline=false,driverHomeMap=null,driverHomeMapMarker=null,driverHomeMapFirstFix=false,latestDriverLocation=null;
+let driverWantsOnline=false,driverHomeMap=null,driverHomeMapMarker=null,driverHomeMapFirstFix=false,latestDriverLocation=null,driverHomeMapInitPending=false,driverHomeMapInitScheduled=false;
 let driverHomeCurtainExpanded=false,driverHomeMessage="Estás conectado",driverHomeMessageTimer=null,driverHomeDrag=null;
 let driverHomeConnectBusy=false,driverHomeDisconnectBusy=false;
 let driverHomePendingTrips=[],driverHomeRequestMarkers=new Map(),driverInboxRenderVersion=0,driverHomeRequestDistanceCache=new Map(),driverHomeRequestDistancePending=new Map();
@@ -1371,6 +1373,23 @@ function showPassengerOnboarding(){
  byId('versionNote')?.classList.add('hidden');
  byId('appFooter')?.classList.add('hidden');
 }
+function scheduleDriverHomeMapInit(){
+ if(!currentUser||!isDriverCapableRole())return false;
+ if(!startupAuthReady||!startupScreenFinished){driverHomeMapInitPending=true;return false}
+ if(driverHomeMapInitScheduled)return true;
+ driverHomeMapInitScheduled=true;
+ requestAnimationFrame(()=>window.setTimeout(()=>{
+  driverHomeMapInitScheduled=false;
+  if(!currentUser||!isDriverCapableRole()||byId('inicio')?.classList.contains('hidden'))return;
+  void initDriverHomeMap().then(ready=>{
+   if(ready&&activeTripId&&activeTripData){renderDriverHomeActiveTrip(activeTripData,activeTripId);void ensureDriverHomeNavigationRoute()}
+  }).catch(error=>{
+   perf.mark('map.driver-home.init.error');
+   console.warn('No se pudo preparar el mapa del chófer:',error);
+  });
+ },0));
+ return true;
+}
 function showView(v){
  const workspaceRole=currentWorkspaceRole();
  diagnostics.mark("ui.view",{view:v,role:workspaceRole||'unknown'});
@@ -1405,9 +1424,7 @@ function showView(v){
  byId('postLoginGreeting').classList.toggle('hidden',!greetingView);
  if(greetingView&&currentUser)void welcomeUser(currentUser);
  if(v==='chat')void loadChatView().catch(error=>{console.error('No se pudo cargar el chat:',error);setChatStatus('No se pudo cargar el módulo de chat. Revisá tu conexión e intentá nuevamente.')});else stopChatPolling();
- if(v==='inicio'&&isDriverCapableRole())void initDriverHomeMap().then(ready=>{
-  if(ready&&activeTripId&&activeTripData){renderDriverHomeActiveTrip(activeTripData,activeTripId);void ensureDriverHomeNavigationRoute()}
- });
+ if(v==='inicio'&&isDriverCapableRole())scheduleDriverHomeMapInit();
  if(v==='chofer')void ensureDriverTripAlertPermissions();
  if(v==='configuracion'&&['driver','admin'].includes(currentRole?.role))void refreshTripAlertPermissionStatus();
 }
@@ -1932,8 +1949,6 @@ async function connectDriverHome(){
  const button=byId('driverHomeConnectButton');
  if(button)button.disabled=true;
  try{
-  const mapReady=await initDriverHomeMap();
-  if(!mapReady)throw new Error('MAP_NOT_READY');
   driverWantsOnline=true;
   await registerDriverPresence(currentUser,currentRole);
   const carId=currentDriverCarId();
@@ -1941,8 +1956,9 @@ async function connectDriverHome(){
   render('driver-home-connected');
   setDriverHomeFullscreen(true);
   void startDriverGps();
+  scheduleDriverHomeMapInit();
   startDriverHomeMessageCycle();
-  notify('Te conectaste correctamente.');
+  notify('Te conectaste correctamente. La ubicación y el mapa se están preparando en segundo plano.');
  }catch(error){
   driverWantsOnline=false;
   try{await clearDriverPresence()}catch(cleanupError){console.warn('No se pudo limpiar una conexión incompleta:',cleanupError)}
@@ -1950,7 +1966,7 @@ async function connectDriverHome(){
   if(cars[carId])cars[carId].online=false;
   render('driver-home-connect-error');
   console.error('No se pudo conectar el espacio del chofer:',error);
-  notify(error.message==='MAP_NOT_READY'?'No se pudo preparar el mapa. No se modificó tu conexión.':'No se pudo conectar. Revisá tu conexión e intentá nuevamente.');
+  notify('No se pudo confirmar la conexión. Revisá tu conexión e intentá nuevamente.');
  }finally{
   driverHomeConnectBusy=false;
   if(button)button.disabled=false;
@@ -2023,28 +2039,128 @@ bindRoleDom('driverHomeCurtain','pointercancel',event=>{
 });
 
 let driverGpsStarting=false;
+function scheduleDriverGpsRetry(uid,role){
+ if(driverGpsRetryTimer!==null||(!driverWantsOnline&&!activeTripId))return;
+ const attempt=driverGpsRetryAttempts++;
+ const delay=Math.min(30_000,2_000*Math.pow(2,Math.min(attempt,4)));
+ driverGpsRetryTimer=window.setTimeout(()=>{
+  driverGpsRetryTimer=null;
+  if(currentUser?.uid!==uid||currentRole?.role!==role||(!driverWantsOnline&&!activeTripId))return;
+  void startDriverGps();
+ },delay);
+ perf.mark('gps.watch.retry_scheduled',{delayMs:delay,attempt:attempt+1});
+}
 async function startDriverGps(){
  if(isDriverCapableRole()&&activeTripId&&!driverWantsOnline){driverWantsOnline=true;if(currentUser)void registerDriverPresence(currentUser,currentRole).catch(error=>console.warn('No se pudo restaurar la presencia durante un viaje activo:',error))}
  if(isDriverCapableRole()&&!driverWantsOnline&&!activeTripId)return;
  if(!isGeolocationAvailable()||driverWatchId!==null||driverGpsStarting)return;
+ if(driverGpsRetryTimer!==null){window.clearTimeout(driverGpsRetryTimer);driverGpsRetryTimer=null}
  const gpsUid=currentUser?.uid,gpsRole=currentRole?.role;
  driverGpsStarting=true;
- if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='Solicitando permiso de ubicación…';
+ if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='Buscando señal GPS precisa…';
  try{
   const permitted=await requestPreciseLocationPermission();
   if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;
   if(!permitted){
-   if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='Se necesita ubicación precisa. Habilitá el permiso de ubicación precisa en Ajustes de Android y volvé a conectar.';
+   if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='Se necesita permiso de ubicación precisa y el servicio de ubicación activado en Android.';
+   perf.mark('gps.permission.unavailable');
    return;
   }
-  driverWatchId=watchPosition(async pos=>{if(currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;const carId=currentDriverCarId(),c=cars[carId],now=Date.now();const loc={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),heading:Number.isFinite(pos.coords.heading)?pos.coords.heading:null,speed:Number.isFinite(pos.coords.speed)?pos.coords.speed:null,updatedAt:now};updateDriverHomeLocation(loc);void updateDriverHomeNavigationPosition(loc);const activeNavigation=!!(activeTripId&&activeTripData&&['accepted','in_progress'].includes(activeTripData.status));const writeInterval=activeNavigation?2000:4000;if(now-driverLocationWriteAt<writeInterval)return;driverLocationWriteAt=now;try{if(activeNavigation){const tripLocRef=ref(db,`trips/${activeTripId}/driverLocation`);await onDisconnect(tripLocRef).remove();await set(tripLocRef,loc)}else if(c?.status==='libre'){const publicLocRef=ref(db,`driverLocations/${carId}`);await onDisconnect(publicLocRef).remove();await set(publicLocRef,loc)}if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='GPS activo · última actualización '+new Date(loc.updatedAt).toLocaleTimeString('es-AR')}catch(err){console.error(err);if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='No se pudo compartir la ubicación. Revisá las reglas de Firebase.'}},err=>{driverWatchId=null;if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent=err.code===1?'Permiso de ubicación denegado. Habilitalo en Ajustes de Android.':'No se pudo obtener GPS. Comprobá que la ubicación del dispositivo esté activada.'},{enableHighAccuracy:true,maximumAge:1000,timeout:15000,interval:1000,minimumUpdateInterval:750});
+  const watchOptions={enableHighAccuracy:true,maximumAge:5000,timeout:20000,interval:2000,minimumUpdateInterval:1500,enableLocationFallback:true};
+  let watchId=null;
+  const onPosition=async pos=>{
+   if(watchId===null||driverWatchId!==watchId||currentUser?.uid!==gpsUid||currentRole?.role!==gpsRole||(['driver','admin'].includes(gpsRole)&&!driverWantsOnline&&!activeTripId))return;
+   const now=Date.now();
+   const validated=validateDriverLocationFix(pos,{previous:latestDriverLocation,now,maxAccuracyMeters:100,maxAgeMs:30_000,maxSpeedMetersPerSecond:70});
+   if(!validated.accepted){
+    perf.mark('gps.fix.rejected',{accuracyMeters:validated.accuracyMeters??0,ageMs:validated.ageMs??0});
+    if(byId('driverGpsStatus')){
+     byId('driverGpsStatus').textContent=validated.reason==='poor_accuracy'
+      ?'GPS buscando precisión · señal actual ±'+Math.round(validated.accuracyMeters||0)+' m'
+      :'GPS descartó una lectura desactualizada o inconsistente. Esperando otra señal…';
+    }
+    return;
+   }
+   const loc=validated.location;
+   driverGpsRetryAttempts=0;
+   if(driverGpsRetryTimer!==null){window.clearTimeout(driverGpsRetryTimer);driverGpsRetryTimer=null}
+   perf.mark('gps.fix.accepted',{accuracyMeters:loc.accuracy,ageMs:validated.ageMs});
+   const carId=currentDriverCarId(),car=cars[carId];
+   updateDriverHomeLocation(loc);
+   void updateDriverHomeNavigationPosition(loc);
+   const activeNavigation=!!(activeTripId&&activeTripData&&['accepted','in_progress'].includes(activeTripData.status));
+   const writeInterval=activeNavigation?2000:4000;
+   if(driverLocationWriteInFlight||now-driverLocationWriteAt<writeInterval)return;
+   let locationPath=null;
+   if(activeNavigation)locationPath='trips/'+activeTripId+'/driverLocation';
+   else if(car?.status==='libre')locationPath='driverLocations/'+carId;
+   if(!locationPath)return;
+   driverLocationWriteAt=now;
+   driverLocationWriteInFlight=true;
+   const writeStartedAt=performance.now();
+   try{
+    const locationRef=ref(db,locationPath);
+    if(!driverLocationDisconnectPaths.has(locationPath)){
+     try{
+      await onDisconnect(locationRef).remove();
+      driverLocationDisconnectPaths.add(locationPath);
+     }catch(disconnectError){
+      perf.mark('gps.disconnect_handler.error');
+      console.warn('No se pudo preparar la limpieza automática de ubicación:',disconnectError?.name||'Error');
+     }
+    }
+    await set(locationRef,loc);
+    perf.record('gps.location.write',writeStartedAt,performance.now(),{accuracyMeters:loc.accuracy});
+    if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='GPS activo · precisión ±'+loc.accuracy+' m · '+new Date(loc.updatedAt).toLocaleTimeString('es-AR');
+   }catch(err){
+    console.error('No se pudo compartir la ubicación del chófer:',err);
+    perf.mark('gps.location.write.error');
+    if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='GPS activo, pero no se pudo sincronizar la ubicación. Reintentando…';
+   }finally{driverLocationWriteInFlight=false}
+  };
+  const onWatchError=error=>{
+   if(watchId===null||driverWatchId!==watchId)return;
+   driverWatchId=null;
+   clearWatch(watchId);
+   perf.mark('gps.watch.error',{code:Number(error?.code)||0});
+   const message=String(error?.message||'');
+   if(byId('driverGpsStatus')){
+    byId('driverGpsStatus').textContent=error?.code===1||/permission|denied/i.test(message)
+     ?'Permiso de ubicación denegado. Habilitalo en Ajustes de Android.'
+     :/disabled|services.*off|gps.*off/i.test(message)
+      ?'Activá la ubicación del dispositivo y volvé a intentar.'
+      :'Se perdió la señal GPS. Reintentando automáticamente…';
+   }
+   scheduleDriverGpsRetry(gpsUid,gpsRole);
+  };
+  watchId=watchPosition(onPosition,onWatchError,watchOptions);
+  driverWatchId=watchId;
+  if(watchId===null||watchId===undefined){
+   driverWatchId=null;
+   if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='No se pudo iniciar el servicio GPS. Reintentando…';
+   scheduleDriverGpsRetry(gpsUid,gpsRole);
+   return;
+  }
+  driverLocationWriteAt=0;
+  perf.mark('gps.watch.started',{intervalMs:watchOptions.interval,maximumAgeMs:watchOptions.maximumAge});
  }catch(error){
   driverWatchId=null;
-  if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='No se pudo iniciar GPS. Comprobá los permisos y la ubicación del dispositivo.';
+  perf.mark('gps.watch.start.error',{});
+  if(byId('driverGpsStatus'))byId('driverGpsStatus').textContent='No se pudo iniciar GPS. Comprobá permisos y ubicación del dispositivo.';
   console.warn('No se pudo iniciar el seguimiento GPS:',error);
+  scheduleDriverGpsRetry(gpsUid,gpsRole);
  }finally{driverGpsStarting=false}
 }
-function stopDriverGps(){if(driverWatchId!==null){clearWatch(driverWatchId);driverWatchId=null}}
+function stopDriverGps(){
+ if(driverGpsRetryTimer!==null){window.clearTimeout(driverGpsRetryTimer);driverGpsRetryTimer=null}
+ if(driverWatchId!==null){clearWatch(driverWatchId);driverWatchId=null}
+ driverGpsRetryAttempts=0;
+ driverLocationWriteAt=0;
+ driverLocationWriteInFlight=false;
+ driverLocationDisconnectPaths.clear();
+ latestDriverLocation=null;
+ driverHomeMapFirstFix=false;
+}
 async function clearDriverPresence(){
  driverPresenceGeneration++;
  const target=driverPresenceRef;
@@ -2169,30 +2285,59 @@ async function restoreDriverActiveTrip(){
 function listenDriverInbox(){
  if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null}
  const generation=authStateGeneration,uid=currentUser?.uid,carId=currentDriverCarId();
- const targets=[byId('driverTripInbox')];
- if(currentRole?.role==='admin'&&byId('adminDriverTripInbox'))targets.push(byId('adminDriverTripInbox'));
- driverInboxUnsub=onValue(ref(db,'tripInbox/'+carId),async snap=>{
+ const getTargets=()=>{
+  const targets=[];
+  const driverTarget=byId('driverTripInbox');
+  if(driverTarget)targets.push({node:driverTarget,kind:'driver'});
+  if(currentRole?.role==='admin'){
+   const adminTarget=byId('adminDriverTripInbox');
+   if(adminTarget)targets.push({node:adminTarget,kind:'admin'});
+  }
+  return targets;
+ };
+ driverInboxUnsub=onValue(ref(db,'tripInbox/'+carId),snap=>{
   if(generation!==authStateGeneration||currentUser?.uid!==uid)return;
   const renderVersion=++driverInboxRenderVersion;
-  const entries=Object.values(snap.val()||{}),pending=entries.filter(x=>x.status==='requested');
-  targets.forEach(target=>target.innerHTML='');
-  if(!pending.length){targets.forEach(target=>target.textContent='No hay solicitudes pendientes.');renderDriverHomeRequests([]);return}
-  const homeTrips=[];
-  for(const item of pending){
-   const tripSnap=await get(ref(db,'trips/'+item.tripId)),t=tripSnap.val();
+  void loadPendingDriverTrips(snap.val(),async tripId=>{
+   const tripSnap=await get(ref(db,'trips/'+tripId));
+   return tripSnap.val();
+  }).then(homeTrips=>{
    if(generation!==authStateGeneration||currentUser?.uid!==uid||renderVersion!==driverInboxRenderVersion)return;
-   if(!t||t.status!=='requested')continue;
-   const trip={...t,tripId:item.tripId};homeTrips.push(trip);
-   const el=document.createElement('div');el.className='trip-request';
-   const origin=formatDriverTripPlace(t.origin),dest=formatDriverTripPlace(t.destination);
-   const personalCard=el.cloneNode(false);
-   personalCard.className='trip-request driver-personal-request';
-   personalCard.innerHTML='<strong>Solicitud de '+esc(t.passengerName||'Pasajero')+'</strong><div class="hint">Desde: '+esc(origin)+' · <span data-driver-distance-trip="'+esc(item.tripId)+'" data-driver-distance-kind="pickup">Calculando…</span></div><div class="hint">Hasta: '+esc(dest)+' · <span data-driver-distance-trip="'+esc(item.tripId)+'" data-driver-distance-kind="destination">Calculando…</span></div><div class="actions"><button class="secondary" data-view-driver-trip="'+esc(item.tripId)+'">Ver viaje</button><button class="secondary" data-open-driver-trip-chat="'+esc(item.tripId)+'">Chat con pasajero</button><button class="danger" data-reject-trip="'+esc(item.tripId)+'">Rechazar viaje</button></div>';
-   el.innerHTML='<strong>Solicitud de '+esc(t.passengerName||'Pasajero')+'</strong><div class="hint">Desde: '+esc(origin)+' · <span data-driver-distance-trip="'+esc(item.tripId)+'" data-driver-distance-kind="pickup">Calculando…</span></div><div class="hint">Hasta: '+esc(dest)+' · <span data-driver-distance-trip="'+esc(item.tripId)+'" data-driver-distance-kind="destination">Calculando…</span></div><div class="actions"><button class="secondary" data-open-driver-trip-chat="'+esc(item.tripId)+'">Chat con pasajero</button><button class="primary" data-accept-trip="'+esc(item.tripId)+'">Aceptar viaje</button><button class="danger" data-reject-trip="'+esc(item.tripId)+'">Rechazar</button></div>';
-   targets.forEach((target,index)=>target.appendChild(index===0?personalCard:el.cloneNode(true)));
-  }
-  if(renderVersion===driverInboxRenderVersion){renderDriverHomeRequests(homeTrips);homeTrips.forEach(trip=>void ensureDriverHomeRequestCardDistances(trip));}
- },err=>{if(generation!==authStateGeneration||currentUser?.uid!==uid)return;console.error(err);targets.forEach(target=>target.textContent='No se pudieron cargar solicitudes. Revisá las reglas de Firebase.');renderDriverHomeRequests([])});
+   const targets=getTargets();
+   if(!homeTrips.length){
+    targets.forEach(({node})=>{node.replaceChildren();node.textContent='No hay solicitudes pendientes.'});
+    renderDriverHomeRequests([]);
+    return;
+   }
+   targets.forEach(({node,kind})=>{
+    node.replaceChildren();
+    for(const trip of homeTrips){
+     const id=String(trip.tripId),origin=formatDriverTripPlace(trip.origin),dest=formatDriverTripPlace(trip.destination);
+     const card=document.createElement('div');card.className='trip-request';
+     if(kind==='driver'){
+      card.classList.add('driver-personal-request');
+      card.innerHTML='<strong>Solicitud de '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Desde: '+esc(origin)+' · <span data-driver-distance-trip="'+esc(id)+'" data-driver-distance-kind="pickup">Calculando…</span></div><div class="hint">Hasta: '+esc(dest)+' · <span data-driver-distance-trip="'+esc(id)+'" data-driver-distance-kind="destination">Calculando…</span></div><div class="actions"><button class="secondary" data-view-driver-trip="'+esc(id)+'">Ver viaje</button><button class="secondary" data-open-driver-trip-chat="'+esc(id)+'">Chat con pasajero</button><button class="danger" data-reject-trip="'+esc(id)+'">Rechazar viaje</button></div>';
+     }else{
+      card.innerHTML='<strong>Solicitud de '+esc(trip.passengerName||'Pasajero')+'</strong><div class="hint">Desde: '+esc(origin)+' · <span data-driver-distance-trip="'+esc(id)+'" data-driver-distance-kind="pickup">Calculando…</span></div><div class="hint">Hasta: '+esc(dest)+' · <span data-driver-distance-trip="'+esc(id)+'" data-driver-distance-kind="destination">Calculando…</span></div><div class="actions"><button class="secondary" data-open-driver-trip-chat="'+esc(id)+'">Chat con pasajero</button><button class="primary" data-accept-trip="'+esc(id)+'">Aceptar viaje</button><button class="danger" data-reject-trip="'+esc(id)+'">Rechazar</button></div>';
+     }
+     node.appendChild(card);
+    }
+   });
+   renderDriverHomeRequests(homeTrips);
+   homeTrips.forEach(trip=>void ensureDriverHomeRequestCardDistances(trip));
+  }).catch(error=>{
+   if(generation!==authStateGeneration||currentUser?.uid!==uid||renderVersion!==driverInboxRenderVersion)return;
+   perf.mark('driver.inbox.load.error',{});
+   console.error('No se pudieron cargar las solicitudes de viaje:',error);
+   getTargets().forEach(({node})=>{node.replaceChildren();node.textContent='No se pudieron cargar solicitudes. Revisá la conexión e intentá nuevamente.'});
+   renderDriverHomeRequests([]);
+  });
+ },err=>{
+  if(generation!==authStateGeneration||currentUser?.uid!==uid)return;
+  console.error('No se pudieron consultar las solicitudes de viaje:',err);
+  getTargets().forEach(({node})=>{node.replaceChildren();node.textContent='No se pudieron cargar solicitudes. Revisá las reglas de Firebase.'});
+  renderDriverHomeRequests([]);
+ });
 }
 async function dismissNativeTripAlert(){try{await stopTripAlert()}catch(error){console.warn('No se pudo detener la alerta nativa:',error?.name||'Error')}}
 async function processPendingTripAction(isCurrent){
@@ -3448,7 +3593,7 @@ async function welcomeUser(user){let name=currentRole?.name||USER_ROLES[user.uid
 bindRoleDom('staffEntryButton','click',()=>showAuthPage('staff'));
 bindRoleDom('backToPassengerLogin','click',()=>{byId('staffAccess')?.classList.add('hidden');byId('acceso')?.classList.remove('hidden');byId('pasajero')?.classList.add('hidden')});
 bindRoleDom('showRegisterButton','click',()=>{byId('registerPanel').classList.toggle('hidden');byId('showRegisterButton').textContent=byId('registerPanel').classList.contains('hidden')?'Crear cuenta de pasajero':'Ocultar registro'});
-async function performLogin(identity,password,statusEl,source){if(!identity||!password){notify('Completá el usuario y la contraseña.');return}const isEmail=identity.includes('@');const dni=cleanDni(identity);if(!isEmail&&dni.length<7){notify('Ingresá un correo válido o un DNI de al menos 7 números.');return}const loginEmail=isEmail?identity:dniEmail(dni);try{const credential=await signInWithEmailAndPassword(auth,loginEmail,password);if(statusEl)statusEl.textContent='Sesión iniciada.';await welcomeUser(credential.user)}catch(err){console.error('Error de inicio de sesión',source,err);if(statusEl)statusEl.textContent='No se pudo iniciar sesión. Revisá el correo o DNI y la contraseña.';notify('No se pudo iniciar sesión. Revisá tus datos.')}}
+async function performLogin(identity,password,statusEl,source){if(!identity||!password){notify('Completá el usuario y la contraseña.');return}const isEmail=identity.includes('@');const dni=cleanDni(identity);if(!isEmail&&dni.length<7){notify('Ingresá un correo válido o un DNI de al menos 7 números.');return}const loginEmail=isEmail?identity:dniEmail(dni);try{await signInWithEmailAndPassword(auth,loginEmail,password);if(statusEl)statusEl.textContent='Sesión iniciada.';}catch(err){console.error('Error de inicio de sesión',source,err);if(statusEl)statusEl.textContent='No se pudo iniciar sesión. Revisá el correo o DNI y la contraseña.';notify('No se pudo iniciar sesión. Revisá tus datos.')}}
 bindRoleDom('loginButton','click',()=>performLogin(byId('authIdentity').value.trim(),byId('authPassword').value,byId('authStatus'),'pasajero'));
 bindRoleDom('staffLoginButton','click',()=>performLogin(byId('staffIdentity').value.trim(),byId('staffPassword').value,byId('staffAuthStatus'),'personal'));
 bindRoleDom('staffPassword','keydown',e=>{if(e.key==='Enter')byId('staffLoginButton').click()});
@@ -3527,6 +3672,7 @@ onValue(ref(db,'branding/logo/updatedAt'),snapshot=>{logoRemoteUpdatedAt=Number(
 async function resolveAuthenticatedRole(user){
  if(!user)return null;
  const legacyStaff=USER_ROLES[user.uid]||null;
+ if(user.uid===ADMIN_UID)return resolveRoleFromProfile({uid:user.uid,profile:null,legacyStaff,adminUid:ADMIN_UID,userEmail:user.email});
  let profile=null;
  try{const snapshot=await get(ref(db,'profiles/'+user.uid));profile=snapshot.val()||{}}
  catch(error){console.error('No se pudo leer el perfil dinámico:',error);throw new Error('No se pudo verificar tu perfil. Intentá nuevamente.')}
@@ -3536,7 +3682,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 function renderBuildInfo(){const info=window.DANTE_BUILD_INFO||{};byId("infoHtmlVersion").textContent=info.htmlVersion||"0.6.1";byId("infoApkVersion").textContent=info.apkVersionName||"No disponible en versión web";byId("infoApkVersionCode").textContent=info.apkVersionCode??"—";byId("infoBuildNumber").textContent=info.buildNumber??"—";byId("infoBuildRun").textContent=info.runId||"—";byId("infoBuildBranch").textContent=info.branch||"—";byId("infoBuildCommit").textContent=info.commit||"—";byId("infoBuildDate").textContent=info.buildDateUtc||"—";byId("infoAndroidPackage").textContent=info.androidPackage||"com.danteremises.test";byId("infoBuildType").textContent=info.buildType||"Web / no informado"}
 renderBuildInfo();
 let startupScreenFinished=false;
-function finishStartupScreen(){if(startupScreenFinished)return;startupScreenFinished=true;const screen=byId('startupScreen');if(screen){screen.classList.add('is-leaving');window.setTimeout(()=>screen.remove(),550)}}
+function finishStartupScreen(){if(startupScreenFinished)return;startupScreenFinished=true;const screen=byId('startupScreen');if(screen){screen.classList.add('is-leaving');window.setTimeout(()=>screen.remove(),550)}if(driverHomeMapInitPending){driverHomeMapInitPending=false;window.setTimeout(()=>scheduleDriverHomeMapInit(),650)}}
 let activeRoleTransitionToken=null;
 const startupSafetyTimer=window.setTimeout(()=>{
  if(startupAuthReady)return;
@@ -3622,7 +3768,7 @@ onAuthStateChanged(auth,async user=>{
  if(user){diagnostics.mark("firebase.presence.listener.attached");driverPresenceUnsub=onValue(ref(db,'driverPresence'),snap=>{latestDriverPresence=snap.val()||{};refreshCarPresenceFromSnapshot();diagnostics.mark("firebase.presence.snapshot",{summary:initial.map(x=>x.id+":"+(cars[x.id].online?"1":"0")).join("|")});if(selectedPassengerDriver&&!cars[selectedPassengerDriver]?.online){stopPassengerLocationWatch();if(byId('driverLocationNote'))byId('driverLocationNote').textContent='El chofer se desconectó; su ubicación y disponibilidad ya no están disponibles.'}render('driver-presence')},error=>{diagnostics.mark("firebase.presence.error",{code:error?.code||"",name:error?.name||"Error"});console.error('No se pudo consultar la presencia de los choferes:',error);latestDriverPresence={};refreshCarPresenceFromSnapshot();render('driver-presence-error')});if(['driver','admin'].includes(currentRole.role)){const connectedRef=ref(db,'.info/connected');driverConnectionUnsub=onValue(connectedRef,snapshot=>{
  firebaseConnectedState=snapshot.val()===true;
  renderAdminOperationalHealth();
- if(snapshot.val()!==true||currentUser?.uid!==user.uid||!['driver','admin'].includes(currentRole?.role))return;
+ if(snapshot.val()!==true){driverLocationDisconnectPaths.clear();driverLocationWriteAt=0;return}if(currentUser?.uid!==user.uid||!['driver','admin'].includes(currentRole?.role))return;
  if(!shouldRegisterDriverPresence(currentRole.role,driverWantsOnline,!!activeTripId))return;
  void registerDriverPresence(user,currentRole).then(()=>{
   perf.mark('auth.driver-presence.done');diagnostics.mark('firebase.presence.registered',{carId:currentRole?.carId||(currentRole?.role==='admin'?'144':'')});
@@ -3657,7 +3803,9 @@ onAuthStateChanged(auth,async user=>{
  if(user){
   try{
    byId('acceso')?.classList.add('hidden');
-   roleActivation=await activateRole(currentRole.role,{
+   const initialTemplateRole=currentRole.role==='admin'||currentRole.role==='driver'?'driver':currentRole.role==='operator'?'central':'passenger';
+   const roleTemplatePreload=roleTemplateLoader.preload(initialTemplateRole);
+   roleActivation=await Promise.all([activateRole(currentRole.role,{
     user,
     role:currentRole,
     unloadRoleView:role=>roleTemplateLoader.unload(role),
@@ -3760,7 +3908,7 @@ onAuthStateChanged(auth,async user=>{
       if(car?.online)startDriverHomeMessageCycle();
      }
     }
-   });
+   }),roleTemplatePreload]).then(([activation])=>activation);
   }catch(error){
    console.error('No se pudo activar el módulo del rol:',error);
    await ensureAuthView();if(authGeneration!==authStateGeneration)return;byId('authStatus').textContent='No se pudo cargar tu espacio de trabajo. Intentá nuevamente.';
