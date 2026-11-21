@@ -14,6 +14,11 @@ function setHidden(element, hidden) {
 export function canAccessRoleView(role, view) {
   return ROLE_VIEWS[role]?.includes(view) === true;
 }
+export function canShowRoleTab(role, view) {
+  if (!canAccessRoleView(role, view)) return false;
+  // Admin abre Central desde Configuración; no debe aparecer en la navegación inicial de chófer.
+  return !(role === "admin" && view === "central");
+}
 export function hideRoleViews(documentRef) {
   if (!documentRef?.getElementById || !documentRef?.querySelectorAll) throw new TypeError("A document reference is required");
   for (const id of ROLE_VIEW_IDS) setHidden(documentRef.getElementById(id), true);
@@ -29,7 +34,7 @@ export function applyRoleView(documentRef, role, view) {
   for (const id of ROLE_VIEW_IDS) setHidden(documentRef.getElementById(id), id !== view);
   for (const tab of documentRef.querySelectorAll(".tab")) {
     const tabView = tab.dataset?.view;
-    setHidden(tab, !canAccessRoleView(role, tabView));
+    setHidden(tab, !canShowRoleTab(role, tabView));
     tab.classList.toggle("active", tabView === view);
   }
   return true;
