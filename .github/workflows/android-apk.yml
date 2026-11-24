@@ -12,7 +12,9 @@ on:
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
-      - 'admin-panel.mjs'\n      - 'admin-panel.test.mjs'\n      - 'admin/**'\n      - 'admin/**'
+      - 'admin-panel.mjs'
+      - 'admin-panel.test.mjs'
+      - 'admin/**'
       - 'admin-panel.mjs'
       - 'admin-panel.test.mjs'
       - 'diagnostics-monitor.mjs'
