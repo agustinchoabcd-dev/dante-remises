@@ -37,7 +37,7 @@ export function buildAdminOverviewModel({ cars = [], trips = {}, now = Date.now(
     let status = String(car?.status || "").toLowerCase();
     const until = timestamp(car?.until);
     if (until !== null && until > 0 && until <= current.getTime()) status = "libre";
-    if (status === "libre") fleet.free++;
+    if (status === "libre" && car?.online === true) fleet.free++;
     else if (status === "ocupado") fleet.busy++;
     else if (status === "fuera" || status === "fuera_de_servicio") fleet.outOfService++;
   }
@@ -48,8 +48,8 @@ export function buildAdminOverviewModel({ cars = [], trips = {}, now = Date.now(
 
   const todayTrips = tripRows.filter(trip => sameLocalDay(trip.createdAt, current));
   const activeTrips = tripRows.filter(trip => ACTIVE_STATUSES.has(String(trip.status || "")));
-  const completedToday = tripRows.filter(trip => trip.status === "completed" && sameLocalDay(trip.updatedAt ?? trip.createdAt, current));
-  const cancelledToday = tripRows.filter(trip => trip.status === "cancelled" && sameLocalDay(trip.updatedAt ?? trip.createdAt, current));
+  const completedToday = tripRows.filter(trip => trip.status === "completed" && sameLocalDay(trip.completedAt ?? trip.updatedAt, current));
+  const rejectedToday = tripRows.filter(trip => trip.status === "rejected" && sameLocalDay(trip.rejectedAt ?? trip.updatedAt, current));
   const pendingRequests = tripRows.filter(trip => trip.status === "requested");
   const activity = [...tripRows]
     .sort((a, b) => (timestamp(b.updatedAt) ?? timestamp(b.createdAt) ?? 0) - (timestamp(a.updatedAt) ?? timestamp(a.createdAt) ?? 0))
@@ -70,7 +70,7 @@ export function buildAdminOverviewModel({ cars = [], trips = {}, now = Date.now(
       todayTrips: todayTrips.length,
       activeTrips: activeTrips.length,
       completedToday: completedToday.length,
-      cancelledToday: cancelledToday.length
+      rejectedToday: rejectedToday.length
     },
     pendingRequests: pendingRequests.length,
     activity
