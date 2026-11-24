@@ -92,14 +92,14 @@ export async function mount({ root, openSection, loadAdminOverviewData }) {
       setValue(root, "#adminOverviewFree", model.fleet.free);
       setValue(root, "#adminOverviewBusy", model.fleet.busy);
       setValue(root, "#adminOverviewOut", model.fleet.outOfService);
-      setValue(root, "#adminOverviewFleetMeta", "Conectados: " + (model.fleet.total - model.fleet.disconnected) + " de " + model.fleet.total + " · desconectados: " + model.fleet.disconnected + ". La conexión se informa por separado del estado manual.");
+      setValue(root, "#adminOverviewFleetMeta", "Conectados: " + (model.fleet.total - model.fleet.disconnected) + " de " + model.fleet.total + " · desconectados: " + model.fleet.disconnected + ". Los coches desconectados no cuentan como libres.");
       const available = data.tripsAvailable !== false;
-      const values = available ? model.stats : { todayTrips: "—", activeTrips: "—", completedToday: "—", cancelledToday: "—" };
+      const values = available ? model.stats : { todayTrips: "—", activeTrips: "—", completedToday: "—", rejectedToday: "—" };
       setValue(root, "#adminOverviewTodayTrips", values.todayTrips);
       setValue(root, "#adminOverviewActiveTrips", values.activeTrips);
       setValue(root, "#adminOverviewCompletedTrips", values.completedToday);
-      setValue(root, "#adminOverviewCancelledTrips", values.cancelledToday);
-      setValue(root, "#adminOverviewStatsMeta", available ? "Solicitudes por fecha de creación; estados actuales para viajes activos; finalizados y cancelados por última actualización." : "Estadísticas no disponibles: falló la lectura de viajes.");
+      setValue(root, "#adminOverviewRejectedTrips", values.rejectedToday);
+      setValue(root, "#adminOverviewStatsMeta", available ? "Solicitudes por fecha de creación; viajes activos por estado; finalizados y rechazados por fecha de cambio de estado." : "Estadísticas no disponibles: falló la lectura de viajes.");
       renderAttention(model.pendingRequests, available);
       renderActivity(model.activity, available);
       setValue(root, "#adminOverviewUpdatedAt", "Última actualización: " + formatAdminOverviewTime(data.loadedAt));
