@@ -180,6 +180,7 @@ jobs:
           node --check driver-inbox-state.mjs
           node --check admin-panel.mjs
           node --check admin/sections/overview.mjs
+          node --check admin/overview-state.mjs
           node --check admin/sections/fleet.mjs
           node --check admin/sections/trips.mjs
           node --check admin/sections/passengers.mjs
@@ -200,7 +201,7 @@ jobs:
           node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
           node --check scripts/patch-android-trip-alerts.mjs
-          node --test admin-panel.test.mjs diagnostics-monitor.test.mjs driver-home-state.test.mjs driver-inbox-state.test.mjs driver-navigation-state.test.mjs session-logout.test.mjs role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs role-view-access.test.mjs role-template-loader.test.mjs role-dom-bindings.test.mjs role-architecture.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
+          node --test admin-panel.test.mjs diagnostics-monitor.test.mjs driver-home-state.test.mjs driver-inbox-state.test.mjs driver-navigation-state.test.mjs session-logout.test.mjs role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs role-view-access.test.mjs role-template-loader.test.mjs role-dom-bindings.test.mjs role-architecture.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs admin/overview-state.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
