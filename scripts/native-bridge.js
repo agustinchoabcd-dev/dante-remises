@@ -24,7 +24,7 @@ export function getCurrentPosition(success, error, options = {}) {
   }
   Geolocation.getCurrentPosition({
     enableHighAccuracy: options.enableHighAccuracy ?? true,
-    timeout: Math.max(options.timeout ?? 20000, 30000),
+    timeout: options.timeout ?? 20000,
     maximumAge: options.maximumAge ?? 0
   }).then(success).catch(error);
 }
@@ -36,20 +36,27 @@ export function watchPosition(success, error, options = {}) {
   watches.set(localId, entry);
   Geolocation.watchPosition({
     enableHighAccuracy: options.enableHighAccuracy ?? true,
-    timeout: options.timeout ?? 15000,
-    maximumAge: options.maximumAge ?? 1000,
-    interval: options.interval ?? 1000,
-    minimumUpdateInterval: options.minimumUpdateInterval ?? 750
+    timeout: options.timeout ?? 20000,
+    maximumAge: options.maximumAge ?? 5000,
+    interval: options.interval ?? 2000,
+    minimumUpdateInterval: options.minimumUpdateInterval ?? 1500,
+    enableLocationFallback: options.enableLocationFallback ?? true
   }, (position, err) => {
     if (entry.cancelled) return;
-    if (err) error?.({ code: 2, message: err.message || "No se pudo obtener GPS." });
-    else if (position) success(position);
+    if (err) {
+      entry.cancelled = true;
+      watches.delete(localId);
+      if (entry.nativeId) Geolocation.clearWatch({ id: entry.nativeId }).catch(console.warn);
+      error?.({ code: err.code || 2, message: err.message || "No se pudo obtener GPS." });
+      return;
+    }
+    if (position) success(position);
   }).then(nativeId => {
     entry.nativeId = nativeId;
     if (entry.cancelled) Geolocation.clearWatch({ id: nativeId }).catch(console.warn);
   }).catch(err => {
     watches.delete(localId);
-    error?.({ code: 2, message: err.message || "No se pudo iniciar GPS." });
+    error?.({ code: err.code || 2, message: err.message || "No se pudo iniciar GPS." });
   });
   return localId;
 }
@@ -92,11 +99,6 @@ export async function requestPreciseLocationPermission() {
     console.warn("Se requiere ubicación precisa para la navegación del chofer:", error);
     return false;
   }
-}
-
-export async function requestStartupPermissions() {
-  if (!native) return;
-  await requestLocationPermission();
 }
 
 export async function requestTripNotificationPermission() {

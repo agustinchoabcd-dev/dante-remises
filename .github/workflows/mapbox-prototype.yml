@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - mapbox-migration-prototype
+      - dante-test
     paths:
       - '.github/workflows/mapbox-prototype.yml'
       - 'prototypes/mapbox/**'

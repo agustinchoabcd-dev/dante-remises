@@ -1,14 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getDriverHomeStatus, shouldRegisterDriverPresence, shouldExpandDriverCurtain, nextDriverHomeMessage, formatDriverTripPlace, formatDriverCardDistance, getDriverRequestRouteDistances } from "./driver-home-state.mjs";
+import { getDriverHomeStatus, shouldRegisterDriverPresence, shouldExpandDriverCurtain, nextDriverHomeMessage, formatDriverTripPlace, formatDriverCardDistance, getDriverRequestRouteDistances, validateDriverLocationFix } from "./driver-home-state.mjs";
 test("driver home status maps the requested states",()=>{
  assert.deepEqual(getDriverHomeStatus({online:false,status:"libre"}),{label:"Desconectado",tone:"red",badge:""});
  assert.deepEqual(getDriverHomeStatus({online:true,status:"libre"}),{label:"Conectado",tone:"green",badge:""});
  assert.deepEqual(getDriverHomeStatus({online:true,status:"ocupado"}),{label:"Conectado",tone:"orange",badge:"Ocupado"});
  assert.deepEqual(getDriverHomeStatus({online:true,status:"fuera"}),{label:"Conectado",tone:"red",badge:"Fuera de servicio"});
 });
-test("driver presence is opt-in; Admin keeps automatic presence",()=>{
- assert.equal(shouldRegisterDriverPresence("admin",false,false),true);
+test("driver presence is manual for drivers and admin, except while a trip is active",()=>{
+ assert.equal(shouldRegisterDriverPresence("admin",false,false),false);
+ assert.equal(shouldRegisterDriverPresence("admin",true,false),true);
+ assert.equal(shouldRegisterDriverPresence("admin",false,true),true);
  assert.equal(shouldRegisterDriverPresence("driver",false,false),false);
  assert.equal(shouldRegisterDriverPresence("driver",true,false),true);
  assert.equal(shouldRegisterDriverPresence("driver",false,true),true);
@@ -54,4 +56,26 @@ test("driver request route distances use the two road legs and reject missing va
  assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:850}]}),{pickupMeters:850,destinationMeters:null,totalRouteMeters:850,legDistances:[850]});
  assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:-1},{distance:"bad"}]}),{pickupMeters:null,destinationMeters:null,totalRouteMeters:null,legDistances:[null,null]});
  assert.deepEqual(getDriverRequestRouteDistances({legs:[{distance:null},{distance:undefined}]}),{pickupMeters:null,destinationMeters:null,totalRouteMeters:null,legDistances:[null,null]});
+});
+
+test("driver GPS accepts recent accurate fixes and preserves their real timestamp",()=>{
+ const fix=validateDriverLocationFix({timestamp:1_800_000_000_000,coords:{latitude:-32.07,longitude:-64.53,accuracy:8,heading:90,speed:12}},{now:1_800_000_001_000});
+ assert.equal(fix.accepted,true);
+ assert.deepEqual(fix.location,{lat:-32.07,lon:-64.53,accuracy:8,heading:90,speed:12,updatedAt:1_800_000_000_000});
+ assert.equal(fix.ageMs,1000);
+});
+test("driver GPS rejects inaccurate, stale and invalid fixes",()=>{
+ const now=1_800_000_000_000;
+ assert.equal(validateDriverLocationFix({timestamp:now,coords:{latitude:-32,longitude:-64,accuracy:180}},{now}).reason,"poor_accuracy");
+ assert.equal(validateDriverLocationFix({timestamp:now-31_000,coords:{latitude:-32,longitude:-64,accuracy:10}},{now}).reason,"stale_fix");
+ assert.equal(validateDriverLocationFix({timestamp:now,coords:{latitude:91,longitude:-64,accuracy:10}},{now}).reason,"invalid_coordinates");
+});
+test("driver GPS rejects impossible jumps but accepts plausible vehicle movement",()=>{
+ const now=1_800_000_000_000;
+ const previous={lat:-32.0700,lon:-64.5300,accuracy:8,updatedAt:now-5_000};
+ const jump=validateDriverLocationFix({timestamp:now,coords:{latitude:-32.0900,longitude:-64.5300,accuracy:8}},{now,previous});
+ assert.equal(jump.accepted,false);
+ assert.equal(jump.reason,"implausible_jump");
+ const normal=validateDriverLocationFix({timestamp:now,coords:{latitude:-32.0705,longitude:-64.5300,accuracy:8}},{now,previous});
+ assert.equal(normal.accepted,true);
 });

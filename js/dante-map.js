@@ -185,12 +185,14 @@
       if (!window.L) throw new Error('Leaflet no está disponible para el mapa alternativo.');
       this.backend = 'leaflet';
       this.map = L.map(container,{zoomControl:false}).setView([Number(center[0]), Number(center[1])], zoom);
+      this.map.attributionControl?.setPrefix(false);
       L.control.zoom({position:'topright'}).addTo(this.map);
       L.tileLayer('https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=' +
         encodeURIComponent(locationIqKey), {
           maxZoom: 20,
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://locationiq.com">LocationIQ</a>'
         }).addTo(this.map);
+      if(GEOAPIFY_KEY)this.map.attributionControl?.addAttribution('<a href="https://www.geoapify.com/" target="_blank" rel="noopener">Powered by Geoapify</a>');
     }
     onClick(callback) {
       this.map.on('click', event => callback({lat: event.latlng.lat, lon: event.latlng.lng}));
@@ -342,7 +344,7 @@
       this.map = new mapboxgl.Map({
         container, style: DEFAULT_STYLE,
         center: [Number(center[1]), Number(center[0])],
-        zoom, attributionControl: true,
+        zoom, attributionControl: false,
         antialias: false, fadeDuration: 0,
         pitchWithRotate: false, dragRotate: false,
         // Android WebView changes its visual viewport while the software keyboard opens/closes.
@@ -359,6 +361,10 @@
       };
       window.addEventListener('resize', this._resizeHandler, {passive:true});
       window.visualViewport?.addEventListener('resize', this._resizeHandler, {passive:true});
+      this.map.addControl(new mapboxgl.AttributionControl({
+        compact:false,
+        customAttribution:GEOAPIFY_KEY?'<a href="https://www.geoapify.com/" target="_blank" rel="noopener">Powered by Geoapify</a>':''
+      }), 'bottom-right');
       this.map.addControl(new mapboxgl.NavigationControl({showCompass:false}), 'top-right');
       this.markers = new Map();
       this.routes = new Map();

@@ -14,6 +14,12 @@ function setHidden(element, hidden) {
 export function canAccessRoleView(role, view) {
   return ROLE_VIEWS[role]?.includes(view) === true;
 }
+export function canShowRoleTab(role, view) {
+  if (!canAccessRoleView(role, view)) return false;
+  // El administrador usa su propio índice de Central; los demás espacios se eligen desde allí.
+  // Su navegación superior no debe mezclarse con la de los roles operativos.
+  return role !== "admin";
+}
 export function hideRoleViews(documentRef) {
   if (!documentRef?.getElementById || !documentRef?.querySelectorAll) throw new TypeError("A document reference is required");
   for (const id of ROLE_VIEW_IDS) setHidden(documentRef.getElementById(id), true);
@@ -29,7 +35,7 @@ export function applyRoleView(documentRef, role, view) {
   for (const id of ROLE_VIEW_IDS) setHidden(documentRef.getElementById(id), id !== view);
   for (const tab of documentRef.querySelectorAll(".tab")) {
     const tabView = tab.dataset?.view;
-    setHidden(tab, !canAccessRoleView(role, tabView));
+    setHidden(tab, !canShowRoleTab(role, tabView));
     tab.classList.toggle("active", tabView === view);
   }
   return true;

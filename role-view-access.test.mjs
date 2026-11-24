@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyRoleView, canAccessRoleView, hideRoleViews } from "./role-view-access.mjs";
+import { applyRoleView, canAccessRoleView, canShowRoleTab, hideRoleViews } from "./role-view-access.mjs";
 
 class FakeClassList {
   values = new Set();
@@ -31,6 +31,23 @@ test("each role can access only its own workspace and shared screens", () => {
   const allViews = ["pasajero", "passengerOnboarding", "inicio", "chofer", "central", "chat", "configuracion"];
   for (const role of Object.keys(allowed)) for (const view of allViews) assert.equal(canAccessRoleView(role, view), allowed[role].includes(view));
 });
+test("driver workspace exposes its own Inicio, Personal and Chat tabs", () => {
+  for (const view of ["inicio", "chofer", "chat", "configuracion"]) {
+    assert.equal(canAccessRoleView("driver", view), true);
+    if (view !== "configuracion") assert.equal(canShowRoleTab("driver", view), true);
+  }
+  assert.equal(canShowRoleTab("driver", "central"), false);
+  assert.equal(canShowRoleTab("driver", "pasajero"), false);
+});
+
+test("admin index uses its own workspace selector instead of operational navigation tabs", () => {
+  assert.equal(canAccessRoleView("admin", "central"), true);
+  for (const view of ["central", "inicio", "chofer", "chat", "configuracion"]) {
+    assert.equal(canShowRoleTab("admin", view), false, "Admin tab should stay hidden: " + view);
+  }
+  assert.equal(canShowRoleTab("operator", "central"), true);
+  assert.equal(canShowRoleTab("driver", "central"), false);
+});
 test("unknown roles and unknown views are denied by default", () => {
   assert.equal(canAccessRoleView("unknown", "central"), false);
   assert.equal(canAccessRoleView("passenger", "admin"), false);
@@ -53,7 +70,7 @@ test("activating a role view leaves exactly one workspace visible", () => {
     assert.equal(applyRoleView(doc, role, view), true);
     for (const [id, element] of Object.entries(doc.elements)) assert.equal(element.classList.contains("hidden"), id !== view, role + " / " + id);
     for (const tab of doc.tabs) {
-      assert.equal(tab.classList.contains("hidden"), !views.includes(tab.dataset.view));
+      assert.equal(tab.classList.contains("hidden"), !canShowRoleTab(role, tab.dataset.view));
       assert.equal(tab.classList.contains("active"), tab.dataset.view === view);
     }
   }

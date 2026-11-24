@@ -38,8 +38,6 @@ export async function requestPreciseLocationPermission() {
   return !!geolocation();
 }
 
-export async function requestStartupPermissions() {}
-
 
 // La versión web no dispone de permisos ni alertas push nativas.
 export async function requestTripNotificationPermission() { return { granted: false }; }

@@ -7,21 +7,25 @@ const adapter = await readFile(new URL("../../js/dante-map.js", import.meta.url)
 const config = await readFile(new URL("../../js/mapbox-config.js", import.meta.url), "utf8");
 const geocoding = await readFile(new URL("../../js/dante-geocoding.js", import.meta.url), "utf8");
 const geocodingConfig = await readFile(new URL("../../js/geocoding-config.js", import.meta.url), "utf8");
+const mapRuntime = await readFile(new URL("../../map-runtime-loader.mjs", import.meta.url), "utf8");
 const copyScript = await readFile(new URL("../../scripts/copy-web.mjs", import.meta.url), "utf8");
+const passengerTemplate = await readFile(new URL("../../views/passenger.html", import.meta.url), "utf8");
+const driverTemplate = await readFile(new URL("../../views/driver.html", import.meta.url), "utf8");
+const centralTemplate = await readFile(new URL("../../views/central.html", import.meta.url), "utf8");
 
-test("the app pins Mapbox GL JS 3.35.0 and keeps the compatibility renderer isolated", () => {
-  assert.match(html, /mapbox-gl-js\/v3\.35\.0\/mapbox-gl\.js/);
-  assert.match(html, /mapbox-gl-js\/v3\.35\.0\/mapbox-gl\.css/);
-  assert.match(html, /leaflet@1\.9\.4\/dist\/leaflet\.js/);
-  assert.match(html, /js\/dante-map\.js/);
-  assert.match(html, /js\/mapbox-config\.js/);
-  assert.match(html, /js\/dante-geocoding\.js/);
-  assert.match(html, /js\/geocoding-config\.js/);
+test("the app pins Mapbox GL JS 3.35.0 and Leaflet 1.9.4 in the lazy map loader", () => {
+  assert.match(mapRuntime, /mapbox-gl-js\/v3\.35\.0\/mapbox-gl\.js/);
+  assert.match(mapRuntime, /mapbox-gl-js\/v3\.35\.0\/mapbox-gl\.css/);
+  assert.match(mapRuntime, /leaflet@1\.9\.4\/dist\/leaflet\.js/);
+  for (const resource of ["js/dante-map.js","js/mapbox-config.js","js/dante-geocoding.js","js/geocoding-config.js"]) {
+    assert.ok(mapRuntime.includes(resource), "Missing lazy map resource: " + resource);
+  }
+  assert.match(mapRuntime, /createMapRuntimeLoader/);
 });
 
-test("passenger and driver maps use the shared adapter rather than direct Leaflet construction", () => {
-  assert.equal((html.match(/DanteMap\.create\(/g) || []).length, 2);
-  assert.equal((html.match(/DanteMap\.getDrivingRoute\(/g) || []).length, 2);
+test("passenger, driver and admin maps use the shared adapter rather than direct Leaflet construction", () => {
+  assert.ok((html.match(/DanteMap\.create\(/g) || []).length >= 2);
+  assert.ok((html.match(/DanteMap\.getDrivingRoute\(/g) || []).length >= 2);
   assert.doesNotMatch(html, /L\.map\(/);
   assert.doesNotMatch(html, /L\.tileLayer\(/);
   assert.doesNotMatch(html, /L\.geoJSON\(/);
@@ -37,12 +41,17 @@ test("the adapter contains both renderers and preserves the Leaflet fallback", (
   assert.match(adapter, /invalidateSize/);
 });
 
-test("all road routing is performed by Mapbox Directions without a LocationIQ fallback", () => {
+test("Geoapify is the primary routing provider and Mapbox is the fallback", () => {
+  assert.match(adapter, /api\.geoapify\.com\/v1\/routing/);
   assert.match(adapter, /directions\/v5\/mapbox\/driving/);
-  assert.match(adapter, /MAPBOX_TOKEN_NOT_CONFIGURED/);
-  assert.match(adapter, /provider:'Mapbox'/);
+  assert.match(adapter, /getGeoapifyDrivingRoute/);
+  assert.match(adapter, /getMapboxDrivingRoute/);
+  assert.match(adapter, /GEOAPIFY_KEY/);
+  assert.match(adapter, /MAPBOX_TOKEN/);
+  assert.match(adapter, /provider:\s*['"]Geoapify['"]/);
+  assert.match(adapter, /provider:\s*['"]Mapbox['"]/);
+  assert.match(adapter, /ROUTING_PROVIDER_NOT_CONFIGURED/);
   assert.doesNotMatch(adapter, /locationiq\.com\/v1\/directions/);
-  assert.equal((html.match(/DanteMap\.getDrivingRoute\(points\)/g) || []).length, 2);
 });
 
 test("Geoapify handles address autocomplete and reverse geocoding for Argentina", () => {
@@ -52,15 +61,31 @@ test("Geoapify handles address autocomplete and reverse geocoding for Argentina"
   assert.match(geocoding, /function normalizeFeature/);
   assert.match(geocodingConfig, /window\.DANTE_GEOAPIFY_KEY = window\.DANTE_GEOAPIFY_KEY \|\| ''/);
   assert.doesNotMatch(html, /api\.locationiq\.com\/v1\/(autocomplete|reverse)/);
-  assert.match(html, /DanteGeocoding\.reverse\(point\)/);
+  assert.match(geocoding, /function reverseDetails\(point\)/);
+  assert.match(geocoding, /async function reverse\(point\)/);
+  assert.match(html, /DanteGeocoding\.reverseDetails\(point\)/);
   assert.match(html, /Calle cercana no disponible/);
   assert.match(html, /Esperá a que se resuelva la dirección del punto seleccionado/);
 });
 
-test("Geoapify attribution remains visible when saved trip addresses are reused by drivers", () => {
-  assert.match(html, /const GEOAPIFY_ATTRIBUTION_HTML=/);
-  assert.ok((html.match(/GEOAPIFY_ATTRIBUTION_HTML/g) || []).length >= 4);
-  assert.match(html, /https:\/\/www\.openstreetmap\.org\/copyright/);
+test("provider credits stay in Settings while required map attribution remains inside map controls", () => {
+  for (const [name, template] of [
+    ["passenger", passengerTemplate],
+    ["driver", driverTemplate],
+    ["central", centralTemplate]
+  ]) {
+    assert.doesNotMatch(template, /Powered by Geoapify|OpenStreetMap|LocationIQ/);
+  }
+  assert.match(html, /id="creditsSettingsCard"/);
+  assert.match(html, /Créditos y APIs utilizadas/);
+  for (const provider of ["Mapbox","Geoapify","LocationIQ","OpenStreetMap","Leaflet","Firebase","Cloudflare Workers","Backblaze B2","Capacitor"]) {
+    assert.ok(html.includes("<span>" + provider + "</span>"), "Missing provider credit: " + provider);
+  }
+  assert.match(adapter, /new mapboxgl\.AttributionControl\(\{[\s\S]*?compact:false,[\s\S]*?customAttribution:GEOAPIFY_KEY\?/);
+  assert.match(adapter, /if\(GEOAPIFY_KEY\)this\.map\.attributionControl\?\.addAttribution\(.*Powered by Geoapify/);
+  assert.match(adapter, /OpenStreetMap/);
+  assert.match(adapter, /LocationIQ/);
+  assert.match(adapter, /attributionControl\?\.setPrefix\(false\)/);
 });
 
 test("the token is injected at runtime and no access token is committed in source", () => {

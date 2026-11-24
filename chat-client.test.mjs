@@ -18,7 +18,7 @@ test("passenger chat exposes the connected-operator selector in the green chat h
   assert.ok(html.includes('id="chatPeerSelect"'));
   assert.ok(html.includes('id="chatPeerMenu"'));
   assert.ok(html.includes('class="chat-peer-caret" aria-hidden="true">▼</span>'));
-  assert.ok(html.includes("api.listOperators()"));
+  assert.ok(html.includes("api.listOperators('passenger')"));
   assert.ok(html.includes("setInterval(()=>void sendOperatorPresence(),10_000)"));
   assert.ok(html.includes("getProfilePhoto(otherUid)"));
 });
@@ -121,6 +121,45 @@ test("lists only server-authorized connected operators", async () => {
   assert.equal(request.url, "https://chat.example.test/v1/chat/operators");
   assert.equal(request.options.method, "GET");
   assert.deepEqual(result.operators[0], { uid: "operator-1", firstName: "Patricia", role: "operator" });
+});
+
+test("admin workspace context is sent only as an explicit role selector", async () => {
+  const requests = [];
+  const client = makeClient(async (url, options) => {
+    requests.push({ url, options });
+    return jsonResponse({ conversation: { conversationId: "conversation-admin-passenger" }, operators: [] });
+  });
+  await client.openConversation({ target: "driver", targetUid: "driver-uid", workspaceRole: "passenger" });
+  await client.listOperators("passenger");
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
+    target: "driver", targetUid: "driver-uid", workspaceRole: "passenger"
+  });
+  assert.equal(requests[1].url, "https://chat.example.test/v1/chat/operators?workspaceRole=passenger");
+});
+
+test("admin operator workspace sends explicit presence mode", async () => {
+  const requests = [];
+  const client = makeClient(async (url, options) => {
+    requests.push({ url, options });
+    return jsonResponse({ online: options.method === "POST" });
+  });
+  await client.setOperatorPresence("operator");
+  await client.clearOperatorPresence("operator");
+  assert.deepEqual(requests.map(item => JSON.parse(item.options.body)), [
+    { workspaceRole: "operator" }, { workspaceRole: "operator" }
+  ]);
+});
+
+test("conversation listing preserves cursors and includes explicit workspace filters", async () => {
+  const requests = [];
+  const client = makeClient(async (url, options) => {
+    requests.push({ url, options });
+    return jsonResponse({ conversations: [] });
+  });
+  await client.listConversations(null, "operator");
+  await client.listConversations("cursor-1", "passenger");
+  assert.equal(requests[0].url, "https://chat.example.test/v1/chat/conversations?workspaceRole=operator");
+  assert.equal(requests[1].url, "https://chat.example.test/v1/chat/conversations?cursor=cursor-1&workspaceRole=passenger");
 });
 
 test("operator presence uses authenticated POST and DELETE requests", async () => {
@@ -466,7 +505,7 @@ test("passenger and operator recipient menus include the four registered driver 
 test("conversation and message indexes are paginated before being cached locally", async () => {
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
   assert.ok(html.includes("async function listAllChatConversations(api)"));
-  assert.ok(html.includes("api.listConversations(cursor)"));
+  assert.ok(html.includes("api.listConversations(cursor,"));
   assert.ok(html.includes("while(hasMore&&cursor&&cursor!==lastCursor)"));
   assert.ok(html.includes("void prefetchChatConversationHistories()"));
   assert.ok(html.includes("conversation.lastMessageAt") && html.includes("cached.lastSyncedAt"));

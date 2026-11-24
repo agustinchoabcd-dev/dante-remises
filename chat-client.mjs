@@ -87,23 +87,25 @@ export class ChatApiClient {
     return payload;
   }
 
-  openConversation({ target, targetUid, tripId } = {}) {
+  openConversation({ target, targetUid, tripId, workspaceRole } = {}) {
     const body = { target };
+    if (workspaceRole) body.workspaceRole = workspaceRole;
     if (targetUid) body.targetUid = targetUid;
     if (tripId) body.tripId = tripId;
     return this.request("/v1/chat/conversations", { method: "POST", body });
   }
 
-  listOperators() {
-    return this.request("/v1/chat/operators");
+  listOperators(workspaceRole = "") {
+    const query = workspaceRole ? `?workspaceRole=${encodeURIComponent(workspaceRole)}` : "";
+    return this.request(`/v1/chat/operators${query}`);
   }
 
-  setOperatorPresence() {
-    return this.request("/v1/chat/presence", { method: "POST" });
+  setOperatorPresence(workspaceRole = "") {
+    return this.request("/v1/chat/presence", { method: "POST", body: workspaceRole ? { workspaceRole } : {} });
   }
 
-  clearOperatorPresence() {
-    return this.request("/v1/chat/presence", { method: "DELETE" });
+  clearOperatorPresence(workspaceRole = "") {
+    return this.request("/v1/chat/presence", { method: "DELETE", body: workspaceRole ? { workspaceRole } : {} });
   }
 
   getParticipantPhoto(conversationId, uid) {
@@ -155,8 +157,11 @@ export class ChatApiClient {
     }
   }
 
-  listConversations(cursor = null) {
-    const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  listConversations(cursor = null, workspaceRole = "") {
+    const params = [];
+    if (cursor) params.push(`cursor=${encodeURIComponent(cursor)}`);
+    if (workspaceRole) params.push(`workspaceRole=${encodeURIComponent(workspaceRole)}`);
+    const query = params.length ? `?${params.join("&")}` : "";
     return this.request(`/v1/chat/conversations${query}`);
   }
 

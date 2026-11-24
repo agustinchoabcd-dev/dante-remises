@@ -1,5 +1,22 @@
 <h2>Central de Dante Remises</h2><p class="muted" id="centralDescription">Panel de administración y operación.</p>
+<div class="card panel hidden" id="adminWorkspaceSelector">
+ <h3>Espacios de trabajo</h3>
+ <p class="muted">Elegí qué espacio querés utilizar. Tu cuenta conserva siempre los permisos de administrador.</p>
+ <div class="actions">
+  <button class="secondary" id="adminWorkspaceDriverButton" type="button">Chófer</button>
+  <button class="secondary" id="adminWorkspaceOperatorButton" type="button">Operador</button>
+  <button class="secondary" id="adminWorkspacePassengerButton" type="button">Pasajero</button>
+  <button class="secondary" id="adminWorkspaceAllButton" type="button">Todos los roles</button>
+ </div>
+ <p class="hint">Acceso a un espacio integrado con navegación entre los módulos existentes.</p>
+</div>
 <div class="card panel"><strong>Sesión</strong><div id="centralAuthStatus" class="hint">Sesión cerrada.</div></div>
+<div class="card panel hidden" id="adminOperationalHealthPanel" style="margin-top:12px">
+ <div class="actions" style="justify-content:space-between"><h3>Salud operativa</h3><button class="secondary" id="adminHealthRefreshButton" type="button">Actualizar</button></div>
+ <p class="muted">Estado de conectividad, Firebase, diagnóstico y rendimiento de esta sesión.</p>
+ <div id="adminOperationalHealthContent" class="muted">Recopilando estado operativo…</div>
+ <p class="hint" id="adminOperationalHealthUpdatedAt">Aún no actualizado.</p>
+</div>
 <div class="card panel hidden" id="adminTripAlertPanel" style="margin-top:12px"><h3>Solicitudes de viaje · coche 144</h3><div id="adminDriverTripInbox" class="muted">No hay solicitudes pendientes.</div><div id="adminDriverActiveTrip" class="request hidden"></div></div>
 <div class="grid" id="centralCars"></div>
 <div class="card panel hidden" id="passengerAdmin" style="margin-top:16px"><h3>Pasajeros registrados</h3><p class="muted">Información visible únicamente para Agustín, administrador total.</p><div id="passengerList" class="muted">Cargando registros…</div></div>

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createRoleTemplateLoader } from "./role-template-loader.mjs";
 
 function makeDocument(existingIds = []) {
-  const mounts = Object.fromEntries(["roleViewMount", "centralViewMount"].map(id => [id, {
+  const mounts = Object.fromEntries(["roleViewMount", "centralViewMount", "authViewMount"].map(id => [id, {
     children: [],
     dataset: {},
     replaceChildren(...children) { this.children = children; },
@@ -45,7 +45,7 @@ test("loads passenger and driver templates into the shared role mount", async ()
   assert.equal(requests[1].url, "./views/driver.html");
 });
 
-test("loads Central into its own mount so Admin can retain both workspaces", async () => {
+test("loads Central into its own mount independently from the driver workspace", async () => {
   const document = makeDocument();
   const requests = [];
   const loader = createRoleTemplateLoader({
@@ -116,6 +116,78 @@ test("rejects IDs already mounted in a different role workspace", async () => {
   await assert.rejects(loader.load("passenger"), /already exists outside its mount/);
 });
 
+test("unload clears only the selected workspace mount", async () => {
+  const document = makeDocument();
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: async url => response('<section id="' + (url.includes("central") ? "central" : "driver") + '"></section>'),
+    parseTemplate: parseIds
+  });
+  await loader.load("driver");
+  await loader.load("central");
+  assert.equal(loader.unload("central"), true);
+  assert.equal(document.mounts.centralViewMount.children.length, 0);
+  assert.equal(document.mounts.centralViewMount.dataset.role, undefined);
+  assert.equal(document.mounts.roleViewMount.dataset.role, "driver");
+  assert.equal(document.mounts.roleViewMount.children.length, 1);
+});
+
+test("unloading an inactive sibling role never clears the active shared template", async () => {
+  const document = makeDocument();
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: async url => response('<section id="' + (url.includes("passenger") ? "pasajero" : "driver") + '"></section>'),
+    parseTemplate: parseIds
+  });
+  await loader.load("driver");
+  assert.equal(loader.unload("passenger"), false);
+  assert.equal(document.mounts.roleViewMount.dataset.role, "driver");
+  assert.equal(document.mounts.roleViewMount.children.length, 1);
+  await loader.load("passenger");
+  assert.equal(loader.unload("driver"), false);
+  assert.equal(document.mounts.roleViewMount.dataset.role, "passenger");
+  assert.equal(document.mounts.roleViewMount.children.length, 1);
+});
+
+test("unloading a shared mount invalidates every pending role request without touching Central", async () => {
+  const document = makeDocument();
+  let resolvePassenger;
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: url => url.includes("passenger")
+      ? new Promise(resolve => { resolvePassenger = resolve; })
+      : Promise.resolve(response('<section id="central"></section>')),
+    parseTemplate: parseIds
+  });
+  const passengerLoad = loader.load("passenger");
+  await loader.load("central");
+  loader.unloadMount("driver");
+  resolvePassenger(response('<section id="pasajero"></section>'));
+  assert.deepEqual(await passengerLoad, { stale: true, role: "passenger" });
+  assert.equal(document.mounts.roleViewMount.children.length, 0);
+  assert.equal(document.mounts.centralViewMount.dataset.role, "central");
+  assert.equal(document.mounts.centralViewMount.children.length, 1);
+});
+
+test("admin workspace swap releases the inactive template and remounts it on return", async () => {
+  const document = makeDocument();
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: async url => response('<section id="' + (url.includes("central") ? "central" : url.includes("driver") ? "driver" : "passenger") + '"></section>'),
+    parseTemplate: parseIds
+  });
+  await loader.load("driver");
+  await loader.load("central");
+  loader.unloadMount("driver");
+  assert.equal(document.mounts.roleViewMount.children.length, 0);
+  assert.equal(document.mounts.centralViewMount.children.length, 1);
+  loader.unload("central");
+  await loader.load("driver");
+  assert.equal(document.mounts.centralViewMount.children.length, 0);
+  assert.equal(document.mounts.roleViewMount.dataset.role, "driver");
+  assert.equal(document.mounts.roleViewMount.children.length, 1);
+});
+
 test("unmount clears every role mount and invalidates pending responses", async () => {
   const document = makeDocument();
   const loader = createRoleTemplateLoader({
@@ -143,4 +215,41 @@ test("onMounted runs after the fragment is attached", async () => {
   });
   await loader.load("passenger");
   assert.equal(mounted, true);
+});
+
+test("authentication template mounts separately from passenger, driver and Central workspaces", async () => {
+  const document = makeDocument();
+  const requests = [];
+  const loader = createRoleTemplateLoader({
+    document,
+    fetch: async url => {
+      requests.push(url);
+      return response('<section id="' + (url.includes("auth") ? "acceso" : "driverView") + '"></section>');
+    },
+    parseTemplate: parseIds
+  });
+  await loader.load("driver");
+  await loader.load("auth");
+  assert.equal(document.mounts.roleViewMount.dataset.role, "driver");
+  assert.equal(document.mounts.authViewMount.dataset.role, "auth");
+  assert.deepEqual(requests, ["./views/driver.html", "./views/auth.html"]);
+});
+
+test("preloads only the selected role template and shares its request with mount", async()=>{
+ const document=makeDocument();const requests=[];
+ let release;
+ const loader=createRoleTemplateLoader({
+  document,
+  fetch:async url=>{requests.push(url);await new Promise(resolve=>{release=resolve});return response('<section id="driver"></section>')},
+  parseTemplate:parseIds
+ });
+ const preload=loader.preload("driver");
+ const mount=loader.load("driver");
+ await Promise.resolve();
+ assert.deepEqual(requests,["./views/driver.html"]);
+ release();
+ assert.deepEqual(await preload,{role:"driver",preloaded:true});
+ assert.deepEqual(await mount,{stale:false,role:"driver",mounted:true});
+ assert.equal(document.mount.dataset.role,"driver");
+ assert.equal(requests.length,1);
 });

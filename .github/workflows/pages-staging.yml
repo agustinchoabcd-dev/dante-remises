@@ -54,7 +54,8 @@ jobs:
           node --check js/dante-map.js
           node --check js/dante-geocoding.js
           node --check driver-home-state.mjs
-          node --test driver-home-state.test.mjs trip-alerts-ui.test.mjs
+          node --check driver-inbox-state.mjs
+          node --test driver-home-state.test.mjs driver-inbox-state.test.mjs trip-alerts-ui.test.mjs
 
       - name: Prepare static site with all web assets
         run: |

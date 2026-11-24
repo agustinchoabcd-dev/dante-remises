@@ -11,6 +11,9 @@ const ALLOWED_TYPES = new Set([
   "firebase.presence.listener.attached", "firebase.presence.snapshot",
   "firebase.presence.error", "firebase.presence.registered", "firebase.cars.initial_get.success", "firebase.cars.initial_get.error", "firebase.staffPhotos.initial_get.success", "firebase.staffPhotos.initial_get.error", "firebase.status.write.start",
   "firebase.status.write.success", "firebase.status.write.error",
+  "firebase.status.location_cleanup.error", "firebase.status.rollback_read.error", "firebase.presence.registration.stale", "firebase.staffPhotos.updated_error",
+  "trip.push.registration", "trip.push.registration.error", "trip.push.road-distances", "trip.push.road-distances.error",
+  "trip.push.requested", "trip.push.request.error",
   "js.error", "js.unhandled_rejection",
   "ui.click", "ui.change", "ui.submit", "ui.view", "ui.render", "ui.action",
   "network.fetch.start", "network.fetch.end", "network.fetch.error", "network.online", "network.offline",
@@ -20,7 +23,8 @@ const ALLOWED_DETAILS = new Set([
   "phase", "code", "name", "children", "carId", "status", "online",
   "connected", "role", "elapsedMs", "count", "authenticated",
   "summary", "networkOnline", "ready", "durationMs", "line", "column", "source", "bytes", "kind", "profilePresent", "vehiclePresent",
-  "seq", "target", "tag", "view", "action", "service", "method", "statusCode", "ok", "errorType", "component", "event", "state", "result"
+  "seq", "target", "tag", "view", "action", "service", "method", "statusCode", "ok", "errorType", "component", "event", "state", "result",
+  "status", "accepted", "registered", "provider", "originAvailable", "destinationAvailable"
 ]);
 
 function cleanDetails(value) {
@@ -45,7 +49,7 @@ function makeClientInfo(runtime) {
       : ua ? "web" : "unknown";
   const browser = ua.match(/(?:Chrome|CriOS|Firefox|Edg|OPR)\/(\d+)/i);
   return {
-    appVersion: "0.6.0",
+    appVersion: "0.6.1",
     build: String(runtime.__DANTE_BUILD__ || "unreported").slice(0, 24),
     platform,
     browserMajor: browser ? Number(browser[1]) : 0,
@@ -74,6 +78,10 @@ export function createDiagnosticsMonitor({
   let client = makeClientInfo(runtime);
   let timer = null;
   let inFlight = null;
+  let retryDelayMs = 1500;
+  let lastUploadStatus = "idle";
+  let lastUploadError = "";
+  let lastUploadAt = 0;
 
   const setTimer = runtime.setTimeout?.bind(runtime) || setTimeout;
   const clearTimer = runtime.clearTimeout?.bind(runtime) || clearTimeout;
@@ -115,7 +123,7 @@ export function createDiagnosticsMonitor({
       let authenticated = false;
       try {
         const token = await getToken();
-        if (!token) return false;
+        if (!token) { lastUploadStatus = "no_token"; lastUploadError = "No hay token de autenticación"; return false; }
         authenticated = true;
         const revisionAtSend = revision;
         const context = typeof getContext === "function" ? getContext() || {} : {};
@@ -141,14 +149,26 @@ export function createDiagnosticsMonitor({
           credentials: "omit",
           keepalive: true
         });
-        if (!response?.ok) return false;
+        if (!response?.ok) {
+          lastUploadStatus = "http_" + String(response?.status ?? "unknown");
+          lastUploadError = "HTTP " + String(response?.status ?? "desconocido");
+          retryDelayMs = Math.min(60_000, Math.max(1500, retryDelayMs * 2));
+          return false;
+        }
         uploadedRevision = payload.events[payload.events.length - 1].seq;
+        lastUploadStatus = "ok";
+        lastUploadError = "";
+        lastUploadAt = Date.now();
+        retryDelayMs = 1500;
         return true;
-      } catch {
+      } catch (error) {
+        lastUploadStatus = "network_error";
+        lastUploadError = ((error?.name || "Error") + ": " + String(error?.message || "falló la conexión")).slice(0, 140);
+        retryDelayMs = Math.min(60_000, Math.max(1500, retryDelayMs * 2));
         return false;
       } finally {
         inFlight = null;
-        if (authenticated && revision > uploadedRevision) schedule(1500);
+        if (authenticated && revision > uploadedRevision) schedule(retryDelayMs);
       }
     })();
     return inFlight;
@@ -156,7 +176,7 @@ export function createDiagnosticsMonitor({
 
   function errorLocation(error, fallbackSource = "") {
     const stack = String(error?.stack || "");
-    const match = stack.match(/(?:^|\\s)([^/\\s?#]+\\.(?:m?js|html)):(\\d+):(\\d+)/m);
+    const match = stack.match(/([^/\s?#]+\.(?:m?js|html)):(\d+):(\d+)/m);
     const source = (match?.[1] || fallbackSource || "unknown").slice(0, 64);
     return {
       source: /^[A-Za-z0-9_.-]+$/.test(source) ? source : "unknown",
@@ -194,7 +214,10 @@ export function createDiagnosticsMonitor({
     sessionId,
     startedAt,
     snapshot: () => events.map(event => ({ ...event, details: { ...event.details } })),
-    get pendingCount() { return Math.max(0, revision - uploadedRevision); }
+    get pendingCount() { return Math.max(0, revision - uploadedRevision); },
+    get syncStatus() { return lastUploadStatus; },
+    get syncError() { return lastUploadError; },
+    get lastUploadAt() { return lastUploadAt; }
   };
 }
 

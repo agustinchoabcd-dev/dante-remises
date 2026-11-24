@@ -91,27 +91,32 @@ export function createMapRuntimeLoader({
     if (loading) return loading;
 
     loading = (async () => {
-      const [leafletStyle, mapboxStyle, leafletScript, mapboxScript] = await Promise.all([
-        ensureStyle(MAP_STYLES[0]),
+      const [mapboxStyle, mapboxScript] = await Promise.all([
         ensureStyle(MAP_STYLES[1]),
-        ensureScript(MAP_ENGINE_SCRIPTS[0]),
         ensureScript(MAP_ENGINE_SCRIPTS[1])
       ]);
+      let mapboxReady = mapboxStyle && mapboxScript && !!windowRef.mapboxgl;
 
-      const leafletReady = leafletStyle && leafletScript && !!windowRef.L;
-      const mapboxReady = mapboxStyle && mapboxScript && !!windowRef.mapboxgl;
-
-      // Do not let an engine with a missing stylesheet/script win selection.
-      if (!leafletReady) windowRef.L = undefined;
-      if (!mapboxReady) windowRef.mapboxgl = undefined;
-      if (!leafletReady && !mapboxReady) {
-        throw new Error("No se pudo cargar ningún motor cartográfico compatible.");
+      if (!mapboxReady) {
+        windowRef.mapboxgl = undefined;
+        loadedScripts.delete(MAP_ENGINE_SCRIPTS[1].src);
+        const [leafletStyle, leafletScript] = await Promise.all([
+          ensureStyle(MAP_STYLES[0]),
+          ensureScript(MAP_ENGINE_SCRIPTS[0])
+        ]);
+        const leafletReady = leafletStyle && leafletScript && !!windowRef.L;
+        if (!leafletReady) {
+          windowRef.L = undefined;
+          loadedScripts.delete(MAP_ENGINE_SCRIPTS[0].src);
+          throw new Error("No se pudo cargar ningún motor cartográfico compatible.");
+        }
       }
-
-      for (const script of MAP_SUPPORT_SCRIPTS) {
-        const loaded = await ensureScript(script);
-        if (!loaded) throw new Error("No se pudo cargar un componente del mapa: " + script.src);
-      }
+      const configScripts = MAP_SUPPORT_SCRIPTS.slice(0, 2);
+      const configReady = await Promise.all(configScripts.map(ensureScript));
+      if (configReady.some(ready => !ready)) throw new Error("No se pudo cargar la configuración del mapa.");
+      const runtimeScripts = MAP_SUPPORT_SCRIPTS.slice(2);
+      const runtimeReady = await Promise.all(runtimeScripts.map(ensureScript));
+      if (runtimeReady.some(ready => !ready)) throw new Error("No se pudieron cargar los componentes del mapa.");
 
       if (!windowRef.DanteMap || !windowRef.DanteGeocoding) {
         throw new Error("El motor cartográfico no terminó de inicializarse.");
