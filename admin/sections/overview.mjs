@@ -66,9 +66,8 @@ export async function mount({ root, openSection, loadAdminOverviewData }) {
       row.append(node(document, "p", "", count + (count === 1 ? " solicitud de viaje espera atención." : " solicitudes de viaje esperan atención.")));
       const button = node(document, "button", "secondary", "Revisar");
       button.type = "button";
-      const onOpenTrips = () => void openSection?.("trips");
-      button.addEventListener("click", onOpenTrips);
-      handlers.push([button, onOpenTrips]);
+      button.addEventListener("click", () => void openSection?.("trips"));
+      handlers.push([button, () => {}]);
       row.append(button);
       attentionList.append(row);
     }
