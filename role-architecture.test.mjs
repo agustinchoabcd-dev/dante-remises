@@ -46,7 +46,7 @@ test("Central operator and administrative workspace use separate templates", () 
   assert.match(adminModule, /context\.suspendDriverWorkspace\?\.\(\)/);
   assert.match(adminModule, /context\.unloadRoleMount\?\.\("driver"\)/);
   assert.match(adminModule, /context\.resumeDriverWorkspace\?\.\(\)/);
-  assert.match(adminModule, /context\.unloadRoleView\("central"\)/);
+  assert.ok(adminModule.includes('context.unloadRoleView?.("central")'));
   assert.match(adminModule, /workspaceController/);
   assert.match(html, /data-view="central">Central<\/button>/);
   assert.doesNotMatch(html, /Central \/ Operadores/);

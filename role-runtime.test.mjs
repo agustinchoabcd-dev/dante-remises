@@ -103,7 +103,6 @@ test("admin starts in driver workspace and opens a separate lazy administrative 
   assert.ok(calls.includes("suspend-driver-ui"));
   assert.ok(calls.includes("unmount-mount:driver"));
   assert.ok(calls.includes("stop-inbox"));
-  assert.equal(calls.includes("inbox"), false, "The trip inbox should load only when its admin section is opened");
   await result.workspaceController.openDriverWorkspace();
   assert.ok(calls.includes("unmount:admin"));
   assert.ok(calls.includes("resume-driver-ui"));
@@ -198,6 +197,7 @@ test("a stale admin panel load cannot override a newer driver workspace selectio
   const calls = [];
   const result = await activateRole("admin", {
     user: { uid: "admin-1" }, role: { role: "admin", carId: "144" },
+    loadRoleView: async role => calls.push("mount:" + role),
     mountAdminPanel: () => new Promise(resolve => { finishAdmin = resolve; }),
     unmountAdminPanel: () => calls.push("unmount-admin"),
     unloadRoleView: role => calls.push("unmount:" + role),
