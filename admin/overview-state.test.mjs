@@ -15,7 +15,7 @@ test("fleet counts manual availability separately from connection", () => {
       { id: "109", status: "libre", online: false }
     ]
   });
-  assert.deepEqual(model.fleet, { free: 2, busy: 1, outOfService: 1, disconnected: 2, total: 4 });
+  assert.deepEqual(model.fleet, { free: 1, busy: 1, outOfService: 1, disconnected: 2, total: 4 });
 });
 
 test("expired temporary status is treated as free", () => {
@@ -27,7 +27,7 @@ test("expired temporary status is treated as free", () => {
   assert.equal(model.fleet.busy, 0);
 });
 
-test("trip metrics use known lifecycle states and local calendar day", () => {
+test("expired free status does not make a disconnected car available", () => {\n  const model = buildAdminOverviewModel({ now: today, cars: [{ status: "ocupado", until: today - 1000, online: false }] });\n  assert.equal(model.fleet.free, 0);\n  assert.equal(model.fleet.disconnected, 1);\n});\n\ntest("trip metrics use known lifecycle states and local calendar day", () => {
   const model = buildAdminOverviewModel({
     now: today,
     trips: {
@@ -40,7 +40,7 @@ test("trip metrics use known lifecycle states and local calendar day", () => {
       g: { status: "rejected", createdAt: at(11) }
     }
   });
-  assert.deepEqual(model.stats, { todayTrips: 6, activeTrips: 2, completedToday: 1, cancelledToday: 1 });
+  assert.deepEqual(model.stats, { todayTrips: 6, activeTrips: 2, completedToday: 1, rejectedToday: 2 });
   assert.equal(model.pendingRequests, 1);
 });
 
