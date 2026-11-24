@@ -34,3 +34,8 @@ test("summary is data-driven and does not contain invented fleet or trip totals"
   assert.match(module, /loadAdminOverviewData/);
   assert.doesNotMatch(html, /4 vehículos registrados|[0-9]+ viajes hoy/);
 });
+
+test("admin overview state dependency is included in the Capacitor web bundle", async () => {
+  const copyScript = await readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8");
+  assert.match(copyScript, /"admin\/overview-state\.mjs"/);
+});
