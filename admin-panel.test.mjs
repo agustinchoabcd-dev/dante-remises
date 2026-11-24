@@ -20,10 +20,28 @@ test("trip history remains explicitly unavailable until the Firebase trip model 
   assert.doesNotMatch(html, /delete.*trip|eliminar.*viaje/i);
 });
 
-test("admin shell does not embed every operational section", async () => {
+test("admin shell uses the agreed expanded categorized menu and bottom profile", async () => {
   const html = await readFile(new URL("./views/admin/shell.html", import.meta.url), "utf8");
+  assert.match(html, /id="adminMenuToggle"/);
+  assert.match(html, /data-admin-menu-backdrop/);
+  assert.match(html, /id="adminMenuPanel"/);
+  for (const category of ["Operación", "Personas", "Sistema"]) assert.ok(html.includes(category));
+  assert.match(html, /Mi perfil/);
+  assert.match(html, /id="adminWorkspaceSelector"/);
+  for (const id of ["adminWorkspaceDriverButton", "adminWorkspaceOperatorButton", "adminWorkspacePassengerButton", "adminWorkspaceAllButton"]) {
+    assert.ok(html.includes('id="' + id + '"'), "Workspace control missing: " + id);
+  }
+  assert.doesNotMatch(html, /admin-module-nav|overflow-x:auto/);
   assert.match(html, /data-admin-content/);
   assert.doesNotMatch(html, /id="centralCars"|id="passengerList"|id="adminOperationalHealthContent"/);
+});
+
+test("admin navigation closes accessibly and guards stale section transitions", async () => {
+  const source = await readFile(new URL("./admin-panel.mjs", import.meta.url), "utf8");
+  assert.match(source, /function closeMenu/);
+  assert.match(source, /event\.key === "Escape"/);
+  assert.match(source, /request !== generation/);
+  assert.match(source, /previousModule/);
 });
 
 test("summary is data-driven and does not contain invented fleet or trip totals", async () => {
