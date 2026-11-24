@@ -19,7 +19,6 @@ const webAssets = [
   "views/driver.html",
   "views/central.html",
   "admin-panel.mjs",
-  "admin-panel.test.mjs",
   "admin/sections/overview.mjs",
   "admin/sections/fleet.mjs",
   "admin/sections/trips.mjs",

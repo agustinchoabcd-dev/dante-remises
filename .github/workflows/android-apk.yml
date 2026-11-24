@@ -176,7 +176,13 @@ jobs:
           node --check role-dom-bindings.mjs
           node --check driver-home-state.mjs
           node --check driver-inbox-state.mjs
-          node --check admin-panel.mjs\n          node --check admin/sections/overview.mjs\n          node --check admin/sections/fleet.mjs\n          node --check admin/sections/trips.mjs\n          node --check admin/sections/passengers.mjs\n          node --check admin/sections/health.mjs\n          node --check diagnostics-monitor.mjs
+          node --check admin-panel.mjs
+          node --check admin/sections/overview.mjs
+          node --check admin/sections/fleet.mjs
+          node --check admin/sections/trips.mjs
+          node --check admin/sections/passengers.mjs
+          node --check admin/sections/health.mjs
+          node --check diagnostics-monitor.mjs
           node --check driver-navigation-state.mjs
           node --check js/dante-map.js
           node --check js/dante-geocoding.js
