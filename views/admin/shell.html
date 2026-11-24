@@ -1,8 +1,22 @@
 <section class="admin-workspace">
-  <div class="card panel" id="adminWorkspaceSelector"><h3>Espacios de trabajo</h3><p class="muted">Tu cuenta conserva siempre los permisos de administrador. Elegí qué espacio querés utilizar.</p><div class="actions"><button class="secondary" id="adminWorkspaceDriverButton" type="button">Chófer</button><button class="secondary" id="adminWorkspaceOperatorButton" type="button">Operador</button><button class="secondary" id="adminWorkspacePassengerButton" type="button">Pasajero</button><button class="secondary" id="adminWorkspaceAllButton" type="button">Todos los roles</button></div></div>\n  <header class="admin-workspace-header">
-    <div><p class="eyebrow">DANTE REMISES · ADMINISTRACIÓN</p><h2 id="adminPanelHeading">Central</h2><p class="muted">Gestión general de la remisería</p></div>
+  <div class="card panel admin-workspace-selector" id="adminWorkspaceSelector">
+    <h3>Espacios de trabajo</h3>
+    <p class="muted">Tu cuenta conserva siempre los permisos de administrador. Elegí qué espacio querés utilizar.</p>
+    <div class="actions">
+      <button class="secondary" id="adminWorkspaceDriverButton" type="button">Chófer</button>
+      <button class="secondary" id="adminWorkspaceOperatorButton" type="button">Operador</button>
+      <button class="secondary" id="adminWorkspacePassengerButton" type="button">Pasajero</button>
+      <button class="secondary" id="adminWorkspaceAllButton" type="button">Todos los roles</button>
+    </div>
+  </div>
+  <div class="admin-workspace-header">
+    <div>
+      <p class="eyebrow">DANTE REMISES · ADMINISTRACIÓN</p>
+      <h2 id="adminPanelHeading">Resumen</h2>
+      <p class="muted">Gestión general de la remisería</p>
+    </div>
     <span class="admin-session-chip">Administrador · 144</span>
-  </header>
+  </div>
   <nav class="admin-module-nav" data-admin-nav aria-label="Secciones administrativas">
     <button class="secondary active" type="button" data-admin-section="overview" aria-current="page">Resumen</button>
     <button class="secondary" type="button" data-admin-section="fleet" aria-current="false">Flota</button>
@@ -10,6 +24,80 @@
     <button class="secondary" type="button" data-admin-section="passengers" aria-current="false">Pasajeros</button>
     <button class="secondary" type="button" data-admin-section="health" aria-current="false">Salud operativa</button>
   </nav>
-  <div class="admin-module-heading"><h3 data-admin-title>Resumen</h3><span class="hint" data-admin-status>Preparando administración…</span></div>
+  <div class="admin-module-heading">
+    <h3 data-admin-title>Resumen</h3>
+    <span class="hint" data-admin-status>Preparando administración…</span>
+  </div>
   <div class="admin-module-content" data-admin-content aria-live="polite"></div>
 </section>
+<style>
+.admin-workspace{display:grid;gap:18px;min-width:0}
+.admin-workspace-selector{max-width:none}
+.admin-workspace-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:2px 2px 0}
+.admin-workspace-header h2{margin:5px 0;font-size:clamp(22px,4vw,28px)}
+.admin-workspace-header p{margin:0}
+.admin-workspace-header .eyebrow{font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--accent)}
+.admin-session-chip{flex:0 0 auto;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);padding:8px 11px;border-radius:999px;font-size:11px;font-weight:750}
+.admin-module-nav{display:flex;gap:7px;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;padding:5px 2px 9px;scrollbar-width:thin}
+.admin-module-nav button{flex:0 0 auto;min-height:42px;padding:10px 14px;white-space:nowrap}
+.admin-module-nav button.active{background:linear-gradient(130deg,#008b43 0%,#00d96a 58%,#00f58a 100%);color:#03150b;border-color:transparent}
+.admin-module-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.admin-module-heading h3{margin:0}
+.admin-module-heading [data-admin-status]{text-align:right}
+.admin-module-content{min-width:0}
+.admin-overview{display:grid;gap:16px}
+.admin-overview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.admin-overview-toolbar p{margin:0;color:var(--muted);font-size:13px}
+.admin-overview-toolbar button{min-height:40px}
+.admin-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px}
+.admin-section-title h3{margin:0;font-size:16px}
+.admin-attention{border:1px solid color-mix(in srgb,var(--red) 38%,var(--line));border-left:4px solid var(--red);background:var(--redbg);border-radius:17px;padding:15px}
+.admin-attention h3{margin:0 0 8px;color:var(--red);font-size:16px}
+.admin-attention p{margin:0;color:var(--ink);font-size:13px}
+.admin-attention-list{display:grid;gap:9px}
+.admin-attention-item{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.admin-attention-item button{flex:0 0 auto}
+.admin-fleet-panel,.admin-stats-panel,.admin-quick-panel,.admin-activity-panel{min-width:0}
+.admin-fleet-indicators{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.admin-fleet-indicator{min-width:0;padding:13px 11px;border:1px solid var(--line);border-radius:15px;background:var(--surface);text-align:center}
+.admin-fleet-indicator strong{display:block;font-size:clamp(22px,5vw,29px);line-height:1.1;font-weight:850;font-variant-numeric:tabular-nums}
+.admin-fleet-indicator span{display:block;margin-top:6px;font-size:11px;font-weight:750;color:var(--muted)}
+.admin-fleet-indicator.libre strong{color:var(--green)}
+.admin-fleet-indicator.ocupado strong{color:var(--amber)}
+.admin-fleet-indicator.fuera strong{color:var(--red)}
+.admin-fleet-meta{margin:10px 0 0;font-size:11px;color:var(--muted)}
+.admin-stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.admin-stat{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--surface)}
+.admin-stat strong{display:block;font-size:clamp(22px,5vw,28px);font-weight:850;line-height:1.1;font-variant-numeric:tabular-nums}
+.admin-stat span{display:block;margin-top:6px;color:var(--muted);font-size:11px;font-weight:700}
+.admin-quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.admin-quick-card{display:flex;align-items:flex-start;gap:11px;width:100%;min-height:84px;padding:13px;text-align:left;border:1px solid var(--line);border-radius:15px;background:var(--surface);color:var(--ink)}
+.admin-quick-card:disabled{opacity:.78;cursor:default}
+.admin-quick-icon{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border-radius:11px;background:var(--surface-2);font-size:18px}
+.admin-quick-copy{display:grid;gap:4px;min-width:0}
+.admin-quick-copy strong{font-size:13px}
+.admin-quick-copy small{color:var(--muted);font-size:11px;line-height:1.35}
+.admin-quick-copy em{font-size:10px;color:var(--amber);font-style:normal;font-weight:750}
+.admin-activity-list{display:grid;gap:0}
+.admin-activity-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.admin-activity-item:last-child{border-bottom:0;padding-bottom:0}
+.admin-activity-item:first-child{padding-top:0}
+.admin-activity-main{min-width:0}
+.admin-activity-main strong{display:block;font-size:13px;overflow-wrap:anywhere}
+.admin-activity-main span{display:block;margin-top:4px;color:var(--muted);font-size:11px}
+.admin-activity-time{color:var(--muted);font-size:10px;white-space:nowrap;text-align:right}
+.admin-empty{padding:13px;border:1px dashed var(--line);border-radius:13px;color:var(--muted);font-size:12px}
+.admin-overview-loading{color:var(--muted);font-size:12px}
+@media(max-width:520px){
+ .admin-workspace{gap:14px}
+ .admin-workspace-header{align-items:flex-start}
+ .admin-session-chip{font-size:10px;padding:7px 9px}
+ .admin-fleet-indicators{gap:7px}
+ .admin-fleet-indicator{padding:12px 6px}
+ .admin-fleet-indicator span{font-size:10px}
+ .admin-quick-grid{gap:8px}
+ .admin-quick-card{gap:8px;padding:11px;min-height:90px}
+ .admin-quick-icon{flex-basis:32px;width:32px;height:32px;font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){.admin-quick-card{transition:none}}
+</style>

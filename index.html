@@ -3858,6 +3858,26 @@ onAuthStateChanged(auth,async user=>{
     startDriverGps,
     processPendingTripAction:()=>processPendingTripAction(()=>authGeneration===authStateGeneration),
     renderAdminOperationalHealth,
+    loadAdminOverviewData:async()=>{
+     if(!isAdminWorkspaceActive())throw new Error('El resumen administrativo no está disponible en este espacio de trabajo.');
+     refreshExpired();
+     let trips={},tripsAvailable=true;
+     try{
+      const snapshot=await get(ref(db,'trips'));
+      trips=snapshot.val()||{};
+     }catch(error){
+      tripsAvailable=false;
+      diagnostics.mark('admin.overview.trips.read.error',{code:error?.code||'',name:error?.name||'Error'});
+      console.warn('No se pudieron consultar los viajes para el resumen administrativo:',error);
+     }
+     if(authGeneration!==authStateGeneration||!isAdminWorkspaceActive())return {stale:true};
+     return {
+      cars:initial.map(item=>{const car=cars[item.id]||{};return {id:item.id,status:car.status||'desconectado',until:car.until||null,online:car.online===true}}),
+      trips,
+      tripsAvailable,
+      loadedAt:Date.now()
+     };
+    },
     flushRoleDomBindings,
     mountAdminPanel:async panelContext=>{
      const root=byId('adminViewMount');if(!root)throw new Error('Falta el contenedor administrativo');

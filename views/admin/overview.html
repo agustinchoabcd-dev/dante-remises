@@ -1,7 +1,55 @@
-<div class="grid admin-overview-grid">
-  <article class="card panel"><span class="muted">Flota</span><strong class="admin-metric-title">4 vehículos registrados</strong><p class="hint">Consultá disponibilidad, conexión y estado de cada coche.</p><button class="secondary" type="button" data-admin-go="fleet">Administrar flota</button></article>
-  <article class="card panel"><span class="muted">Viajes</span><strong class="admin-metric-title">Operación diaria</strong><p class="hint">Solicitudes pendientes y viajes en curso del coche 144.</p><button class="secondary" type="button" data-admin-go="trips">Ver viajes</button></article>
-  <article class="card panel"><span class="muted">Pasajeros</span><strong class="admin-metric-title">Directorio</strong><p class="hint">Consultá los perfiles registrados.</p><button class="secondary" type="button" data-admin-go="passengers">Ver pasajeros</button></article>
-  <article class="card panel"><span class="muted">Sistema</span><strong class="admin-metric-title">Salud operativa</strong><p class="hint">Conectividad, GPS, notificaciones, errores y rendimiento.</p><button class="secondary" type="button" data-admin-go="health">Abrir diagnóstico</button></article>
-</div>
-<div class="card panel"><strong>Centro de control</strong><p class="muted">Esta vista es un resumen. Cada área se carga por separado cuando la abrís; no se inicializan todos los módulos administrativos al entrar.</p><p class="hint">Las acciones críticas y los cambios de datos se mantienen en sus pantallas específicas.</p></div>
+<section class="admin-overview" aria-label="Resumen administrativo">
+  <div class="admin-overview-toolbar">
+    <p>Estado actual del servicio</p>
+    <button class="secondary" type="button" id="adminOverviewRefreshButton">↻ Actualizar</button>
+  </div>
+
+  <section class="admin-attention" id="adminOverviewAttention" hidden aria-live="polite">
+    <h3>Atención requerida</h3>
+    <div class="admin-attention-list" id="adminOverviewAttentionList"></div>
+  </section>
+
+  <section class="card panel admin-fleet-panel" aria-labelledby="adminOverviewFleetTitle">
+    <div class="admin-section-title">
+      <h3 id="adminOverviewFleetTitle">Disponibilidad de la flota</h3>
+      <button class="secondary" type="button" data-admin-go="fleet">Ver flota</button>
+    </div>
+    <div class="admin-fleet-indicators">
+      <div class="admin-fleet-indicator libre"><strong id="adminOverviewFree">—</strong><span>Libres</span></div>
+      <div class="admin-fleet-indicator ocupado"><strong id="adminOverviewBusy">—</strong><span>Ocupados</span></div>
+      <div class="admin-fleet-indicator fuera"><strong id="adminOverviewOut">—</strong><span>Fuera de servicio</span></div>
+    </div>
+    <p class="admin-fleet-meta" id="adminOverviewFleetMeta">Consultando disponibilidad…</p>
+  </section>
+
+  <section class="card panel admin-stats-panel" aria-labelledby="adminOverviewStatsTitle">
+    <div class="admin-section-title"><h3 id="adminOverviewStatsTitle">Estadísticas de hoy</h3></div>
+    <div class="admin-stats-grid">
+      <div class="admin-stat"><strong id="adminOverviewTodayTrips">—</strong><span>Viajes solicitados hoy</span></div>
+      <div class="admin-stat"><strong id="adminOverviewActiveTrips">—</strong><span>Viajes activos</span></div>
+      <div class="admin-stat"><strong id="adminOverviewCompletedTrips">—</strong><span>Finalizados hoy</span></div>
+      <div class="admin-stat"><strong id="adminOverviewCancelledTrips">—</strong><span>Cancelados hoy</span></div>
+    </div>
+    <p class="admin-fleet-meta" id="adminOverviewStatsMeta">Los valores se calculan con los registros disponibles.</p>
+  </section>
+
+  <section class="card panel admin-quick-panel" aria-labelledby="adminOverviewQuickTitle">
+    <div class="admin-section-title"><h3 id="adminOverviewQuickTitle">Accesos rápidos</h3></div>
+    <div class="admin-quick-grid">
+      <button class="admin-quick-card" type="button" data-admin-go="fleet"><span class="admin-quick-icon" aria-hidden="true">🚘</span><span class="admin-quick-copy"><strong>Flota</strong><small>Vehículos y disponibilidad</small></span></button>
+      <button class="admin-quick-card" type="button" data-admin-go="trips"><span class="admin-quick-icon" aria-hidden="true">🧾</span><span class="admin-quick-copy"><strong>Viajes</strong><small>Solicitudes y operación</small></span></button>
+      <button class="admin-quick-card" type="button" data-admin-go="passengers"><span class="admin-quick-icon" aria-hidden="true">👥</span><span class="admin-quick-copy"><strong>Pasajeros</strong><small>Directorio de cuentas</small></span></button>
+      <button class="admin-quick-card" type="button" data-admin-go="health"><span class="admin-quick-icon" aria-hidden="true">🩺</span><span class="admin-quick-copy"><strong>Salud operativa</strong><small>Conectividad y diagnóstico</small></span></button>
+      <button class="admin-quick-card" type="button" disabled aria-disabled="true"><span class="admin-quick-icon" aria-hidden="true">🪪</span><span class="admin-quick-copy"><strong>Verificaciones</strong><small>Revisión de identidad de pasajeros</small><em>Integración pendiente</em></span></button>
+    </div>
+  </section>
+
+  <section class="card panel admin-activity-panel" aria-labelledby="adminOverviewActivityTitle">
+    <div class="admin-section-title">
+      <h3 id="adminOverviewActivityTitle">Actividad reciente de viajes</h3>
+      <button class="secondary" type="button" data-admin-go="trips">Ver viajes</button>
+    </div>
+    <div class="admin-activity-list" id="adminOverviewActivityList"><div class="admin-overview-loading">Cargando actividad…</div></div>
+  </section>
+  <p class="hint" id="adminOverviewUpdatedAt" role="status" aria-live="polite">Consultando datos…</p>
+</section>
