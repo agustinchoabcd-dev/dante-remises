@@ -21,6 +21,11 @@ export async function mount({ root, openSection, loadAdminOverviewData }) {
   const attention = root.querySelector("#adminOverviewAttention");
   const attentionList = root.querySelector("#adminOverviewAttentionList");
   const activityList = root.querySelector("#adminOverviewActivityList");
+  const onAttentionClick = event => {
+    const button = event.target.closest?.("[data-admin-attention-open]");
+    if (button && attentionList?.contains(button)) void openSection?.("trips");
+  };
+  attentionList?.addEventListener("click", onAttentionClick);
 
   root.querySelectorAll("[data-admin-go]").forEach(button => {
     const handler = () => void openSection?.(button.dataset.adminGo);
@@ -66,8 +71,7 @@ export async function mount({ root, openSection, loadAdminOverviewData }) {
       row.append(node(document, "p", "", count + (count === 1 ? " solicitud de viaje espera atención." : " solicitudes de viaje esperan atención.")));
       const button = node(document, "button", "secondary", "Revisar");
       button.type = "button";
-      button.addEventListener("click", () => void openSection?.("trips"));
-      handlers.push([button, () => {}]);
+      button.dataset.adminAttentionOpen = "true";
       row.append(button);
       attentionList.append(row);
     }
@@ -122,6 +126,7 @@ export async function mount({ root, openSection, loadAdminOverviewData }) {
     disposed = true;
     requestVersion++;
     refreshButton?.removeEventListener("click", onRefresh);
+    attentionList?.removeEventListener("click", onAttentionClick);
     for (const [button, handler] of handlers) button.removeEventListener("click", handler);
   };
 }
