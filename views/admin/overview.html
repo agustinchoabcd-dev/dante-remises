@@ -11,7 +11,7 @@
 
   <section class="card panel admin-fleet-panel" aria-labelledby="adminOverviewFleetTitle">
     <div class="admin-section-title">
-      <h3 id="adminOverviewFleetTitle">Estado manual de la flota</h3>
+      <h3 id="adminOverviewFleetTitle">Disponibilidad efectiva de la flota</h3>
       <button class="secondary" type="button" data-admin-go="fleet">Ver flota</button>
     </div>
     <div class="admin-fleet-indicators">
@@ -28,9 +28,9 @@
       <div class="admin-stat"><strong id="adminOverviewTodayTrips">—</strong><span>Viajes solicitados hoy</span></div>
       <div class="admin-stat"><strong id="adminOverviewActiveTrips">—</strong><span>Viajes activos</span></div>
       <div class="admin-stat"><strong id="adminOverviewCompletedTrips">—</strong><span>Finalizados hoy</span></div>
-      <div class="admin-stat"><strong id="adminOverviewCancelledTrips">—</strong><span>Cancelados hoy</span></div>
+      <div class="admin-stat"><strong id="adminOverviewRejectedTrips">—</strong><span>Rechazados hoy</span></div>
     </div>
-    <p class="admin-fleet-meta" id="adminOverviewStatsMeta">Los valores se calculan con los registros disponibles.</p>
+    <p class="admin-fleet-meta" id="adminOverviewStatsMeta">Las solicitudes se cuentan por fecha de creación; los finalizados y rechazados, por fecha de cambio de estado.</p>
   </section>
 
   <section class="card panel admin-quick-panel" aria-labelledby="adminOverviewQuickTitle">
