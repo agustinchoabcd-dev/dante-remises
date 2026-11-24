@@ -18,6 +18,19 @@ const webAssets = [
   "views/passenger.html",
   "views/driver.html",
   "views/central.html",
+  "admin-panel.mjs",
+  "admin-panel.test.mjs",
+  "admin/sections/overview.mjs",
+  "admin/sections/fleet.mjs",
+  "admin/sections/trips.mjs",
+  "admin/sections/passengers.mjs",
+  "admin/sections/health.mjs",
+  "views/admin/shell.html",
+  "views/admin/overview.html",
+  "views/admin/fleet.html",
+  "views/admin/trips.html",
+  "views/admin/passengers.html",
+  "views/admin/health.html",
   "map-runtime-loader.mjs",
   "chat-runtime-loader.mjs",
   "roles/passenger.mjs",
@@ -46,6 +59,8 @@ await mkdir(new URL("assets/", destinationDirectory), { recursive: true });
 await mkdir(new URL("js/", destinationDirectory), { recursive: true });
 await mkdir(new URL("roles/", destinationDirectory), { recursive: true });
 await mkdir(new URL("views/", destinationDirectory), { recursive: true });
+await mkdir(new URL("admin/sections/", destinationDirectory), { recursive: true });
+await mkdir(new URL("views/admin/", destinationDirectory), { recursive: true });
 
 for (const asset of webAssets) {
   await copyFile(

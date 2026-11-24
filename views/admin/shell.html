@@ -1,0 +1,15 @@
+<section class="admin-workspace">
+  <div class="card panel" id="adminWorkspaceSelector"><h3>Espacios de trabajo</h3><p class="muted">Tu cuenta conserva siempre los permisos de administrador. Elegí qué espacio querés utilizar.</p><div class="actions"><button class="secondary" id="adminWorkspaceDriverButton" type="button">Chófer</button><button class="secondary" id="adminWorkspaceOperatorButton" type="button">Operador</button><button class="secondary" id="adminWorkspacePassengerButton" type="button">Pasajero</button><button class="secondary" id="adminWorkspaceAllButton" type="button">Todos los roles</button></div></div>\n  <header class="admin-workspace-header">
+    <div><p class="eyebrow">DANTE REMISES · ADMINISTRACIÓN</p><h2 id="adminPanelHeading">Central</h2><p class="muted">Gestión general de la remisería</p></div>
+    <span class="admin-session-chip">Administrador · 144</span>
+  </header>
+  <nav class="admin-module-nav" data-admin-nav aria-label="Secciones administrativas">
+    <button class="secondary active" type="button" data-admin-section="overview" aria-current="page">Resumen</button>
+    <button class="secondary" type="button" data-admin-section="fleet" aria-current="false">Flota</button>
+    <button class="secondary" type="button" data-admin-section="trips" aria-current="false">Viajes</button>
+    <button class="secondary" type="button" data-admin-section="passengers" aria-current="false">Pasajeros</button>
+    <button class="secondary" type="button" data-admin-section="health" aria-current="false">Salud operativa</button>
+  </nav>
+  <div class="admin-module-heading"><h3 data-admin-title>Resumen</h3><span class="hint" data-admin-status>Preparando administración…</span></div>
+  <div class="admin-module-content" data-admin-content aria-live="polite"></div>
+</section>

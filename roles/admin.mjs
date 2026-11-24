@@ -1,21 +1,17 @@
 export async function activate(context) {
   if (context.isCurrent && !context.isCurrent()) return { stale: true };
-
   const driverModule = await import("./driver.mjs");
   context.setWorkspaceRole?.("driver");
   const initialMount = await driverModule.mount(context);
   if (initialMount?.stale || (context.isCurrent && !context.isCurrent())) return { stale: true };
-
   const isCurrent = () => !context.isCurrent || context.isCurrent();
   let workspaceGeneration = 0;
   const isWorkspaceCurrent = generation => isCurrent() && generation === workspaceGeneration;
-  const workspaceContext = generation => Object.freeze({
-    ...context,
-    isCurrent: () => isWorkspaceCurrent(generation)
-  });
+  const workspaceContext = generation => Object.freeze({ ...context, isCurrent: () => isWorkspaceCurrent(generation) });
   const stopOperator = async () => { await context.stopOperatorPresence?.(); };
   const stopPassenger = () => { context.suspendPassengerWorkspace?.(); };
   const suspendDriver = () => { context.suspendDriverWorkspace?.(); };
+  const unmountAdmin = async () => { await context.unmountAdminPanel?.(); };
 
   const workspaceController = Object.freeze({
     async openAdminPanel({ keepAllRoles = false } = {}) {
@@ -23,25 +19,17 @@ export async function activate(context) {
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
+      await unmountAdmin();
+      context.unloadRoleView?.("central");
       stopPassenger();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("admin");
-
-      // Reuse the existing Central module for its view/template lifecycle.
-      const centralModule = await import("./operator.mjs");
-      const mounted = await centralModule.mount(workspaceContext(generation));
+      const mounted = await context.mountAdminPanel?.(workspaceContext(generation));
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
-
       suspendDriver();
       context.unloadRoleMount?.("driver");
-      context.setAdminTripAlertPanel(true);
-      context.renderAdminDriverTripSummary?.();
-      context.listenDriverInbox?.();
-      context.renderAdminOperationalHealth?.();
-      void Promise.resolve(context.loadAdminProfiles?.()).catch(error => {
-        console.error("No se pudieron cargar los perfiles administrativos:", error);
-      });
-      return { view: "central" };
+      context.stopDriverInbox?.();
+      return { view: "admin" };
     },
 
     async openDriverWorkspace({ keepAllRoles = false } = {}) {
@@ -49,15 +37,13 @@ export async function activate(context) {
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
+      await unmountAdmin();
       stopPassenger();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("driver");
-
-      const driverModule = await import("./driver.mjs");
       const mounted = await driverModule.mount(workspaceContext(generation));
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
-
-      context.unloadRoleView("central");
+      context.unloadRoleView?.("central");
       await context.resumeDriverWorkspace?.();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       return { view: "inicio" };
@@ -68,17 +54,16 @@ export async function activate(context) {
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
+      await unmountAdmin();
       stopPassenger();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("operator");
-
       const operatorModule = await import("./operator.mjs");
       const mounted = await operatorModule.mount(workspaceContext(generation));
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
-
       suspendDriver();
       context.unloadRoleMount?.("driver");
-      context.setAdminTripAlertPanel(false);
+      context.setAdminTripAlertPanel?.(false);
       context.listenDriverInbox?.();
       context.startOperatorPresence?.();
       return { view: "central" };
@@ -89,16 +74,15 @@ export async function activate(context) {
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       await stopOperator();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
+      await unmountAdmin();
       stopPassenger();
       suspendDriver();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("passenger");
-
       const passengerModule = await import("./passenger.mjs");
       const mounted = await passengerModule.mount(workspaceContext(generation));
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
-
-      context.unloadRoleView("central");
+      context.unloadRoleView?.("central");
       await context.resumePassengerWorkspace?.();
       if (!isWorkspaceCurrent(generation)) return { stale: true };
       return mounted;
@@ -107,7 +91,6 @@ export async function activate(context) {
     async openAllRolesWorkspace() {
       return workspaceController.openDriverWorkspace({ keepAllRoles: true });
     },
-
     async selectAllRole(role) {
       if (role === "admin") return workspaceController.openAdminPanel({ keepAllRoles: true });
       if (role === "driver") return workspaceController.openDriverWorkspace({ keepAllRoles: true });
@@ -118,14 +101,8 @@ export async function activate(context) {
   });
 
   const background = (async () => {
-    const results = await Promise.allSettled([
-      context.initializeAdminCars(),
-      driverModule.activateDriverOperations(context)
-    ]);
-    for (const result of results) {
-      if (result.status === "rejected") console.error("No se pudo completar una tarea secundaria del administrador:", result.reason);
-    }
+    const results = await Promise.allSettled([context.initializeAdminCars(), driverModule.activateDriverOperations(context)]);
+    for (const result of results) if (result.status === "rejected") console.error("No se pudo completar una tarea secundaria del administrador:", result.reason);
   })();
-
   return { view: initialMount.view, background, workspaceController };
 }

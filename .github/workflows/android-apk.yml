@@ -12,6 +12,9 @@ on:
     paths:
       - '.github/workflows/android-apk.yml'
       - 'index.html'
+      - 'admin-panel.mjs'\n      - 'admin-panel.test.mjs'\n      - 'admin/**'\n      - 'admin/**'
+      - 'admin-panel.mjs'
+      - 'admin-panel.test.mjs'
       - 'diagnostics-monitor.mjs'
       - 'diagnostics-monitor.test.mjs'
       - 'role-template-loader.mjs'
@@ -77,6 +80,9 @@ on:
       - 'role-view-access.test.mjs'
       - 'map-runtime-loader.mjs'
       - 'chat-runtime-loader.mjs'
+      - 'admin/**'
+      - 'admin-panel.mjs'
+      - 'admin-panel.test.mjs'
       - 'roles/**'
       - 'role-transition.test.mjs'
       - 'role-runtime.test.mjs'
@@ -170,7 +176,7 @@ jobs:
           node --check role-dom-bindings.mjs
           node --check driver-home-state.mjs
           node --check driver-inbox-state.mjs
-          node --check diagnostics-monitor.mjs
+          node --check admin-panel.mjs\n          node --check admin/sections/overview.mjs\n          node --check admin/sections/fleet.mjs\n          node --check admin/sections/trips.mjs\n          node --check admin/sections/passengers.mjs\n          node --check admin/sections/health.mjs\n          node --check diagnostics-monitor.mjs
           node --check driver-navigation-state.mjs
           node --check js/dante-map.js
           node --check js/dante-geocoding.js
@@ -186,7 +192,7 @@ jobs:
           node --check service-worker.js
           node --check scripts/patch-android-audio.mjs
           node --check scripts/patch-android-trip-alerts.mjs
-          node --test diagnostics-monitor.test.mjs driver-home-state.test.mjs driver-inbox-state.test.mjs driver-navigation-state.test.mjs session-logout.test.mjs role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs role-view-access.test.mjs role-template-loader.test.mjs role-dom-bindings.test.mjs role-architecture.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
+          node --test admin-panel.test.mjs diagnostics-monitor.test.mjs driver-home-state.test.mjs driver-inbox-state.test.mjs driver-navigation-state.test.mjs session-logout.test.mjs role-resolver.test.mjs role-transition.test.mjs role-runtime.test.mjs role-view-access.test.mjs role-template-loader.test.mjs role-dom-bindings.test.mjs role-architecture.test.mjs map-runtime-loader.test.mjs chat-runtime-loader.test.mjs chat-ui.test.mjs trip-alerts-client.test.mjs trip-alerts-ui.test.mjs
 
       # Rebuild after the Electric Green theme and header/session UI refinements.
       # Build de QA para pantalla animada de inicio y corrección circular del logo.
