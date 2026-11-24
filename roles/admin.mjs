@@ -26,6 +26,7 @@ export async function activate(context) {
       context.setWorkspaceRole?.("admin");
       const mounted = await context.mountAdminPanel?.(workspaceContext(generation));
       if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
+      context.showView?.("central");
       suspendDriver();
       context.unloadRoleMount?.("driver");
       context.stopDriverInbox?.();

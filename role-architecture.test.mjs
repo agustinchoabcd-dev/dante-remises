@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, centralTemplate, roleDomBindings, passengerModule, driverModule, operatorModule, adminModule, mapAdapter, diagnosticsMonitor, driverInboxState] = await Promise.all([
+const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, passengerTemplate, driverTemplate, centralTemplate, roleDomBindings, passengerModule, driverModule, operatorModule, adminModule, mapAdapter, diagnosticsMonitor, driverInboxState, adminShell, adminHealthTemplate] = await Promise.all([
   readFile(new URL("./index.html", import.meta.url), "utf8"),
   readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8"),
   readFile(new URL("./service-worker.js", import.meta.url), "utf8"),
@@ -18,22 +18,25 @@ const [html, copyScript, serviceWorker, roleViewAccess, roleTemplateLoader, pass
   readFile(new URL("./roles/admin.mjs", import.meta.url), "utf8"),
   readFile(new URL("./js/dante-map.js", import.meta.url), "utf8"),
   readFile(new URL("./diagnostics-monitor.mjs", import.meta.url), "utf8"),
-  readFile(new URL("./driver-inbox-state.mjs", import.meta.url), "utf8")
+  readFile(new URL("./driver-inbox-state.mjs", import.meta.url), "utf8"),
+  readFile(new URL("./views/admin/shell.html", import.meta.url), "utf8"),
+  readFile(new URL("./views/admin/health.html", import.meta.url), "utf8")
 ]);
 
 
-test("Central HTML is physically extracted and mounted for operators and administrators", () => {
-  assert.ok(html.includes('<section id="central" class="hidden"><div id="centralViewMount"></div></section>'));
+test("Central operator and administrative workspace use separate templates", () => {
+  assert.ok(html.includes('<section id="central" class="hidden"><div id="centralViewMount"></div><div id="adminViewMount"></div></section>'));
   assert.equal(html.includes('<h2>Central de Dante Remises</h2>'), false);
   assert.ok(centralTemplate.includes('<h2>Central de Dante Remises</h2>'));
-  assert.ok(centralTemplate.includes('id="adminOperationalHealthPanel"'));
-  for (const id of ["centralDescription","centralAuthStatus","adminTripAlertPanel","adminDriverTripInbox","adminDriverActiveTrip","centralCars","passengerAdmin","passengerList"]) {
-    assert.ok(centralTemplate.includes('id="' + id + '"'), "Missing Central control: " + id);
-  }
+  assert.ok(centralTemplate.includes('id="centralCars"'));
+  assert.ok(adminShell.includes('id="adminWorkspaceSelector"'));
+  assert.ok(adminShell.includes('data-admin-content'));
+  assert.ok(adminHealthTemplate.includes('id="adminOperationalHealthContent"'));
   assert.ok(roleTemplateLoader.includes('central: "./views/central.html"'));
   assert.ok(operatorModule.includes('loadRoleView("central")'));
   assert.match(adminModule, /driverModule\.mount\(context\)/);
-  assert.match(adminModule, /centralModule\.mount\(workspaceContext\(generation\)\)/);
+  assert.match(adminModule, /context\.mountAdminPanel\?\.\(workspaceContext\(generation\)\)/);
+  assert.doesNotMatch(adminModule, /centralModule\.mount/);
   assert.match(driverModule, /context\.showView\("inicio"\)/);
   assert.match(html, /id="adminWorkspaceSettingsCard"/);
   assert.match(html, /id="openAdminWorkspaceButton"/);

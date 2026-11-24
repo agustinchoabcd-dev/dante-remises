@@ -75,51 +75,42 @@ test("operator activation does not load driver operations", async () => {
   assert.deepEqual(calls, ["mount:central", "view:central", "operator-presence"]);
 });
 
-test("admin starts in driver workspace and swaps mutually exclusive templates without changing role", async () => {
+test("admin starts in driver workspace and opens a separate lazy administrative workspace", async () => {
   const calls = [];
   const result = await activateRole("admin", {
-    user: { uid: "admin-1" },
-    role: { role: "admin", carId: "144" },
+    user: { uid: "admin-1" }, role: { role: "admin", carId: "144" },
     loadRoleView: async role => calls.push("mount:" + role),
     unloadRoleView: role => calls.push("unmount:" + role),
     unloadRoleMount: role => calls.push("unmount-mount:" + role),
+    mountAdminPanel: async () => { calls.push("mount:admin"); return {}; },
+    unmountAdminPanel: async () => calls.push("unmount:admin"),
     showView: view => calls.push("view:" + view),
     suspendDriverWorkspace: () => calls.push("suspend-driver-ui"),
     resumeDriverWorkspace: async () => calls.push("resume-driver-ui"),
-    setAdminTripAlertPanel: enabled => calls.push("admin-alerts:" + enabled),
-    renderAdminDriverTripSummary: () => calls.push("admin-trip-summary"),
-    loadAdminProfiles: async () => calls.push("profiles"),
     initializeAdminCars: async () => calls.push("cars"),
     syncDriverPushRegistration: () => calls.push("push"),
     listenDriverInbox: () => calls.push("inbox"),
+    stopDriverInbox: () => calls.push("stop-inbox"),
     restoreDriverActiveTrip: async () => calls.push("restore"),
     startDriverGps: () => calls.push("gps"),
     processPendingTripAction: async () => calls.push("pending")
   });
-
   assert.equal(result.view, "inicio");
   assert.deepEqual(calls.slice(0, 2), ["mount:driver", "view:inicio"]);
-  assert.equal(typeof result.workspaceController.openAdminPanel, "function");
   await result.workspaceController.openAdminPanel();
-  assert.ok(calls.includes("mount:central"));
+  assert.ok(calls.includes("mount:admin"));
+  assert.ok(calls.includes("view:central"));
   assert.ok(calls.includes("suspend-driver-ui"));
   assert.ok(calls.includes("unmount-mount:driver"));
-  assert.ok(calls.includes("admin-alerts:true"));
-  assert.ok(calls.includes("admin-trip-summary"));
-  assert.ok(calls.includes("view:central"));
-  await Promise.resolve();
-
+  assert.ok(calls.includes("stop-inbox"));
+  assert.equal(calls.includes("inbox"), false, "The trip inbox should load only when its admin section is opened");
   await result.workspaceController.openDriverWorkspace();
-  const returnSteps = ["mount:driver", "view:inicio", "unmount:central", "resume-driver-ui"].map(item => calls.lastIndexOf(item));
-  assert.ok(returnSteps.every((position, index) => position >= 0 && (index === 0 || position > returnSteps[index - 1])));
+  assert.ok(calls.includes("unmount:admin"));
   assert.ok(calls.includes("resume-driver-ui"));
-  assert.ok(calls.includes("unmount:central"));
-  assert.equal(calls.filter(call => call === "unmount:driver").length, 0, "A mounted Passenger view must not be cleared by unloading its sibling role");
   await result.background;
-  for (const operation of ["cars", "push", "inbox", "restore", "gps", "pending"]) {
-    assert.ok(calls.includes(operation), "Missing admin driver operation: " + operation);
-  }
+  for (const operation of ["cars", "push", "inbox", "restore", "gps", "pending"]) assert.ok(calls.includes(operation), "Missing admin driver operation: " + operation);
 });
+
 
 test("stale passenger auth callback cannot reveal its view after a newer login", async () => {
   let current = true;
@@ -202,14 +193,13 @@ test("admin can enter operator and passenger workspaces while retaining the admi
   await result.background;
 });
 
-test("a stale Central load cannot override a newer driver workspace selection", async () => {
-  let finishCentral;
+test("a stale admin panel load cannot override a newer driver workspace selection", async () => {
+  let finishAdmin;
   const calls = [];
   const result = await activateRole("admin", {
     user: { uid: "admin-1" }, role: { role: "admin", carId: "144" },
-    loadRoleView: role => role === "central"
-      ? new Promise(resolve => { finishCentral = resolve; })
-      : Promise.resolve({}),
+    mountAdminPanel: () => new Promise(resolve => { finishAdmin = resolve; }),
+    unmountAdminPanel: () => calls.push("unmount-admin"),
     unloadRoleView: role => calls.push("unmount:" + role),
     unloadRoleMount: role => calls.push("unmount-mount:" + role),
     showView: view => calls.push("view:" + view),
@@ -217,23 +207,23 @@ test("a stale Central load cannot override a newer driver workspace selection", 
     initializeAdminCars: async () => {},
     syncDriverPushRegistration: async () => {},
     listenDriverInbox: () => {},
+    stopDriverInbox: () => {},
     restoreDriverActiveTrip: async () => {},
     startDriverGps: () => {},
     processPendingTripAction: async () => {}
   });
-  const central = result.workspaceController.openAdminPanel();
-  for (let attempt = 0; attempt < 10 && !finishCentral; attempt++) {
-    await new Promise(resolve => setImmediate(resolve));
-  }
-  assert.equal(typeof finishCentral, "function", "Central mount should begin before a newer workspace is selected");
+  const adminOpening = result.workspaceController.openAdminPanel();
+  for (let attempt = 0; attempt < 10 && !finishAdmin; attempt++) await new Promise(resolve => setImmediate(resolve));
+  assert.equal(typeof finishAdmin, "function", "Admin panel mount should begin before a newer workspace is selected");
   const driver = await result.workspaceController.openDriverWorkspace();
-  finishCentral({});
-  const staleCentral = await central;
+  finishAdmin({});
+  const staleAdmin = await adminOpening;
   assert.deepEqual(driver, { view: "inicio" });
-  assert.deepEqual(staleCentral, { stale: true });
+  assert.deepEqual(staleAdmin, { stale: true });
   assert.equal(calls.includes("view:central"), false);
   await result.background;
 });
+
 
 test("all-roles workspace is one shell that navigates existing modules on demand", async () => {
   const calls = [];

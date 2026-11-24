@@ -9,7 +9,7 @@ test("administrative sections are separate lazy-loaded templates and modules", a
     assert.ok(source.includes("./views/admin/" + section + ".html"));
     assert.ok(source.includes("./admin/sections/" + section + ".mjs"));
   }
-  assert.match(source, /Promise.all([/);
+  assert.ok(source.includes("Promise.all(["));
   assert.match(source, /activeModule?.unmount/);
   assert.match(source, /generation/);
 });
