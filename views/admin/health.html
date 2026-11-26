@@ -1,1 +1,8 @@
-<div class="card panel"><div class="actions" style="justify-content:space-between"><div><h3>Salud operativa</h3><p class="muted">Estado de conectividad, Firebase, GPS, alertas, diagnóstico y rendimiento de esta sesión.</p></div><button class="secondary" id="adminHealthRefreshButton" type="button">Actualizar</button></div><div id="adminOperationalHealthContent" class="muted">Recopilando estado operativo…</div><p class="hint" id="adminOperationalHealthUpdatedAt">Aún no actualizado.</p></div>
+<section class="admin-directory-section">
+  <header class="admin-section-heading">
+    <div><h3>Salud operativa</h3><p>Diagnóstico de conectividad, Firebase, GPS, alertas, errores y rendimiento de esta sesión. No representa un historial persistente.</p></div>
+    <button class="secondary" id="adminHealthRefreshButton" type="button">↻ Actualizar</button>
+  </header>
+  <div id="adminOperationalHealthContent" aria-live="polite"><div class="admin-history-empty">Recopilando estado operativo…</div></div>
+  <p class="hint" id="adminOperationalHealthUpdatedAt">Aún no actualizado.</p>
+</section>

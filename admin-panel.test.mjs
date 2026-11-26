@@ -94,3 +94,14 @@ test("staff directory is a separate read-only module and its assets are copied t
     assert.ok(copyScript.includes('"' + asset + '"'), "Missing admin asset: " + asset);
   }
 });
+
+test("admin sections use the available width and keep health content responsive", async () => {
+  const shell = await readFile(new URL("./views/admin/shell.html", import.meta.url), "utf8");
+  const health = await readFile(new URL("./views/admin/health.html", import.meta.url), "utf8");
+  assert.match(shell, /\.admin-workspace \.card\.panel\{width:100%;max-width:none;margin:0\}/);
+  assert.match(shell, /\.admin-history-controls\{display:grid/);
+  assert.match(shell, /@media\(max-width:380px\)/);
+  assert.match(health, /class="admin-section-heading"/);
+  assert.match(health, /id="adminHealthRefreshButton"/);
+  assert.match(health, /no representa un historial persistente/);
+});

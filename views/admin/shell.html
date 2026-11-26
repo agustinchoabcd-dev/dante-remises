@@ -62,6 +62,13 @@
 .admin-workspace{display:grid;gap:16px;min-width:0}
 
 .admin-workspace .card.panel{width:100%;max-width:none;margin:0}
+.admin-workspace .admin-health-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:11px}
+.admin-overview-toolbar{flex-wrap:wrap}
+.admin-topbar{flex-wrap:wrap}
+@media(max-width:380px){
+ .admin-activity-item{grid-template-columns:minmax(0,1fr)}
+ .admin-activity-time{text-align:left}
+}
 .admin-workspace .admin-module-content{display:grid;gap:16px}
 .admin-workspace .admin-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .admin-workspace .admin-section-heading h3{margin:0 0 5px;font-size:17px}
