@@ -3872,20 +3872,33 @@ onAuthStateChanged(auth,async user=>{
     loadAdminOverviewData:async()=>{
      if(!isAdminWorkspaceActive())throw new Error('El resumen administrativo no está disponible en este espacio de trabajo.');
      refreshExpired();
-     let trips={},tripsAvailable=true;
+     // Las reglas actuales no permiten enumerar /trips; sí permiten al admin leer
+     // su bandeja tripInbox/144 y cada viaje individual referenciado allí.
+     let trips={},tripsAvailable=false,pendingRequests=[],pendingRequestsAvailable=true;
      try{
-      const snapshot=await get(ref(db,'trips'));
-      trips=snapshot.val()||{};
+      const inboxSnapshot=await get(ref(db,'tripInbox/144'));
+      const inbox=inboxSnapshot.val()||{};
+      const pendingIds=[...new Set(Object.values(inbox)
+       .filter(item=>item&&item.status==='requested'&&typeof item.tripId==='string'&&item.tripId.trim())
+       .map(item=>item.tripId.trim()))];
+      const pendingRows=await Promise.all(pendingIds.map(async tripId=>{
+       const tripSnapshot=await get(ref(db,'trips/'+tripId));
+       const trip=tripSnapshot.val();
+       return trip&&trip.status==='requested'?{...trip,tripId}:null;
+      }));
+      pendingRequests=pendingRows.filter(Boolean);
      }catch(error){
-      tripsAvailable=false;
-      diagnostics.mark('admin.overview.trips.read.error',{code:error?.code||'',name:error?.name||'Error'});
-      console.warn('No se pudieron consultar los viajes para el resumen administrativo:',error);
+      pendingRequestsAvailable=false;
+      diagnostics.mark('admin.overview.pending-inbox.read.error',{code:error?.code||'',name:error?.name||'Error'});
+      console.warn('No se pudieron consultar las solicitudes pendientes del coche 144:',error);
      }
      if(authGeneration!==authStateGeneration||!isAdminWorkspaceActive())return {stale:true};
      return {
       cars:initial.map(item=>{const car=cars[item.id]||{};return {id:item.id,status:car.status||'desconectado',until:car.until||null,online:car.online===true}}),
       trips,
       tripsAvailable,
+      pendingRequests,
+      pendingRequestsAvailable,
       loadedAt:Date.now()
      };
     },
