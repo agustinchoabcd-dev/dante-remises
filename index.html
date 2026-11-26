@@ -463,7 +463,18 @@ body.driver-home-map-active #driverHomeMap .leaflet-bottom{bottom:96px}
 @media(max-width:600px){#inicio.driver-home{padding-bottom:100px}.driver-home-status{margin:4px auto 10px;font-size:14px}.driver-home-map-shell{border-radius:15px}.driver-home-map{height:clamp(300px,54vh,560px);border-radius:15px}.driver-connect-button{left:12px;right:12px;min-height:60px}}
 @media(prefers-reduced-motion:reduce){.driver-home-curtain{transition:none}}
 </style>
-<style id="dante-admin-workspace-cleanup">body.admin-workspace-active .driver-home-map-home{display:none!important}.admin-workspace{display:grid;gap:14px}.admin-workspace-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px;border-radius:16px;background:var(--card-bg,rgba(255,255,255,.06));border:1px solid var(--border-color,rgba(128,128,128,.2))}.admin-workspace-header h2{margin:3px 0}.admin-workspace-header .eyebrow{font-size:11px;letter-spacing:.12em;font-weight:800;color:var(--accent,#22a06b);margin:0}.admin-session-chip{font-size:12px;padding:7px 10px;border-radius:999px;background:rgba(34,160,107,.12);color:var(--accent,#22a06b)}.admin-module-nav{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:thin}.admin-module-nav button{flex:0 0 auto;min-height:42px}.admin-module-nav button.active{background:var(--accent,#168b59);color:#fff;border-color:transparent}.admin-module-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}.admin-module-heading h3{margin:0}.admin-module-content{display:grid;gap:12px}.admin-metric-title{display:block;font-size:18px;margin:8px 0}.admin-overview-grid .card{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.admin-overview-grid button{margin-top:auto}</style>
+<style id="dante-admin-workspace-cleanup">
+/* El espacio administrativo no debe dejar visible ningún resto del inicio del chófer. */
+body.admin-workspace-active #inicio,
+body.admin-workspace-active #inicio *,
+body.admin-workspace-active .driver-home-map-shell,
+body.admin-workspace-active #driverHomeMap,
+body.admin-workspace-active .driver-home-status,
+body.admin-workspace-active .driver-home-curtain,
+body.admin-workspace-active .driver-connect-button,
+body.admin-workspace-active .driver-home-map-home{display:none!important}
+.admin-workspace{display:grid;gap:12px;min-width:0}
+</style>
 </head>
 <body>
 <div id="startupScreen" class="startup-screen" role="status" aria-live="polite" aria-label="Iniciando Dante Remises">
