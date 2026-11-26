@@ -110,6 +110,6 @@ test("health refresh button is owned by the lazy health module, not bound twice 
   const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
   const module = await readFile(new URL("./admin/sections/health.mjs", import.meta.url), "utf8");
   assert.doesNotMatch(html, /bindRoleDom\('adminHealthRefreshButton'/);
-  assert.match(module, /addEventListener\("click",refresh\)/);
-  assert.match(module, /removeEventListener\("click",refresh\)/);
+  assert.match(module, /addEventListener\("click",\s*refresh\)/);
+  assert.match(module, /removeEventListener\("click",\s*refresh\)/);
 });
