@@ -22,7 +22,7 @@ export async function mount({ root, listenDriverInbox, stopDriverInbox, renderAd
     if (!list || disposed) return;
     list.replaceChildren();
     if (!available) {
-      list.append(element(root.ownerDocument,"div","admin-history-empty","No se pudo consultar el historial. Actualizá para volver a intentarlo."));
+      list.append(element(root.ownerDocument,"div","admin-history-empty","El historial completo no se puede enumerar con las reglas actuales de Firebase. La bandeja de solicitudes y el viaje activo del coche 144 siguen disponibles arriba."));
       if (count) count.textContent = "Historial no disponible";
       return;
     }
