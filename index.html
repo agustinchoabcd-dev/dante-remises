@@ -464,15 +464,21 @@ body.driver-home-map-active #driverHomeMap .leaflet-bottom{bottom:96px}
 @media(prefers-reduced-motion:reduce){.driver-home-curtain{transition:none}}
 </style>
 <style id="dante-admin-workspace-cleanup">
-/* El espacio administrativo no debe dejar visible ningún resto del inicio del chófer. */
-body.admin-workspace-active #inicio,
-body.admin-workspace-active #inicio *,
-body.admin-workspace-active .driver-home-map-shell,
-body.admin-workspace-active #driverHomeMap,
-body.admin-workspace-active .driver-home-status,
-body.admin-workspace-active .driver-home-curtain,
-body.admin-workspace-active .driver-connect-button,
-body.admin-workspace-active .driver-home-map-home{display:none!important}
+/* El espacio administrativo no debe dejar visible ningún resto del inicio del chófer.
+   El panel admin y la vista del chófer son montajes hermanos; la presencia del shell
+   administrativo es la señal fiable, incluso durante transiciones de rol. */
+body:has(#adminViewMount .admin-workspace) #roleViewMount #inicio,
+body:has(#adminViewMount .admin-workspace) #roleViewMount #inicio *,
+body:has(#adminViewMount .admin-workspace) #driverHomeStatusDot,
+body:has(#adminViewMount .admin-workspace) .driver-home-map-shell,
+body:has(#adminViewMount .admin-workspace) #driverHomeMap,
+body:has(#adminViewMount .admin-workspace) .driver-home-status,
+body:has(#adminViewMount .admin-workspace) .driver-home-curtain,
+body:has(#adminViewMount .admin-workspace) .driver-connect-button,
+body:has(#adminViewMount .admin-workspace) .driver-home-map-home,
+body.admin-workspace-active #roleViewMount #inicio,
+body.admin-workspace-active #roleViewMount #inicio *,
+body.admin-workspace-active #driverHomeStatusDot{display:none!important}
 .admin-workspace{display:grid;gap:12px;min-width:0}
 </style>
 </head>
