@@ -665,7 +665,7 @@ let allRolesMode = false;
 let adminWorkspaceController = null;
 function currentWorkspaceRole(){return currentRole?.role==='admin'?(activeWorkspaceRole||'driver'):(currentRole?.role||null)}
 function setAllRolesMode(enabled){if(currentRole?.role!=='admin')return false;allRolesMode=Boolean(enabled);byId('allRolesWorkspace')?.classList.toggle('hidden',!allRolesMode);byId('adminWorkspaceReturnWrap')?.classList.toggle('hidden',!(allRolesMode||['operator','passenger'].includes(activeWorkspaceRole)));return true}
-function setWorkspaceRole(role){if(currentRole?.role!=='admin'||!['driver','operator','passenger','admin'].includes(role))return false;activeWorkspaceRole=role;document.body.classList.toggle('admin-workspace-active',role==='admin');byId('adminWorkspaceReturnWrap')?.classList.toggle('hidden',!(allRolesMode||['operator','passenger'].includes(role)));const status=byId('allRolesWorkspaceStatus');if(status)status.textContent='Espacio activo: '+({admin:'Administración',driver:'Chófer',operator:'Operador',passenger:'Pasajero'}[role]||role);return true}
+function setWorkspaceRole(role){if(currentRole?.role!=='admin'||!['driver','operator','passenger','admin'].includes(role))return false;activeWorkspaceRole=role;document.body.classList.toggle('admin-workspace-active',role==='admin');byId('postLoginGreeting')?.classList.toggle('hidden',role==='admin');byId('adminWorkspaceReturnWrap')?.classList.toggle('hidden',!(allRolesMode||['operator','passenger'].includes(role)));const status=byId('allRolesWorkspaceStatus');if(status)status.textContent='Espacio activo: '+({admin:'Administración',driver:'Chófer',operator:'Operador',passenger:'Pasajero'}[role]||role);return true}
 function isDriverWorkspaceActive(){return currentWorkspaceRole()==='driver'}
 function isOperatorWorkspaceActive(){return currentWorkspaceRole()==='operator'}
 function isPassengerWorkspaceActive(){return currentWorkspaceRole()==='passenger'}
@@ -3598,7 +3598,7 @@ bindRoleDom('driverTripInbox','click',event=>{
 
 function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function showAuthPage(page){const staff=page==='staff';byId('acceso')?.classList.toggle('hidden',staff);byId('staffAccess')?.classList.toggle('hidden',!staff);['pasajero','chofer','central','chat','configuracion'].forEach(id=>byId(id)?.classList.add('hidden'));document.querySelectorAll('.tabs').forEach(el=>el.classList.add('hidden'));byId('logoutButton')?.classList.add('hidden')}
-async function welcomeUser(user){let name=currentRole?.name||USER_ROLES[user.uid]?.name||'';if(!name){try{const snap=await get(ref(db,'profiles/'+user.uid));const profile=snap.val()||{};name=[profile.name,profile.lastName].filter(Boolean).join(' ')}catch(e){console.error('No se pudo leer el nombre del perfil',e)}}if(!name)name=user.email||'usuario';const role=currentWorkspaceRole()||'passenger';byId('postLoginGreeting').innerHTML=role==='passenger'?`Hola ${esc(name)}, es un gusto verte por acá! <span>¿Cómo podemos ayudarte?</span>`:`Hola ${esc(name)}, que bueno verte acá de nuevo! <span>¡Hoy va a ser un excelente día!</span>`;byId('postLoginGreeting').classList.remove('hidden')}
+async function welcomeUser(user){let name=currentRole?.name||USER_ROLES[user.uid]?.name||'';if(!name){try{const snap=await get(ref(db,'profiles/'+user.uid));const profile=snap.val()||{};name=[profile.name,profile.lastName].filter(Boolean).join(' ')}catch(e){console.error('No se pudo leer el nombre del perfil',e)}}if(!name)name=user.email||'usuario';const role=currentWorkspaceRole()||'passenger';const greeting=byId('postLoginGreeting');if(!greeting)return;if(role==='admin'){greeting.classList.add('hidden');return}greeting.innerHTML=role==='passenger'?`Hola ${esc(name)}, es un gusto verte por acá! <span>¿Cómo podemos ayudarte?</span>`:`Hola ${esc(name)}, que bueno verte acá de nuevo! <span>¡Hoy va a ser un excelente día!</span>`;greeting.classList.remove('hidden')}
 bindRoleDom('staffEntryButton','click',()=>showAuthPage('staff'));
 bindRoleDom('backToPassengerLogin','click',()=>{byId('staffAccess')?.classList.add('hidden');byId('acceso')?.classList.remove('hidden');byId('pasajero')?.classList.add('hidden')});
 bindRoleDom('showRegisterButton','click',()=>{byId('registerPanel').classList.toggle('hidden');byId('showRegisterButton').textContent=byId('registerPanel').classList.contains('hidden')?'Crear cuenta de pasajero':'Ocultar registro'});
@@ -3891,20 +3891,33 @@ onAuthStateChanged(auth,async user=>{
      if(controller)await controller.unmount();
     },
     stopDriverInbox:()=>{if(driverInboxUnsub){driverInboxUnsub();driverInboxUnsub=null;}},
-    loadAdminProfiles:async()=>{
-     if(byId('passengerList'))byId('passengerList').textContent='Cargando pasajeros…';
-     try{
-      const profSnap=await get(ref(db,'profiles'));
-      if(authGeneration!==authStateGeneration)return;
-      const profiles=profSnap.val()||{};
-      const entries=Object.values(profiles);
-      if(byId('passengerList'))byId('passengerList').innerHTML=entries.length?entries.map(p=>'<div class="choice-card"><strong>'+esc((p.name||'')+' '+(p.lastName||''))+'</strong><div class="muted">DNI: '+esc(p.dni||'—')+' · Teléfono: '+esc(p.phone||'No informado')+'</div></div>').join(''):'Todavía no hay pasajeros registrados.';
-     }catch(error){
-      if(authGeneration!==authStateGeneration)return;
-      if(byId('passengerList'))byId('passengerList').textContent='No se pudieron consultar los perfiles. Revisá las reglas de Firebase.';
-      console.error('No se pudieron cargar los perfiles para administración:',error);
+    loadAdminStaffData:async()=>{
+     if(!isAdminWorkspaceActive())return {stale:true};
+     const snapshot=await get(ref(db,'profiles'));
+     if(authGeneration!==authStateGeneration||!isAdminWorkspaceActive())return {stale:true};
+     const profiles=snapshot.val()||{};
+     const userIds=new Set([...Object.keys(USER_ROLES),...Object.keys(profiles)]);
+     const staff=[];
+     for(const uid of userIds){
+      const profile=profiles[uid]||{};
+      const legacy=USER_ROLES[uid]||null;
+      const role=uid===ADMIN_UID?'admin':(profile.role||legacy?.role||'');
+      if(!['admin','driver','operator'].includes(role)||(role==='admin'&&uid!==ADMIN_UID))continue;
+      const carId=role==='admin'?'144':role==='driver'?(Object.prototype.hasOwnProperty.call(profile,'carId')?profile.carId:(legacy?.carId||null)):null;
+      const name=[profile.name,profile.lastName].filter(Boolean).join(' ').trim()||legacy?.name||'Personal sin nombre';
+      staff.push({uid,name,role,carId,active:profile.active!==false});
      }
+     const fleet=initial.map(item=>{const car=cars[item.id]||{};return {id:item.id,model:item.model,status:car.status||'desconectado',online:car.online===true}});
+     return {staff,cars:fleet,loadedAt:Date.now()};
+    },
+    loadAdminProfiles:async()=>{
+     if(!isAdminWorkspaceActive())return {stale:true};
+     const profSnap=await get(ref(db,'profiles'));
+     if(authGeneration!==authStateGeneration||!isAdminWorkspaceActive())return {stale:true};
+     const profiles=profSnap.val()||{};
+     const entries=Object.entries(profiles).filter(([,profile])=>profile&&profile.role==='passenger').map(([uid,profile])=>({uid,...profile}));
      perf.mark('auth.admin-profiles-stage.done');
+     return {profiles:entries,loadedAt:Date.now()};
     },
     initializeAdminCars:async()=>{
      if(!remoteReady){

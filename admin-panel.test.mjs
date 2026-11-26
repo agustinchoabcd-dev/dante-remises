@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 test("administrative sections are separate lazy-loaded templates and modules", async () => {
   const source = await readFile(new URL("./admin-panel.mjs", import.meta.url), "utf8");
-  for (const section of ["overview", "fleet", "trips", "passengers", "health"]) {
+  for (const section of ["overview", "fleet", "trips", "passengers", "health", "staff"]) {
     assert.ok(source.includes(section + ":"));
     assert.ok(source.includes("./views/admin/" + section + ".html"));
     assert.ok(source.includes("./admin/sections/" + section + ".mjs"));
@@ -14,9 +14,16 @@ test("administrative sections are separate lazy-loaded templates and modules", a
   assert.match(source, /generation/);
 });
 
-test("trip history remains explicitly unavailable until the Firebase trip model is validated", async () => {
+test("trip history is read-only and uses filters over the real trip model", async () => {
   const html = await readFile(new URL("./views/admin/trips.html", import.meta.url), "utf8");
-  assert.match(html, /estructura actual todavía no ofrece un historial administrativo validado/);
+  const module = await readFile(new URL("./admin/sections/trips.mjs", import.meta.url), "utf8");
+  const model = await readFile(new URL("./admin/trips-state.mjs", import.meta.url), "utf8");
+  assert.match(html, /id="adminTripHistorySearch"/);
+  assert.match(html, /id="adminTripHistoryStatus"/);
+  assert.match(module, /loadAdminOverviewData/);
+  assert.match(model, /createdAt/);
+  assert.match(model, /updatedAt/);
+  assert.match(html, /no modifica ni elimina viajes/);
   assert.doesNotMatch(html, /delete.*trip|eliminar.*viaje/i);
 });
 
@@ -27,6 +34,7 @@ test("admin shell uses the agreed expanded categorized menu and bottom profile",
   assert.match(html, /id="adminMenuPanel"/);
   for (const category of ["Operación", "Personas", "Sistema"]) assert.ok(html.includes(category));
   assert.match(html, /Mi perfil/);
+  assert.match(html, /data-admin-section="staff"/);
   assert.match(html, /id="adminWorkspaceSelector"/);
   for (const id of ["adminWorkspaceDriverButton", "adminWorkspaceOperatorButton", "adminWorkspacePassengerButton", "adminWorkspaceAllButton"]) {
     assert.ok(html.includes('id="' + id + '"'), "Workspace control missing: " + id);
@@ -51,9 +59,38 @@ test("summary is data-driven and does not contain invented fleet or trip totals"
   assert.match(html, /id="adminOverviewTodayTrips"/);
   assert.match(module, /loadAdminOverviewData/);
   assert.doesNotMatch(html, /4 vehículos registrados|[0-9]+ viajes hoy/);
+  assert.match(html, /data-admin-go="staff"/);
+  assert.doesNotMatch(html, /Verificaciones.*Integración pendiente/);
 });
 
 test("admin overview state dependency is included in the Capacitor web bundle", async () => {
   const copyScript = await readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8");
   assert.match(copyScript, /"admin\/overview-state\.mjs"/);
+});
+
+test("admin workspace hides the global greeting without removing it from other roles", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  assert.match(html, /postLoginGreeting'\)\?\.classList\.toggle\('hidden',role==='admin'\)/);
+  assert.match(html, /if\(role==='admin'\)\{greeting\.classList\.add\('hidden'\);return\}/);
+  assert.match(html, /role==='passenger'\?\x60Hola/);
+});
+
+test("passenger directory filters only passenger profiles and leaves identity review pending honestly", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  const module = await readFile(new URL("./admin/sections/passengers.mjs", import.meta.url), "utf8");
+  const template = await readFile(new URL("./views/admin/passengers.html", import.meta.url), "utf8");
+  assert.match(html, /profile\.role==='passenger'/);
+  assert.match(module, /adminPassengerSearch/);
+  assert.match(template, /no tiene un estado de revisión/);
+});
+
+test("staff directory is a separate read-only module and its assets are copied to Capacitor", async () => {
+  const copyScript = await readFile(new URL("./scripts/copy-web.mjs", import.meta.url), "utf8");
+  const shell = await readFile(new URL("./views/admin/shell.html", import.meta.url), "utf8");
+  const module = await readFile(new URL("./admin/sections/staff.mjs", import.meta.url), "utf8");
+  assert.match(shell, /data-admin-section="staff"/);
+  assert.match(module, /loadAdminStaffData/);
+  for (const asset of ["admin/staff-state.mjs", "admin/sections/staff.mjs", "views/admin/staff.html"]) {
+    assert.ok(copyScript.includes('"' + asset + '"'), "Missing admin asset: " + asset);
+  }
 });

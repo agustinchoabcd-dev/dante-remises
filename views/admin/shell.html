@@ -3,7 +3,7 @@
     <div class="admin-topbar-copy">
       <p class="eyebrow">DANTE REMISES · ADMINISTRACIÓN</p>
       <h2 id="adminPanelHeading" data-admin-title>Resumen</h2>
-      <p class="muted">Panel administrativo</p>
+      <p class="muted">Gestión exclusiva · Administrador 144</p>
     </div>
     <button class="admin-menu-trigger" id="adminMenuToggle" type="button" aria-expanded="false" aria-controls="adminMenuPanel">
       <span class="admin-menu-trigger-icon" aria-hidden="true">☰</span><span>Secciones</span>
@@ -38,6 +38,7 @@
         <section class="admin-menu-group" aria-labelledby="adminMenuPeople">
           <h3 id="adminMenuPeople">Personas</h3>
           <button class="admin-menu-item" type="button" data-admin-section="passengers" aria-current="false"><span class="admin-menu-icon" aria-hidden="true">♙</span><span class="admin-menu-item-copy"><strong>Pasajeros</strong><small>Cuentas y datos registrados</small></span></button>
+          <button class="admin-menu-item" type="button" data-admin-section="staff" aria-current="false"><span class="admin-menu-icon" aria-hidden="true">♧</span><span class="admin-menu-item-copy"><strong>Personal</strong><small>Chóferes y operadores</small></span></button>
         </section>
         <section class="admin-menu-group" aria-labelledby="adminMenuSystem">
           <h3 id="adminMenuSystem">Sistema</h3>
@@ -59,6 +60,54 @@
 </section>
 <style>
 .admin-workspace{display:grid;gap:16px;min-width:0}
+
+.admin-workspace .card.panel{width:100%;max-width:none;margin:0}
+.admin-workspace .admin-module-content{display:grid;gap:16px}
+.admin-workspace .admin-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.admin-workspace .admin-section-heading h3{margin:0 0 5px;font-size:17px}
+.admin-workspace .admin-section-heading p{margin:0;color:var(--muted);font-size:12px;line-height:1.45;max-width:720px}
+.admin-workspace #centralCars{margin-top:0}
+.admin-workspace .admin-section-title{flex-wrap:wrap;align-items:center}
+.admin-workspace .admin-section-title>div{min-width:0}
+.admin-workspace .admin-section-title button{flex:0 0 auto}
+.admin-workspace input,.admin-workspace select{min-width:0;max-width:100%}
+.admin-directory-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.admin-directory-toolbar input{flex:1 1 240px;width:100%;min-height:42px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink)}
+.admin-directory-count{font-size:11px;color:var(--muted);font-weight:750;white-space:nowrap}
+.admin-staff-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:11px}
+.admin-staff-card,.admin-passenger-card{min-width:0;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.admin-staff-card header,.admin-passenger-card header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.admin-staff-card h4,.admin-passenger-card h4{margin:0;font-size:14px;overflow-wrap:anywhere}
+.admin-staff-role,.admin-history-status{display:inline-flex;align-items:center;justify-content:center;padding:4px 8px;border:1px solid var(--line);border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap}
+.admin-staff-detail,.admin-passenger-detail{margin:8px 0 0;color:var(--muted);font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+.admin-staff-status{margin:9px 0 0;font-size:11px;font-weight:700}
+.admin-staff-status[data-online="true"]{color:var(--green)}
+.admin-staff-status[data-online="false"]{color:var(--muted)}
+.admin-pending-feature{padding:14px;border:1px dashed var(--line);border-radius:13px;background:var(--surface-2)}
+.admin-pending-feature h3{margin:0 0 6px;font-size:14px}
+.admin-pending-feature p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.admin-history-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,210px);gap:9px;margin:12px 0}
+.admin-history-controls input,.admin-history-controls select{width:100%;min-height:42px;padding:9px 11px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink)}
+.admin-history-list{display:grid;gap:9px}
+.admin-history-item{min-width:0;padding:13px;border:1px solid var(--line);border-radius:13px;background:var(--surface)}
+.admin-history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.admin-history-head strong{min-width:0;font-size:13px;overflow-wrap:anywhere}
+.admin-history-status.requested{color:var(--amber)}
+.admin-history-status.accepted,.admin-history-status.in_progress{color:var(--green)}
+.admin-history-status.completed{color:var(--muted)}
+.admin-history-status.rejected,.admin-history-status.cancelled{color:var(--red)}
+.admin-history-meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:7px;color:var(--muted);font-size:11px}
+.admin-history-route{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:start;gap:8px;margin-top:10px;font-size:12px}
+.admin-history-route span{min-width:0;overflow-wrap:anywhere}
+.admin-history-route .admin-route-arrow{color:var(--muted);font-weight:800}
+.admin-history-empty{padding:16px;border:1px dashed var(--line);border-radius:13px;color:var(--muted);font-size:12px;line-height:1.5}
+@media(max-width:520px){
+ .admin-history-controls{grid-template-columns:1fr}
+ .admin-history-route{gap:5px;font-size:11px}
+ .admin-section-heading{align-items:stretch}
+ .admin-section-heading button{width:100%}
+}
+
 .admin-topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:2px 0}
 .admin-topbar-copy{min-width:0}
 .admin-topbar-copy h2{margin:5px 0;font-size:clamp(22px,4vw,28px);line-height:1.15}

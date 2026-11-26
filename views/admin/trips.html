@@ -1,2 +1,22 @@
-<div class="card panel" id="adminTripAlertPanel"><h3>Solicitudes y viaje activo · coche 144</h3><div id="adminDriverTripInbox" class="muted">Consultando solicitudes…</div><div id="adminDriverActiveTrip" class="request hidden"></div></div>
-<div class="card panel"><h3>Historial cronológico</h3><p class="muted">La estructura actual todavía no ofrece un historial administrativo validado de punta a punta. Primero se verificará el modelo real de viajes y sus reglas antes de mostrar registros o habilitar eliminaciones.</p><span class="hint">Próxima incorporación · lectura y filtros, con permisos por rol.</span></div>
+<section class="admin-trip-section">
+  <section class="card panel" id="adminTripAlertPanel">
+    <div class="admin-section-title"><div><h3>Solicitudes y viaje activo · coche 144</h3><p class="muted">Bandeja operativa del espacio de chófer de Agustín.</p></div></div>
+    <div id="adminDriverTripInbox" class="muted">Consultando solicitudes…</div>
+    <div id="adminDriverActiveTrip" class="request hidden"></div>
+  </section>
+  <section class="card panel admin-history-panel" aria-labelledby="adminTripHistoryTitle">
+    <div class="admin-section-heading">
+      <div><h3 id="adminTripHistoryTitle">Historial de viajes</h3><p>Registros reales de Firebase, ordenados por última actualización. Esta vista es de consulta: no modifica ni elimina viajes.</p></div>
+      <button class="secondary" id="adminTripHistoryRefreshButton" type="button">↻ Actualizar</button>
+    </div>
+    <div class="admin-history-controls">
+      <input id="adminTripHistorySearch" type="search" placeholder="Buscar pasajero, chófer, coche o recorrido" aria-label="Buscar en el historial de viajes">
+      <select id="adminTripHistoryStatus" aria-label="Filtrar viajes por estado">
+        <option value="all">Todos los estados</option><option value="requested">Solicitados</option><option value="accepted">Aceptados</option><option value="in_progress">En curso</option><option value="completed">Finalizados</option><option value="rejected">Rechazados</option><option value="cancelled">Cancelados (registros anteriores)</option>
+      </select>
+    </div>
+    <div class="admin-directory-toolbar"><span class="admin-directory-count" id="adminTripHistoryCount">Consultando viajes…</span></div>
+    <div class="admin-history-list" id="adminTripHistoryList" aria-live="polite"><div class="admin-history-empty">Cargando historial…</div></div>
+    <p class="hint" id="adminTripHistoryUpdatedAt">Aún no actualizado.</p>
+  </section>
+</section>

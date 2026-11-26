@@ -3,18 +3,20 @@ const SECTION_FILES = Object.freeze({
   fleet: "./views/admin/fleet.html",
   trips: "./views/admin/trips.html",
   passengers: "./views/admin/passengers.html",
-  health: "./views/admin/health.html"
+  health: "./views/admin/health.html",
+  staff: "./views/admin/staff.html"
 });
 const SECTION_MODULES = Object.freeze({
   overview: () => import("./admin/sections/overview.mjs"),
   fleet: () => import("./admin/sections/fleet.mjs"),
   trips: () => import("./admin/sections/trips.mjs"),
   passengers: () => import("./admin/sections/passengers.mjs"),
-  health: () => import("./admin/sections/health.mjs")
+  health: () => import("./admin/sections/health.mjs"),
+  staff: () => import("./admin/sections/staff.mjs")
 });
 const LABELS = Object.freeze({
   overview: "Resumen", fleet: "Flota", trips: "Viajes",
-  passengers: "Pasajeros", health: "Salud operativa"
+  passengers: "Pasajeros", health: "Salud operativa", staff: "Personal"
 });
 
 export async function mount(root, context = {}) {

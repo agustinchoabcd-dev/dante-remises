@@ -1,1 +1,8 @@
-<div class="card panel"><p class="muted">Estado en tiempo real de los vehículos y controles administrativos disponibles.</p><div class="grid" id="centralCars"></div></div>
+<section class="admin-directory-section">
+  <header class="admin-section-heading">
+    <div><h3>Flota de Dante Remises</h3><p>Estado de conexión, disponibilidad y controles actuales de los cuatro vehículos registrados.</p></div>
+    <button class="secondary" id="adminFleetRefreshButton" type="button">↻ Actualizar flota</button>
+  </header>
+  <div class="grid admin-fleet-grid" id="centralCars" aria-live="polite"></div>
+  <p class="hint" id="adminFleetUpdatedAt" role="status">Mostrando el estado disponible en esta sesión.</p>
+</section>

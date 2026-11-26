@@ -1,1 +1,16 @@
-<div class="card panel"><h3>Pasajeros registrados</h3><p class="muted">Información visible únicamente para el administrador.</p><div id="passengerList" class="muted">Cargando perfiles…</div></div>
+<section class="admin-directory-section">
+  <header class="admin-section-heading">
+    <div><h3>Pasajeros registrados</h3><p>Directorio de cuentas de pasajero consultadas desde los perfiles guardados en Firebase.</p></div>
+    <button class="secondary" id="adminPassengerRefreshButton" type="button">↻ Actualizar</button>
+  </header>
+  <div class="admin-directory-toolbar">
+    <input id="adminPassengerSearch" type="search" placeholder="Buscar por nombre, DNI o teléfono" aria-label="Buscar pasajeros">
+    <span class="admin-directory-count" id="adminPassengerCount">Consultando perfiles…</span>
+  </div>
+  <div class="admin-staff-grid" id="passengerList" aria-live="polite"><div class="admin-history-empty">Cargando pasajeros…</div></div>
+  <p class="hint" id="adminPassengerUpdatedAt">Aún no actualizado.</p>
+  <section class="admin-pending-feature" aria-labelledby="adminVerificationPendingTitle">
+    <h3 id="adminVerificationPendingTitle">Verificación de identidad</h3>
+    <p>Esta función todavía no tiene un estado de revisión ni un registro de decisiones implementados en el modelo actual. No se habilitan aprobaciones o rechazos hasta definir y validar los datos y permisos necesarios; así evitamos mostrar insignias o decisiones que no estén guardadas realmente.</p>
+  </section>
+</section>
