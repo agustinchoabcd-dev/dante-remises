@@ -94,13 +94,15 @@ export async function mount({ root, openSection, loadAdminOverviewData }) {
       setValue(root, "#adminOverviewOut", model.fleet.outOfService);
       setValue(root, "#adminOverviewFleetMeta", "Conectados: " + (model.fleet.total - model.fleet.disconnected) + " de " + model.fleet.total + " · desconectados: " + model.fleet.disconnected + ". Los coches desconectados no cuentan como libres.");
       const available = data.tripsAvailable !== false;
+      const pendingAvailable = data.pendingRequestsAvailable !== false;
+      const pendingCount = Array.isArray(data.pendingRequests) ? data.pendingRequests.length : model.pendingRequests;
       const values = available ? model.stats : { todayTrips: "—", activeTrips: "—", completedToday: "—", rejectedToday: "—" };
       setValue(root, "#adminOverviewTodayTrips", values.todayTrips);
       setValue(root, "#adminOverviewActiveTrips", values.activeTrips);
       setValue(root, "#adminOverviewCompletedTrips", values.completedToday);
       setValue(root, "#adminOverviewRejectedTrips", values.rejectedToday);
-      setValue(root, "#adminOverviewStatsMeta", available ? "Solicitudes por fecha de creación; viajes activos por estado; finalizados y rechazados por fecha de cambio de estado." : "Estadísticas no disponibles: falló la lectura de viajes.");
-      renderAttention(model.pendingRequests, available);
+      setValue(root, "#adminOverviewStatsMeta", available ? "Solicitudes por fecha de creación; viajes activos por estado; finalizados y rechazados por fecha de cambio de estado." : "El historial y las estadísticas completas requieren un índice de viajes compatible con las reglas actuales. Las solicitudes pendientes se consultan por la bandeja del coche 144.");
+      renderAttention(pendingCount, pendingAvailable);
       renderActivity(model.activity, available);
       setValue(root, "#adminOverviewUpdatedAt", "Última actualización: " + formatAdminOverviewTime(data.loadedAt));
     } catch (error) {
