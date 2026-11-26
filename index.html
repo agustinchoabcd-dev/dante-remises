@@ -894,7 +894,7 @@ bindRoleDom('allRolePassengerButton','click',async()=>{await adminWorkspaceContr
  if(currentUser?.uid!==ADMIN_UID||currentRole?.role!=='admin')return;
  try{await adminWorkspaceController?.openAdminPanel()}catch(error){console.error('No se pudo abrir el panel administrativo:',error);notify('No se pudo abrir el panel administrativo. Intentá nuevamente.')}
 });
-bindRoleDom('adminHealthRefreshButton','click',()=>renderAdminOperationalHealth());
+
 let tripAlertPermissionFlowStarted=false;
 let tripAlertPermissionFlowRunning=false;
 async function refreshTripAlertPermissionStatus(){

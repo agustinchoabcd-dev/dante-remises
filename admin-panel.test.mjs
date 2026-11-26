@@ -103,5 +103,13 @@ test("admin sections use the available width and keep health content responsive"
   assert.match(shell, /@media\(max-width:380px\)/);
   assert.match(health, /class="admin-section-heading"/);
   assert.match(health, /id="adminHealthRefreshButton"/);
-  assert.match(health, /no representa un historial persistente/);
+  assert.match(health, /no representa un historial persistente/i);
+});
+
+test("health refresh button is owned by the lazy health module, not bound twice globally", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  const module = await readFile(new URL("./admin/sections/health.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(html, /bindRoleDom\('adminHealthRefreshButton'/);
+  assert.match(module, /addEventListener\("click",refresh\)/);
+  assert.match(module, /removeEventListener\("click",refresh\)/);
 });
