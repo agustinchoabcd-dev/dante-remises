@@ -55,6 +55,8 @@ test("admin hides the global header halo without removing the summary heading fr
   const index = await readFile(new URL("./index.html", import.meta.url), "utf8");
   const shell = await readFile(new URL("./views/admin/shell.html", import.meta.url), "utf8");
   assert.match(index, /body\.admin-workspace-active\s*>\s*header::before\{content:none!important;display:none!important\}/);
+  assert.match(index, /body:has\(\.admin-workspace\)\s*>\s*header::before/);
+  assert.match(index, /body:has\(\.admin-workspace\) #driverHomeStatusDot\{content:none!important;display:none!important\}/);
   assert.match(shell, /\.admin-workspace > header\.admin-topbar\{[\s\S]*?background:linear-gradient\([\s\S]*?border-radius:16px/);
 });
 
