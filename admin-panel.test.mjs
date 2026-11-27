@@ -44,7 +44,7 @@ test("admin shell uses the agreed expanded categorized menu and bottom profile",
   assert.doesNotMatch(html, /id="centralCars"|id="passengerList"|id="adminOperationalHealthContent"/);
 });
 
-test("admin header does not inherit the global circular halo or 190px minimum height", async () => {
+test("admin header does not inherit the global circular halo or minimum height", async () => {
   const shell = await readFile(new URL("./views/admin/shell.html", import.meta.url), "utf8");
   assert.match(shell, /\.admin-workspace > header\.admin-topbar\{[\s\S]*?min-height:0/);
   assert.match(shell, /\.admin-workspace > header\.admin-topbar::before,[\s\S]*?content:none/);
