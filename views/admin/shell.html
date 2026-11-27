@@ -116,6 +116,25 @@
 }
 
 .admin-topbar{display:grid;grid-template-columns:minmax(0,1fr);justify-items:stretch;gap:10px;padding:2px 0}
+/* Este header es interno al panel. No debe heredar el header global de index.html:
+   ese estilo añade un halo circular (header::before) y una altura mínima de 190px. */
+.admin-workspace > header.admin-topbar{
+ position:relative;
+ min-height:0;
+ padding:2px 0;
+ background:transparent;
+ color:var(--ink);
+ box-shadow:none;
+ border:0;
+ align-items:stretch;
+ justify-content:initial;
+ text-align:initial;
+}
+.admin-workspace > header.admin-topbar::before,
+.admin-workspace > header.admin-topbar::after{
+ content:none;
+ display:none;
+}
 .admin-topbar-copy{min-width:0;width:100%;text-align:center}
 .admin-topbar-copy h2{margin:5px 0;font-size:clamp(22px,4vw,28px);line-height:1.15;text-align:center}
 .admin-topbar-copy p{margin:0;text-align:center}
