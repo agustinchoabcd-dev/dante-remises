@@ -51,6 +51,13 @@ test("admin header does not inherit the global circular halo or minimum height",
   assert.match(shell, /\.admin-workspace > header\.admin-topbar::after[\s\S]*?display:none/);
 });
 
+test("admin hides the global header halo without removing the summary heading frame", async () => {
+  const index = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  const shell = await readFile(new URL("./views/admin/shell.html", import.meta.url), "utf8");
+  assert.match(index, /body\.admin-workspace-active\s*>\s*header::before\{content:none!important;display:none!important\}/);
+  assert.match(shell, /\.admin-workspace > header\.admin-topbar\{[\s\S]*?background:linear-gradient\([\s\S]*?border-radius:16px/);
+});
+
 test("admin navigation closes accessibly and guards stale section transitions", async () => {
   const source = await readFile(new URL("./admin-panel.mjs", import.meta.url), "utf8");
   assert.match(source, /function closeMenu/);
