@@ -24,12 +24,15 @@ export async function activate(context) {
       stopPassenger();
       context.setAllRolesMode?.(keepAllRoles);
       context.setWorkspaceRole?.("admin");
-      const mounted = await context.mountAdminPanel?.(workspaceContext(generation));
-      if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
-      context.showView?.("central");
+      // Invalidate and clear the driver's mount BEFORE awaiting the admin UI.
+      // Otherwise a pending lazy template load can complete while the admin panel
+      // is mounting and leave driver-only UI behind the administrative workspace.
       suspendDriver();
       context.unloadRoleMount?.("driver");
       context.stopDriverInbox?.();
+      const mounted = await context.mountAdminPanel?.(workspaceContext(generation));
+      if (mounted?.stale || !isWorkspaceCurrent(generation)) return { stale: true };
+      context.showView?.("central");
       return { view: "admin" };
     },
 
