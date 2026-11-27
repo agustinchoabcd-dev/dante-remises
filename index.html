@@ -478,6 +478,7 @@ body.admin-workspace-active .driver-home-map-home{display:none!important}
 body.admin-workspace-active > header::before{content:none!important;display:none!important}
 /* El shell administrativo es la señal real de que Central está montado; no depender sólo de una clase JS que puede quedar desincronizada. */
 body:has(.admin-workspace) > header::before,
+/* Android QA rebuild: include the admin residual-indicator fix. */
 body:has(.admin-workspace) #driverHomeStatusDot{content:none!important;display:none!important}
 .admin-workspace{display:grid;gap:12px;min-width:0}
 </style>
