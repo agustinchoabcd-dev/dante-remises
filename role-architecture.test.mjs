@@ -45,6 +45,12 @@ test("Central operator and administrative workspace use separate templates", () 
   assert.match(html, /adminWorkspaceSettingsCard'\)\?\.classList\.toggle\('hidden',!isAdmin\)/);
   assert.match(adminModule, /context\.suspendDriverWorkspace\?\.\(\)/);
   assert.match(adminModule, /context\.unloadRoleMount\?\.\("driver"\)/);
+  const openAdminStart = adminModule.indexOf("async openAdminPanel");
+  const openAdminEnd = adminModule.indexOf("async openDriverWorkspace", openAdminStart);
+  const openAdmin = adminModule.slice(openAdminStart, openAdminEnd);
+  assert.ok(openAdmin.indexOf("suspendDriver();") < openAdmin.indexOf("context.mountAdminPanel?.(workspaceContext(generation))"));
+  assert.ok(openAdmin.indexOf('context.unloadRoleMount?.("driver")') < openAdmin.indexOf("context.mountAdminPanel?.(workspaceContext(generation))"));
+  assert.ok(openAdmin.indexOf("context.stopDriverInbox?.()") < openAdmin.indexOf("context.mountAdminPanel?.(workspaceContext(generation))"));
   assert.match(adminModule, /context\.resumeDriverWorkspace\?\.\(\)/);
   assert.ok(adminModule.includes('context.unloadRoleView?.("central")'));
   assert.match(adminModule, /workspaceController/);
