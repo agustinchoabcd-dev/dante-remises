@@ -113,3 +113,14 @@ test("health refresh button is owned by the lazy health module, not bound twice 
   assert.match(module, /addEventListener\("click",\s*refresh\)/);
   assert.match(module, /removeEventListener\("click",\s*refresh\)/);
 });
+
+
+test("role activation receives setWorkspaceRole so admin workspace visibility state is actually applied", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  const adminRole = await readFile(new URL("./roles/admin.mjs", import.meta.url), "utf8");
+  assert.match(html, /role:currentRole,\s*setWorkspaceRole,\s*unloadRoleView:/);
+  assert.match(html, /document\.body\.classList\.toggle\('admin-workspace-active',role==='admin'\)/);
+  assert.match(html, /body\.admin-workspace-active #roleViewMount #inicio/);
+  assert.match(adminRole, /context\.setWorkspaceRole\?\.\("admin"\)/);
+  assert.match(adminRole, /context\.setWorkspaceRole\?\.\("driver"\)/);
+});
