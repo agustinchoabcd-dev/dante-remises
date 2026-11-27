@@ -474,6 +474,8 @@ body.admin-workspace-active .driver-home-status,
 body.admin-workspace-active .driver-home-curtain,
 body.admin-workspace-active .driver-connect-button,
 body.admin-workspace-active .driver-home-map-home{display:none!important}
+/* El halo circular pertenece al header verde global, no al header interno de Administración. */
+body.admin-workspace-active > header::before{content:none!important;display:none!important}
 .admin-workspace{display:grid;gap:12px;min-width:0}
 </style>
 </head>
